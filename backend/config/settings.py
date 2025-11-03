@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
     'storages',
+    'rest_framework_simplejwt.token_blacklist',
 
     'apps.api',
     'apps.core',
@@ -167,5 +168,22 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# CORS (dev par défaut)
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS / CSRF (dev par défaut)
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+]
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
