@@ -5,7 +5,7 @@ from typing import Any
 from django.db import transaction
 from rest_framework import serializers
 
-from apps.users.models import User, ClientProfile, AgentProfile
+from apps.users.models import User, ClientProfile, AgentProfile, PendingSignup
 
 
 class ClientRegisterSerializer(serializers.Serializer):
@@ -22,14 +22,19 @@ class ClientRegisterSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        user = User.objects.create_user(
-            phone=validated_data['phone'],
-            password=validated_data['password'],
-            username=validated_data.get('username'),
-            role=User.Role.CLIENT,
-        )
-        ClientProfile.objects.create(user=user)
-        return user
+        # Ne PAS créer l'utilisateur maintenant: créer une demande en attente
+        phone = validated_data['phone']
+        if User.objects.filter(phone=phone).exists():
+            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
+        pending, _ = PendingSignup.objects.get_or_create(phone=phone, defaults={
+            'role': PendingSignup.Role.CLIENT,
+            'username': validated_data['username'],
+        })
+        pending.role = PendingSignup.Role.CLIENT
+        pending.username = validated_data['username']
+        pending.set_password(validated_data['password'])
+        pending.save()
+        return pending
 
 
 class AgentRegisterSerializer(serializers.Serializer):
@@ -50,18 +55,20 @@ class AgentRegisterSerializer(serializers.Serializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        user = User.objects.create_user(
-            phone=validated_data['phone'],
-            password=validated_data['password'],
-            username=validated_data.get('username') or None,
-            email=validated_data.get('email') or None,
-            role=User.Role.AGENT,
-        )
-        AgentProfile.objects.create(
-            user=user,
-            agency_name=validated_data.get('agency_name', ''),
-        )
-        return user
+        phone = validated_data['phone']
+        if User.objects.filter(phone=phone).exists():
+            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
+        pending, _ = PendingSignup.objects.get_or_create(phone=phone, defaults={
+            'role': PendingSignup.Role.AGENT,
+            'username': validated_data.get('username') or ''
+        })
+        pending.role = PendingSignup.Role.AGENT
+        pending.username = validated_data.get('username') or ''
+        pending.email = validated_data.get('email') or None
+        pending.agency_name = validated_data.get('agency_name') or ''
+        pending.set_password(validated_data['password'])
+        pending.save()
+        return pending
 
 
 class LoginSerializer(serializers.Serializer):
@@ -71,18 +78,13 @@ class LoginSerializer(serializers.Serializer):
 
 class OTPRequestSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=32)
-    # Par simplicité, on génère ici (en réel: générer côté service et envoyer par SMS)
-    code = serializers.CharField(max_length=6, read_only=True)
-
-    def validate(self, attrs):
-        code = f"{random.randint(0, 999999):06d}"
-        attrs['code'] = code
-        return attrs
+    # pour D7, on n’a plus besoin de générer localement
 
 
 class OTPVerifySerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=32)
     code = serializers.CharField(max_length=6)
+    otp_id = serializers.CharField(max_length=128, required=False, allow_blank=True)
 
 
 class MeSerializer(serializers.ModelSerializer):

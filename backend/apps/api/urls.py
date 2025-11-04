@@ -9,6 +9,7 @@ from .views.auth import (
     OTPRequestView,
     OTPVerifyView,
 )
+from .views.orange import OrangeDlrView
 
 urlpatterns = [
     path('auth/register/client', RegisterClientView.as_view()),
@@ -19,5 +20,7 @@ urlpatterns = [
     path('auth/me', MeView.as_view()),
     path('auth/otp/request', OTPRequestView.as_view()),
     path('auth/otp/verify', OTPVerifyView.as_view()),
+    # Orange DLR webhook (doit être public côté Orange)
+    path('orange/dlr', OrangeDlrView.as_view()),
 ]
 

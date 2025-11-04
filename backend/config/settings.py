@@ -11,9 +11,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Env
+env = environ.Env()
+env.read_env(str(BASE_DIR.parent / '.env'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -187,3 +192,25 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# Cache (pour token Orange SMS)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'monajent-local',
+    }
+}
+
+# Orange SMS (A2P)
+ORANGE_API_BASE_URL = env('ORANGE_API_BASE_URL', default='https://api.orange.com')
+ORANGE_CLIENT_ID = env('ORANGE_CLIENT_ID', default='')
+ORANGE_CLIENT_SECRET = env('ORANGE_CLIENT_SECRET', default='')
+ORANGE_SENDER_ADDRESS = env('ORANGE_SENDER_ADDRESS', default='tel:+2250000000000')
+ORANGE_SENDER_NAME = env('ORANGE_SENDER_NAME', default='')
+ORANGE_DEFAULT_COUNTRY_CODE = env('ORANGE_DEFAULT_COUNTRY_CODE', default='+225')
+ORANGE_DLR_NOTIFY_URL = env('ORANGE_DLR_NOTIFY_URL', default='')
+
+# D7 Verify
+D7_API_BASE_URL = env('D7_API_BASE_URL', default='https://api.d7networks.com')
+D7_API_TOKEN = env('D7_API_TOKEN', default='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoLWJhY2tlbmQ6YXBwIiwic3ViIjoiNWU1MmVlNDAtY2VmZC00NDk4LWIyOTMtZDc4Y2E4YjZhMzNlIn0.SAGhkEILM1res66Um202JGg9YmmUBddJ0AgEDeib-Es')
+D7_ORIGINATOR = env('D7_ORIGINATOR', default='SignOTP')

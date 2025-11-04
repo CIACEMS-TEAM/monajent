@@ -1,5 +1,4 @@
 from datetime import timedelta
-import random
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -11,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
 from apps.users.models import User, ClientProfile, AgentProfile
+from apps.core.services.d7_verify import D7VerifyClient
 from ..serializers.auth import (
     ClientRegisterSerializer,
     AgentRegisterSerializer,
@@ -46,14 +46,21 @@ def clear_refresh_cookie(response: Response) -> None:
 
 
 def _issue_otp_for_user(user: User) -> str:
-    """Génère et assigne un OTP 6 chiffres au user (dev: affiché en console)."""
-    code = f"{random.randint(0, 999999):06d}"
-    user.otp_code = code
-    user.otp_expires_at = timezone.now() + timedelta(minutes=10)
-    user.save(update_fields=['otp_code', 'otp_expires_at'])
-    # Simulation: affichage console pour tests en attendant le provider SMS
-    print('[OTP][DEV]', user.phone, code, user.otp_expires_at)  # noqa: T201 (print intentionnel en dev)
-    return code
+    """Demande un OTP via D7 et stocke l'otp_id externe."""
+    recipient = user.phone
+    if not recipient.startswith('+'):
+        # Normalisation simple: préfixe pays par défaut (Côte d'Ivoire)
+        recipient = f"+225{''.join(ch for ch in recipient if ch.isdigit())}"
+    data = D7VerifyClient().send_otp(recipient)
+    otp_id = data.get('otp_id') or data.get('request_id') or data.get('id')
+    user.otp_provider = 'D7'
+    user.otp_external_id = otp_id
+    # D7 renvoie 'expiry' en secondes si présent
+    seconds = int(data.get('expiry', 600))
+    user.otp_expires_at = timezone.now() + timedelta(seconds=seconds)
+    user.otp_code = None
+    user.save(update_fields=['otp_provider', 'otp_external_id', 'otp_expires_at', 'otp_code'])
+    return otp_id or ''
 
 
 class RegisterClientView(APIView):
@@ -63,7 +70,7 @@ class RegisterClientView(APIView):
         serializer = ClientRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # Génération OTP immédiate pour le flux d'inscription (simulation console)
+        # Génération OTP immédiate via D7
         _issue_otp_for_user(user)
         return Response({'id': user.id, 'phone': user.phone, 'requires_otp': True}, status=status.HTTP_201_CREATED)
 
@@ -75,7 +82,7 @@ class RegisterAgentView(APIView):
         serializer = AgentRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        # Génération OTP immédiate pour le flux d'inscription (simulation console)
+        # Génération OTP immédiate via D7
         _issue_otp_for_user(user)
         return Response({'id': user.id, 'phone': user.phone, 'requires_otp': True}, status=status.HTTP_201_CREATED)
 
@@ -167,14 +174,11 @@ class OTPRequestView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Utilisateur introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
-        user.otp_code = serializer.validated_data['code']  # code généré par le serializer
-        user.otp_expires_at = timezone.now() + timedelta(minutes=10)
-        user.save(update_fields=['otp_code', 'otp_expires_at'])
-
-        print(user.otp_code)
-        print(user.otp_expires_at)
-
-        # TODO: envoyer SMS via provider (OM/MTN/Wave ou agrégateur)
+        # D7: si déjà un otp_id on fait un resend, sinon on en crée un
+        if user.otp_provider == 'D7' and user.otp_external_id:
+            D7VerifyClient().resend_otp(user.otp_external_id)
+        else:
+            _issue_otp_for_user(user)
         return Response({'detail': 'OTP envoyé'}, status=status.HTTP_200_OK)
 
 
@@ -186,25 +190,34 @@ class OTPVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
         phone = serializer.validated_data['phone']
         code = serializer.validated_data['code']
+        otp_id = serializer.validated_data.get('otp_id') or None
         try:
             user = User.objects.get(phone=phone)
         except User.DoesNotExist:
             return Response({'detail': 'Utilisateur introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
-        if not user.otp_code or not user.otp_expires_at:
-            return Response({'detail': 'OTP non demandé'}, status=status.HTTP_400_BAD_REQUEST)
-        if user.otp_code != code:
-            return Response({'detail': 'OTP invalide'}, status=status.HTTP_400_BAD_REQUEST)
-        if timezone.now() > user.otp_expires_at:
-            return Response({'detail': "OTP expiré"}, status=status.HTTP_400_BAD_REQUEST)
-
-        print(user.otp_code)
-        print(user.otp_expires_at)
-
-        # Consommer l’OTP
-        user.otp_code = None
-        user.otp_expires_at = None
-        user.save(update_fields=['otp_code', 'otp_expires_at'])
+        # Si provider D7: vérifie côté D7
+        if user.otp_provider == 'D7' and (user.otp_external_id or otp_id):
+            d7 = D7VerifyClient()
+            result = d7.verify_otp(otp_id or user.otp_external_id, code)
+            status_str = str(result.get('status', '')).upper()
+            if status_str not in {'APPROVED', 'ALREADY_VERIFIED'}:
+                return Response({'detail': f'OTP {status_str or "FAILED"}'}, status=status.HTTP_400_BAD_REQUEST)
+            # Consommer
+            user.otp_external_id = None
+            user.otp_expires_at = None
+            user.save(update_fields=['otp_external_id', 'otp_expires_at'])
+        else:
+            # Fallback ancien flow local
+            if not user.otp_code or not user.otp_expires_at:
+                return Response({'detail': 'OTP non demandé'}, status=status.HTTP_400_BAD_REQUEST)
+            if user.otp_code != code:
+                return Response({'detail': 'OTP invalide'}, status=status.HTTP_400_BAD_REQUEST)
+            if timezone.now() > user.otp_expires_at:
+                return Response({'detail': "OTP expiré"}, status=status.HTTP_400_BAD_REQUEST)
+            user.otp_code = None
+            user.otp_expires_at = None
+            user.save(update_fields=['otp_code', 'otp_expires_at'])
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
