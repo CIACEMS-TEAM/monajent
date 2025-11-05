@@ -1,0 +1,15 @@
+backend/venv/
+backend/__pycache__/
+backend/migrations/
+backend/staticfiles/
+backend/media/
+backend/media/
+backend/db.sqlite3
+backend/db.sqlite3-journal
+backend/db.sqlite3-shm
+backend/db.sqlite3-wal
+backend/db.sqlite3-shm
+
+
+
+.env
