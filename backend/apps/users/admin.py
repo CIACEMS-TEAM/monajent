@@ -15,7 +15,6 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         (None, {'fields': ('phone', 'username', 'email', 'password')}),
         (_('Rôles et statuts'), {'fields': ('role', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
-        (_('OTP'), {'fields': ('otp_code', 'otp_expires_at')}),
         (_('Dates'), {'fields': ('last_login', 'created_at', 'updated_at')}),
     )
     add_fieldsets = (

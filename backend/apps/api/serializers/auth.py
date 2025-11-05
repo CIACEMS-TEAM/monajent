@@ -1,11 +1,6 @@
-from dataclasses import dataclass
-import random
-from typing import Any
-
-from django.db import transaction
 from rest_framework import serializers
 
-from apps.users.models import User, ClientProfile, AgentProfile, PendingSignup
+from apps.users.models import User, ClientProfile, AgentProfile
 
 
 class ClientRegisterSerializer(serializers.Serializer):
@@ -19,22 +14,7 @@ class ClientRegisterSerializer(serializers.Serializer):
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
         return attrs
-
-    @transaction.atomic
-    def create(self, validated_data):
-        # Ne PAS créer l'utilisateur maintenant: créer une demande en attente
-        phone = validated_data['phone']
-        if User.objects.filter(phone=phone).exists():
-            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
-        pending, _ = PendingSignup.objects.get_or_create(phone=phone, defaults={
-            'role': PendingSignup.Role.CLIENT,
-            'username': validated_data['username'],
-        })
-        pending.role = PendingSignup.Role.CLIENT
-        pending.username = validated_data['username']
-        pending.set_password(validated_data['password'])
-        pending.save()
-        return pending
+    # Pas de create: la vue gère le flux stateless
 
 
 class AgentRegisterSerializer(serializers.Serializer):
@@ -52,23 +32,7 @@ class AgentRegisterSerializer(serializers.Serializer):
         if attrs.get('username') and User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
         return attrs
-
-    @transaction.atomic
-    def create(self, validated_data):
-        phone = validated_data['phone']
-        if User.objects.filter(phone=phone).exists():
-            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
-        pending, _ = PendingSignup.objects.get_or_create(phone=phone, defaults={
-            'role': PendingSignup.Role.AGENT,
-            'username': validated_data.get('username') or ''
-        })
-        pending.role = PendingSignup.Role.AGENT
-        pending.username = validated_data.get('username') or ''
-        pending.email = validated_data.get('email') or None
-        pending.agency_name = validated_data.get('agency_name') or ''
-        pending.set_password(validated_data['password'])
-        pending.save()
-        return pending
+    # Pas de create: la vue gère le flux stateless
 
 
 class LoginSerializer(serializers.Serializer):
@@ -77,14 +41,27 @@ class LoginSerializer(serializers.Serializer):
 
 
 class OTPRequestSerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=32)
-    # pour D7, on n’a plus besoin de générer localement
+    pending_token = serializers.CharField()
 
 
 class OTPVerifySerializer(serializers.Serializer):
-    phone = serializers.CharField(max_length=32)
+    pending_token = serializers.CharField()
     code = serializers.CharField(max_length=6)
     otp_id = serializers.CharField(max_length=128, required=False, allow_blank=True)
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=32)
+
+
+class PasswordResetVerifySerializer(serializers.Serializer):
+    reset_token = serializers.CharField()
+    code = serializers.CharField(max_length=6)
+
+
+class PasswordResetFinalizeSerializer(serializers.Serializer):
+    reset_session_token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True, min_length=6)
 
 
 class MeSerializer(serializers.ModelSerializer):

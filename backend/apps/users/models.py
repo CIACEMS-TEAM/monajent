@@ -4,7 +4,6 @@ from django.contrib.auth.models import (
     PermissionsMixin,
     BaseUserManager,
 )
-from django.contrib.auth.hashers import make_password
 
 
 class UserManager(BaseUserManager):
@@ -49,12 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
-    # OTP optionnel pour authentification par code
-    otp_code = models.CharField(max_length=6, null=True, blank=True)
-    otp_expires_at = models.DateTimeField(null=True, blank=True)
-    # Gestion provider OTP externe (ex: D7)
-    otp_provider = models.CharField(max_length=16, null=True, blank=True)
-    otp_external_id = models.CharField(max_length=128, null=True, blank=True)
+    # Plus de champs OTP: flux d'inscription stateless (D7)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -139,33 +133,4 @@ class AgentDocument(models.Model):
     def __str__(self) -> str:
         return f"AgentDocument<{self.agent_profile.user.phone}:{self.label}>"
 
-
-class PendingSignup(models.Model):
-    """Inscription en attente de vérification OTP (D7)."""
-    class Role(models.TextChoices):
-        CLIENT = 'CLIENT', 'Client'
-        AGENT = 'AGENT', 'Agent'
-
-    phone = models.CharField(max_length=32, unique=True)
-    role = models.CharField(max_length=16, choices=Role.choices)
-    username = models.CharField(max_length=150)
-    email = models.EmailField(null=True, blank=True)
-    password_hash = models.CharField(max_length=256)  # stocke un hash, jamais le mot de passe brut
-
-    # Méta D7
-    otp_provider = models.CharField(max_length=16, default='D7')
-    otp_external_id = models.CharField(max_length=128, null=True, blank=True)
-    otp_expires_at = models.DateTimeField(null=True, blank=True)
-
-    # Données spécifiques agent
-    agency_name = models.CharField(max_length=255, blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def set_password(self, raw_password: str) -> None:
-        self.password_hash = make_password(raw_password)
-
-    def __str__(self) -> str:
-        return f"PendingSignup<{self.role}:{self.phone}>"
 

@@ -31,7 +31,7 @@ class D7VerifyClient:
         if template_id:
             body['template_id'] = template_id
         else:
-            body['content'] = content or 'Votre code Monajent est: {}'
+            body['content'] = content or 'Votre code vérification est: {}'
         resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=20)
         if not resp.ok:
             print('[D7_SEND_ERROR]', resp.status_code, resp.text)  # noqa: T201

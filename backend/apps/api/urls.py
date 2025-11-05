@@ -8,8 +8,10 @@ from .views.auth import (
     MeView,
     OTPRequestView,
     OTPVerifyView,
+    PasswordResetRequestView,
+    PasswordResetVerifyView,
+    PasswordResetFinalizeView,
 )
-from .views.orange import OrangeDlrView
 
 urlpatterns = [
     path('auth/register/client', RegisterClientView.as_view()),
@@ -20,7 +22,8 @@ urlpatterns = [
     path('auth/me', MeView.as_view()),
     path('auth/otp/request', OTPRequestView.as_view()),
     path('auth/otp/verify', OTPVerifyView.as_view()),
-    # Orange DLR webhook (doit être public côté Orange)
-    path('orange/dlr', OrangeDlrView.as_view()),
+    path('auth/password/reset/request', PasswordResetRequestView.as_view()),
+    path('auth/password/reset/verify', PasswordResetVerifyView.as_view()),
+    path('auth/password/reset/finalize', PasswordResetFinalizeView.as_view()),
 ]
 
