@@ -15,6 +15,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, Ou
 from apps.users.models import User, ClientProfile, AgentProfile
 from apps.core.services.d7_verify import D7VerifyClient, D7VerifyError
 from apps.core.utils.phone import normalize_to_e164
+from apps.core.audit import write_auth_event
 from ..serializers.auth import (
     ClientRegisterSerializer,
     AgentRegisterSerializer,
@@ -182,9 +183,11 @@ class RegisterClientView(APIView):
         try:
             data = d7.send_otp(phone_e164)
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=phone_e164, success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         otp_id = data.get('otp_id') or data.get('request_id')
         expiry = int(data.get('expiry', 600))
+        write_auth_event('OTP_SENT', request, phone_e164=phone_e164, success=True, metadata={'otp_id': otp_id})
         pending = {
             'role': 'CLIENT',
             'phone': phone_e164,
@@ -212,9 +215,11 @@ class RegisterAgentView(APIView):
         try:
             data = d7.send_otp(phone_e164)
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=phone_e164, success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         otp_id = data.get('otp_id') or data.get('request_id')
         expiry = int(data.get('expiry', 600))
+        write_auth_event('OTP_SENT', request, phone_e164=phone_e164, success=True, metadata={'otp_id': otp_id})
         pending = {
             'role': 'AGENT',
             'phone': phone_e164,
@@ -249,6 +254,7 @@ class LoginView(APIView):
         user = authenticate(request, username=phone_e164, password=password)
         if not user:
             _register_login_failure(phone_e164)
+            write_auth_event('LOGIN_FAIL', request, phone_e164=phone_e164, success=False)
             return Response({'detail': 'Identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
 
         _reset_login_failures(phone_e164)
@@ -256,6 +262,7 @@ class LoginView(APIView):
         access = str(refresh.access_token)
         response = Response({'access': access}, status=status.HTTP_200_OK)
         set_refresh_cookie(response, str(refresh))
+        write_auth_event('LOGIN_SUCCESS', request, user=user, phone_e164=phone_e164, success=True)
         return response
 
 
@@ -288,9 +295,11 @@ class RefreshView(APIView):
             new_refresh = RefreshToken.for_user(user)
             response = Response({'access': access}, status=status.HTTP_200_OK)
             set_refresh_cookie(response, str(new_refresh))
+            write_auth_event('TOKEN_REFRESH', request, user=user, success=True)
             return response
 
         response = Response({'access': access}, status=status.HTTP_200_OK)
+        write_auth_event('TOKEN_REFRESH', request, user=user, success=True)
         return response
 
 
@@ -309,6 +318,7 @@ class LogoutView(APIView):
             pass
         response = Response(status=status.HTTP_204_NO_CONTENT)
         clear_refresh_cookie(response)
+        write_auth_event('LOGOUT', request, user=request.user, success=True)
         return response
 
 
@@ -337,7 +347,9 @@ class OTPRequestView(APIView):
                 data = d7.send_otp(pending['phone'])
                 pending['otp_id'] = data.get('otp_id') or data.get('request_id')
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=pending.get('phone'), success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        write_auth_event('OTP_SENT', request, phone_e164=pending.get('phone'), success=True, metadata={'otp_id': pending.get('otp_id')})
         token = _build_pending_token(pending)
         return Response({'detail': 'OTP envoyé', 'pending_token': token}, status=status.HTTP_200_OK)
 
@@ -359,9 +371,11 @@ class OTPVerifyView(APIView):
         try:
             result = d7.verify_otp(otp_id, code)
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=pending.get('phone'), success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         status_str = str(result.get('status', '')).upper()
         if status_str not in {'APPROVED', 'ALREADY_VERIFIED'}:
+            write_auth_event('OTP_VERIFY_FAIL', request, phone_e164=pending.get('phone'), success=False)
             return Response({'detail': f'OTP {status_str or "FAILED"}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Créer l'utilisateur réel
@@ -390,6 +404,7 @@ class OTPVerifyView(APIView):
         access = str(refresh.access_token)
         response = Response({'access': access}, status=status.HTTP_200_OK)
         set_refresh_cookie(response, str(refresh))
+        write_auth_event('OTP_VERIFY_OK', request, user=user, phone_e164=phone_e164, success=True)
         return response
 
 
@@ -412,6 +427,7 @@ class PasswordResetRequestView(APIView):
         try:
             data = d7.send_otp(phone_e164)
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=phone_e164, success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         otp_id = data.get('otp_id') or data.get('request_id')
         expiry = int(data.get('expiry', 600))
@@ -420,6 +436,7 @@ class PasswordResetRequestView(APIView):
             'otp_id': otp_id,
             'exp_ts': (timezone.now() + timedelta(seconds=expiry)).timestamp(),
         }
+        write_auth_event('RESET_REQUEST', request, phone_e164=phone_e164, success=True, metadata={'otp_id': otp_id})
         token = _build_reset_token(reset)
         return Response({'reset_token': token, 'detail': 'OTP envoyé'}, status=status.HTTP_200_OK)
 
@@ -446,9 +463,11 @@ class PasswordResetVerifyView(APIView):
         try:
             result = d7.verify_otp(otp_id, code)
         except D7VerifyError:
+            write_auth_event('OTP_PROVIDER_ERROR', request, phone_e164=reset.get('phone'), success=False)
             return Response({'detail': 'Service OTP indisponible, réessayez plus tard'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         status_str = str(result.get('status', '')).upper()
         if status_str not in {'APPROVED', 'ALREADY_VERIFIED'}:
+            write_auth_event('RESET_VERIFY_FAIL', request, phone_e164=reset.get('phone'), success=False)
             return Response({'detail': f'OTP {status_str or "FAILED"}'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Construire un reset_session_token court (10 minutes)
@@ -458,6 +477,7 @@ class PasswordResetVerifyView(APIView):
             'exp_ts': (timezone.now() + timedelta(minutes=10)).timestamp(),
         }
         rst = _build_reset_session_token(session)
+        write_auth_event('RESET_VERIFY_OK', request, phone_e164=phone_e164, success=True)
         return Response({'reset_session_token': rst}, status=status.HTTP_200_OK)
 
 
@@ -483,6 +503,7 @@ class PasswordResetFinalizeView(APIView):
 
         user.set_password(new_password)
         user.save(update_fields=['password'])
+        write_auth_event('RESET_FINALIZE_OK', request, user=user, phone_e164=phone_e164, success=True)
         return Response({'detail': 'Mot de passe mis à jour'}, status=status.HTTP_200_OK)
 
 
