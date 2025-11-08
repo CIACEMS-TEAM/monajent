@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.users.models import User, ClientProfile, AgentProfile
+from apps.core.utils.phone import normalize_to_e164
 
 
 class ClientRegisterSerializer(serializers.Serializer):
@@ -9,10 +10,12 @@ class ClientRegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=6)
 
     def validate(self, attrs):
-        if User.objects.filter(phone=attrs['phone']).exists():
+        normalized = normalize_to_e164(attrs['phone'])
+        if User.objects.filter(phone=normalized).exists():
             raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
+        attrs['phone'] = normalized
         return attrs
     # Pas de create: la vue gère le flux stateless
 
@@ -25,12 +28,14 @@ class AgentRegisterSerializer(serializers.Serializer):
     agency_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
     def validate(self, attrs):
-        if User.objects.filter(phone=attrs['phone']).exists():
+        normalized = normalize_to_e164(attrs['phone'])
+        if User.objects.filter(phone=normalized).exists():
             raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
         if attrs.get('email') and User.objects.filter(email=attrs['email']).exists():
             raise serializers.ValidationError({'email': 'Cet email est déjà utilisé'})
         if attrs.get('username') and User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
+        attrs['phone'] = normalized
         return attrs
     # Pas de create: la vue gère le flux stateless
 

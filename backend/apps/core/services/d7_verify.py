@@ -1,8 +1,16 @@
 import json
+import logging
 from typing import Optional
 
 import requests
 from django.conf import settings
+
+
+logger = logging.getLogger(__name__)
+
+
+class D7VerifyError(Exception):
+    """Erreur d'appel au service D7 Verify."""
 
 
 class D7VerifyClient:
@@ -10,6 +18,7 @@ class D7VerifyClient:
         self.base_url = getattr(settings, 'D7_API_BASE_URL', 'https://api.d7networks.com').rstrip('/')
         self.api_token = settings.D7_API_TOKEN
         self.originator = getattr(settings, 'D7_ORIGINATOR', 'SignOTP')
+        self.timeout = 20
 
     def _headers(self) -> dict:
         return {
@@ -32,44 +41,64 @@ class D7VerifyClient:
             body['template_id'] = template_id
         else:
             body['content'] = content or 'Votre code vérification est: {}'
-        resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=20)
-        if not resp.ok:
-            print('[D7_SEND_ERROR]', resp.status_code, resp.text)  # noqa: T201
-            resp.raise_for_status()
-        data = resp.json()
-        print('[D7_SEND_OK]', data)  # noqa: T201
-        return data
+        try:
+            resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=self.timeout)
+            if not resp.ok:
+                logger.error('D7 send_otp failed: status=%s', resp.status_code)
+                try:
+                    payload = resp.json()
+                except Exception:
+                    payload = {}
+                raise D7VerifyError(f"D7 send_otp error: {resp.status_code}")  # ne pas logguer PII
+            data = resp.json()
+            logger.debug('D7 send_otp ok')
+            return data
+        except requests.RequestException as exc:
+            logger.exception('D7 send_otp request exception')
+            raise D7VerifyError('D7 send_otp exception') from exc
 
     def resend_otp(self, otp_id: str) -> dict:
         url = f"{self.base_url}/verify/v1/otp/resend-otp"
         body = {'otp_id': otp_id}
-        resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=20)
-        if not resp.ok:
-            print('[D7_RESEND_ERROR]', resp.status_code, resp.text)  # noqa: T201
-            resp.raise_for_status()
-        data = resp.json()
-        print('[D7_RESEND_OK]', data)  # noqa: T201
-        return data
+        try:
+            resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=self.timeout)
+            if not resp.ok:
+                logger.error('D7 resend_otp failed: status=%s', resp.status_code)
+                raise D7VerifyError(f"D7 resend_otp error: {resp.status_code}")
+            data = resp.json()
+            logger.debug('D7 resend_otp ok')
+            return data
+        except requests.RequestException as exc:
+            logger.exception('D7 resend_otp request exception')
+            raise D7VerifyError('D7 resend_otp exception') from exc
 
     def verify_otp(self, otp_id: str, otp_code: str) -> dict:
         url = f"{self.base_url}/verify/v1/otp/verify-otp"
         body = {'otp_id': otp_id, 'otp_code': otp_code}
-        resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=20)
-        if not resp.ok:
-            print('[D7_VERIFY_ERROR]', resp.status_code, resp.text)  # noqa: T201
-            resp.raise_for_status()
-        data = resp.json()
-        print('[D7_VERIFY_OK]', data)  # noqa: T201
-        return data
+        try:
+            resp = requests.post(url, headers=self._headers(), data=json.dumps(body), timeout=self.timeout)
+            if not resp.ok:
+                logger.error('D7 verify_otp failed: status=%s', resp.status_code)
+                raise D7VerifyError(f"D7 verify_otp error: {resp.status_code}")
+            data = resp.json()
+            logger.debug('D7 verify_otp ok')
+            return data
+        except requests.RequestException as exc:
+            logger.exception('D7 verify_otp request exception')
+            raise D7VerifyError('D7 verify_otp exception') from exc
 
     def get_status(self, otp_id: str) -> dict:
         url = f"{self.base_url}/verify/v1/report/{otp_id}"
-        resp = requests.get(url, headers=self._headers(), timeout=20)
-        if not resp.ok:
-            print('[D7_STATUS_ERROR]', resp.status_code, resp.text)  # noqa: T201
-            resp.raise_for_status()
-        data = resp.json()
-        print('[D7_STATUS_OK]', data)  # noqa: T201
-        return data
+        try:
+            resp = requests.get(url, headers=self._headers(), timeout=self.timeout)
+            if not resp.ok:
+                logger.error('D7 get_status failed: status=%s', resp.status_code)
+                raise D7VerifyError(f"D7 get_status error: {resp.status_code}")
+            data = resp.json()
+            logger.debug('D7 get_status ok')
+            return data
+        except requests.RequestException as exc:
+            logger.exception('D7 get_status request exception')
+            raise D7VerifyError('D7 get_status exception') from exc
 
 

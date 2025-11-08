@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import RegexValidator
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
@@ -40,7 +41,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = 'ADMIN', 'Admin'
 
     # Identifiants
-    phone = models.CharField(max_length=32, unique=True)
+    phone = models.CharField(
+        max_length=32,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\+[1-9]\d{5,14}$',
+                message='Le numéro doit être au format E.164 (ex: +2250123456789)',
+            )
+        ],
+    )
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.CLIENT)

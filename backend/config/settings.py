@@ -25,12 +25,13 @@ env.read_env(str(BASE_DIR.parent / '.env'))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m@m_jn3i_u8_j78g5qh%@g5-rwc81!vk6u=2ee$uvbx2z5jo@#'
+# Utilise l'env en priorité (ex: SECRET_KEY=... dans .env)
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-m@m_jn3i_u8_j78g5qh%@g5-rwc81!vk6u=2ee$uvbx2z5jo@#')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -164,6 +165,22 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        # Auth core
+        'auth_login': '5/min',
+        'auth_refresh': '30/min',
+        'auth_logout': '60/min',
+        # OTP flows
+        'otp_request': '3/min',
+        'otp_verify': '6/min',
+        # Password reset flows
+        'password_reset_request': '3/min',
+        'password_reset_verify': '6/min',
+        'password_reset_finalize': '6/min',
+    },
 }
 
 # drf-spectacular
@@ -173,15 +190,25 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# CORS / CSRF (dev par défaut)
+# CORS / CSRF (pilotés par env)
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-]
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173'])
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173'])
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-]
+# Cookies sécurité
+AUTH_COOKIE_SAMESITE = env('AUTH_COOKIE_SAMESITE', default='Lax')  # 'Lax' (même-site) ou 'None' (cross-site, Secure requis)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = env('CSRF_COOKIE_SAMESITE', default='Lax')  # 'None' si front cross-site en HTTPS
+
+# Redirections et HSTS
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=(0 if DEBUG else 31536000))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
 
 from datetime import timedelta
 
@@ -212,5 +239,5 @@ ORANGE_DLR_NOTIFY_URL = env('ORANGE_DLR_NOTIFY_URL', default='')
 
 # D7 Verify
 D7_API_BASE_URL = env('D7_API_BASE_URL', default='https://api.d7networks.com')
-D7_API_TOKEN = env('D7_API_TOKEN', default='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoLWJhY2tlbmQ6YXBwIiwic3ViIjoiNWU1MmVlNDAtY2VmZC00NDk4LWIyOTMtZDc4Y2E4YjZhMzNlIn0.SAGhkEILM1res66Um202JGg9YmmUBddJ0AgEDeib-Es')
+D7_API_TOKEN = env('D7_API_TOKEN', default='')
 D7_ORIGINATOR = env('D7_ORIGINATOR', default='SignOTP')
