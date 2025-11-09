@@ -1,4 +1,6 @@
 from datetime import timedelta
+import random
+import time
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -169,6 +171,34 @@ def _reset_login_failures(phone_e164: str) -> None:
     cache.delete_many([_cache_key_login_fail(phone_e164), _cache_key_login_lock(phone_e164)])
 
 
+# --- Anti-énumération: petit délai aléatoire et backoff ---
+def _jitter_sleep(base_ms: int = 100, spread_ms: int = 200) -> None:
+    try:
+        dur = (base_ms + random.randint(0, spread_ms)) / 1000.0
+        time.sleep(dur)
+    except Exception:
+        pass
+
+
+def _backoff_key(prefix: str, key: str) -> str:
+    return f"auth:backoff:{prefix}:{key}"
+
+
+def _register_backoff(prefix: str, key: str, window_sec: int = 300) -> int:
+    ck = _backoff_key(prefix, key)
+    try:
+        count = cache.incr(ck)
+    except Exception:
+        count = 1
+        cache.set(ck, count, timeout=window_sec)
+    if count == 1 and hasattr(cache, 'expire'):
+        try:
+            cache.expire(ck, window_sec)
+        except Exception:
+            pass
+    return count
+
+
 class RegisterClientView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'otp_request'
@@ -178,6 +208,11 @@ class RegisterClientView(APIView):
         serializer.is_valid(raise_exception=True)
         vd = serializer.validated_data
         phone_e164 = normalize_to_e164(vd['phone'])
+        # Anti-énumération: ne pas révéler existence. Si déjà pris, réponse uniforme sans OTP.
+        if User.objects.filter(phone=phone_e164).exists() or User.objects.filter(username=vd['username']).exists():
+            _register_backoff('register', request.META.get('REMOTE_ADDR', ''))
+            _jitter_sleep()
+            return Response({'requires_otp': False, 'detail': 'Si éligible, un OTP a été envoyé'}, status=status.HTTP_200_OK)
         # Appel D7
         d7 = D7VerifyClient()
         try:
@@ -211,6 +246,15 @@ class RegisterAgentView(APIView):
         serializer.is_valid(raise_exception=True)
         vd = serializer.validated_data
         phone_e164 = normalize_to_e164(vd['phone'])
+        # Anti-énumération: ne pas révéler existence. Réponse uniforme sans OTP.
+        if (
+            User.objects.filter(phone=phone_e164).exists()
+            or (vd.get('email') and User.objects.filter(email=vd['email']).exists())
+            or (vd.get('username') and User.objects.filter(username=vd['username']).exists())
+        ):
+            _register_backoff('register', request.META.get('REMOTE_ADDR', ''))
+            _jitter_sleep()
+            return Response({'requires_otp': False, 'detail': 'Si éligible, un OTP a été envoyé'}, status=status.HTTP_200_OK)
         d7 = D7VerifyClient()
         try:
             data = d7.send_otp(phone_e164)
@@ -255,6 +299,7 @@ class LoginView(APIView):
         if not user:
             _register_login_failure(phone_e164)
             write_auth_event('LOGIN_FAIL', request, phone_e164=phone_e164, success=False)
+            _jitter_sleep()
             return Response({'detail': 'Identifiants invalides'}, status=status.HTTP_401_UNAUTHORIZED)
 
         _reset_login_failures(phone_e164)
@@ -421,6 +466,8 @@ class PasswordResetRequestView(APIView):
             user = User.objects.get(phone=phone_e164)
         except User.DoesNotExist:
             # ne pas divulguer l'existence
+            _register_backoff('reset', request.META.get('REMOTE_ADDR', ''))
+            _jitter_sleep()
             return Response({'detail': 'OTP envoyé'}, status=status.HTTP_200_OK)
 
         d7 = D7VerifyClient()

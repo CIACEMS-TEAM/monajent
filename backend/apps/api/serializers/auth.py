@@ -12,11 +12,8 @@ class ClientRegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, attrs):
+        # Normalisation téléphone et politique mot de passe
         normalized = normalize_to_e164(attrs['phone'])
-        if User.objects.filter(phone=normalized).exists():
-            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
-        if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
         try:
             password_validation.validate_password(attrs['password'])
         except DjangoValidationError as e:
@@ -35,12 +32,6 @@ class AgentRegisterSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         normalized = normalize_to_e164(attrs['phone'])
-        if User.objects.filter(phone=normalized).exists():
-            raise serializers.ValidationError({'phone': 'Ce numéro est déjà utilisé'})
-        if attrs.get('email') and User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({'email': 'Cet email est déjà utilisé'})
-        if attrs.get('username') and User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError({'username': 'Ce nom est déjà utilisé'})
         try:
             password_validation.validate_password(attrs['password'])
         except DjangoValidationError as e:

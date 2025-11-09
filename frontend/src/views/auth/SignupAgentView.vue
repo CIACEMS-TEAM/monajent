@@ -11,6 +11,9 @@ const auth = useAuthStore()
 
 const form = reactive({ phone: '', password: '', username: '', email: '', agency_name: '' })
 const loading = ref(false)
+const otpMode = ref(false)
+const otpCode = ref('')
+const otpLoading = ref(false)
 
 async function submit() {
   if (!form.phone || !form.password) {
@@ -19,20 +22,52 @@ async function submit() {
   }
   loading.value = true
   try {
-    await auth.registerAgent({
+    const data = await auth.registerAgent({
       phone: form.phone,
       password: form.password,
       username: form.username || undefined,
       email: form.email || undefined,
       agency_name: form.agency_name || undefined,
     })
-    toast.success('Compte agent créé. Vérifiez l’OTP si activé, puis connectez‑vous.')
-    router.push('/auth/login')
+    if (data?.pending_token) {
+      otpMode.value = true
+      toast.success('OTP envoyé. Vérifiez vos messages.')
+    } else {
+      toast.success('Si éligible, un OTP a été envoyé.')
+      router.push('/auth/login')
+    }
   } catch (e: any) {
     const data = e?.response?.data || {}
     toast.error(data.detail || Object.values(data)[0]?.[0] || 'Erreur d’inscription')
   } finally {
     loading.value = false
+  }
+}
+
+async function resendOtp() {
+  try {
+    otpLoading.value = true
+    await auth.otpRequest()
+    toast.success('OTP renvoyé')
+  } catch (e: any) {
+    toast.error(e?.response?.data?.detail || 'Échec réenvoi OTP')
+  } finally {
+    otpLoading.value = false
+  }
+}
+
+async function verifyOtp() {
+  if (!otpCode.value) { toast.error('Entrez le code OTP'); return }
+  try {
+    otpLoading.value = true
+    await auth.otpVerify(otpCode.value)
+    toast.success('Compte vérifié')
+    const dest = auth.me?.role === 'AGENT' ? '/agent' : (auth.me?.role === 'CLIENT' ? '/client' : '/home')
+    router.push(dest)
+  } catch (e: any) {
+    toast.error(e?.response?.data?.detail || 'Échec de vérification OTP')
+  } finally {
+    otpLoading.value = false
   }
 }
 </script>
@@ -47,7 +82,7 @@ async function submit() {
 
     <div class="auth-container">
       <h1 class="title">Créer un compte agent</h1>
-      <form class="card" @submit.prevent="submit">
+      <form v-if="!otpMode" class="card" @submit.prevent="submit">
       <label class="label">Téléphone</label>
       <input class="input" v-model="form.phone" placeholder="Ex: +2250700..." />
 
@@ -66,6 +101,15 @@ async function submit() {
       <button class="btn" :disabled="loading" type="submit">{{ loading ? 'Création...' : 'Créer mon compte' }}</button>
       <p class="muted">Vous êtes client ? <router-link to="/auth/signup/client">Créer un compte client</router-link></p>
       </form>
+      <div v-else class="card">
+        <p class="label">Entrez le code OTP reçu par SMS</p>
+        <input class="input" v-model="otpCode" maxlength="6" placeholder="Code à 6 chiffres" />
+        <div style="display:flex; gap:8px;">
+          <button class="btn" :disabled="otpLoading" @click="verifyOtp">{{ otpLoading ? 'Vérification...' : 'Vérifier' }}</button>
+          <button class="btn" :disabled="otpLoading" @click="resendOtp">Renvoyer OTP</button>
+        </div>
+        <p class="muted">Besoin d’aide ? Vérifiez le numéro saisi et réessayez.</p>
+      </div>
     </div>
   </div>
 </template>

@@ -10,6 +10,7 @@ const auth = useAuthStore()
 
 const form = reactive({ phone: '', password: '' })
 const loading = ref(false)
+const showPassword = ref(false)
 
 async function submit() {
   if (!form.phone || !form.password) {
@@ -20,7 +21,8 @@ async function submit() {
   try {
     await auth.login(form)
     toast.success('Connexion réussie')
-    router.push('/')
+    const dest = auth.me?.role === 'AGENT' ? '/agent' : (auth.me?.role === 'CLIENT' ? '/client' : '/home')
+    router.push(dest)
   } catch (e: any) {
     toast.error(e?.response?.data?.detail || 'Échec de connexion')
   } finally {
@@ -37,7 +39,10 @@ async function submit() {
       <input class="input" v-model="form.phone" placeholder="Ex: +2250700..." />
 
       <label class="label">Mot de passe</label>
-      <input class="input" v-model="form.password" type="password" placeholder="••••••••" />
+      <div class="password">
+        <input class="input" :type="showPassword ? 'text' : 'password'" v-model="form.password" placeholder="••••••••" />
+        <button class="toggle" type="button" @click="showPassword = !showPassword">{{ showPassword ? 'Masquer' : 'Voir' }}</button>
+      </div>
 
       <button class="btn" :disabled="loading" type="submit">{{ loading ? 'Connexion...' : 'Se connecter' }}</button>
 
@@ -57,6 +62,8 @@ async function submit() {
 .btn { margin-top: 8px; padding: 12px 16px; border: none; border-radius: 8px; background: #14A800; color: #fff; cursor: pointer; font-weight: 600; }
 .btn:disabled { opacity: .7; cursor: default; }
 .muted { color: #555; font-size: 14px; margin-top: 8px; }
+.password { display:flex; gap:8px; align-items:center; }
+.password .toggle { padding: 10px 12px; border-radius: 8px; border: 1px solid #dcdcdc; background: #f8f8f8; cursor: pointer; }
 </style>
 
 

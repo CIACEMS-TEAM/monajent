@@ -3,7 +3,7 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosReques
 import { useAuthStore } from '@/Stores/auth'
 
 // Crée une instance Axios configurée pour l'API
-const API_BASE = (globalThis as any).VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
 
 const http: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -32,8 +32,10 @@ http.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
     const status = error.response?.status
+    const url = (originalRequest?.url || '')
 
-    if (status === 401 && !originalRequest._retry) {
+    // Ne pas tenter de refresh si l'endpoint est déjà /auth/refresh
+    if (status === 401 && !originalRequest._retry && !url.includes('/api/auth/refresh')) {
       originalRequest._retry = true
       const store = useAuthStore()
 

@@ -214,6 +214,24 @@ SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
 
+# CSP (django-csp) - désactivé par défaut, activer en prod via ENABLE_CSP=True
+ENABLE_CSP = env.bool('ENABLE_CSP', default=False)
+CSP_REPORT_ONLY = env.bool('CSP_REPORT_ONLY', default=False)
+CSP_DEFAULT_SRC = tuple(env.list('CSP_DEFAULT_SRC', default=["'none'"]))
+CSP_IMG_SRC = tuple(env.list('CSP_IMG_SRC', default=["'self'", "data:"]))
+CSP_STYLE_SRC = tuple(env.list('CSP_STYLE_SRC', default=["'self'"]))
+CSP_FONT_SRC = tuple(env.list('CSP_FONT_SRC', default=["'self'", "data:"]))
+CSP_CONNECT_SRC = tuple(env.list('CSP_CONNECT_SRC', default=['https://monajent.com', 'https://api.monajent.com']))
+CSP_FRAME_ANCESTORS = tuple(env.list('CSP_FRAME_ANCESTORS', default=["'none'"]))
+
+if ENABLE_CSP:
+    # Insérer le middleware CSP juste après SecurityMiddleware
+    try:
+        security_index = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware')
+        MIDDLEWARE.insert(security_index + 1, 'csp.middleware.CSPMiddleware')
+    except ValueError:
+        MIDDLEWARE.append('csp.middleware.CSPMiddleware')
+
 from datetime import timedelta
 
 SIMPLE_JWT = {
