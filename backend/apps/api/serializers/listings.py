@@ -1,0 +1,215 @@
+"""
+Serializers Listings — Monajent
+───────────────────────────────
+Serializers pour Listing, ListingImage, Video.
+Deux jeux : Agent (CRUD complet) et Public (lecture, sans vidéo complète).
+"""
+
+from rest_framework import serializers
+
+from apps.listings.models import Listing, ListingImage, Video
+from apps.users.models import User, AgentProfile
+
+
+# ═══════════════════════════════════════════════════════════════
+# Serializers imbriqués légers
+# ═══════════════════════════════════════════════════════════════
+
+
+class AgentMiniSerializer(serializers.ModelSerializer):
+    """Info agent compacte pour les listes d'annonces."""
+    agency_name = serializers.CharField(source='agent_profile.agency_name', default='')
+    profile_photo = serializers.ImageField(source='agent_profile.profile_photo', default=None)
+    verified = serializers.BooleanField(source='agent_profile.verified', default=False)
+
+    class Meta:
+        model = User
+        fields = ['id', 'phone', 'username', 'agency_name', 'profile_photo', 'verified']
+        read_only_fields = fields
+
+
+class ListingImageSerializer(serializers.ModelSerializer):
+    """Serializer pour une photo d'annonce."""
+
+    class Meta:
+        model = ListingImage
+        fields = ['id', 'image', 'caption', 'order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class VideoReadSerializer(serializers.ModelSerializer):
+    """
+    Serializer vidéo en lecture.
+    Inclut le thumbnail (gratuit) mais PAS le fichier vidéo.
+    Le fichier est délivré uniquement après consommation d'une clé virtuelle.
+    """
+
+    class Meta:
+        model = Video
+        fields = [
+            'id', 'thumbnail', 'duration_sec', 'access_key',
+            'views_count', 'created_at',
+        ]
+        read_only_fields = fields
+
+
+class VideoAgentSerializer(serializers.ModelSerializer):
+    """
+    Serializer vidéo pour l'agent propriétaire.
+    Inclut le fichier vidéo (l'agent peut voir/gérer ses propres vidéos).
+    """
+
+    class Meta:
+        model = Video
+        fields = [
+            'id', 'file', 'thumbnail', 'duration_sec', 'access_key',
+            'views_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'access_key', 'views_count', 'created_at', 'updated_at']
+
+
+# ═══════════════════════════════════════════════════════════════
+# Serializers Listing principaux
+# ═══════════════════════════════════════════════════════════════
+
+
+class ListingListSerializer(serializers.ModelSerializer):
+    """
+    Serializer compact pour les listes d'annonces (recherche publique + agent).
+    Inclut l'agent (mini) et la première image comme couverture.
+    """
+    agent = AgentMiniSerializer(read_only=True)
+    cover_image = serializers.SerializerMethodField()
+    videos_count = serializers.SerializerMethodField()
+    days_remaining = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'listing_type', 'status',
+            'city', 'neighborhood', 'price',
+            'rooms', 'bedrooms', 'surface_m2', 'furnishing',
+            'views_count', 'favorites_count', 'reports_count',
+            'agent', 'cover_image', 'videos_count',
+            'published_at', 'expires_at', 'days_remaining',
+            'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_cover_image(self, obj) -> str | None:
+        first = obj.images.first()
+        if first and first.image:
+            return self.context['request'].build_absolute_uri(first.image.url)
+        return None
+
+    def get_videos_count(self, obj) -> int:
+        return obj.videos.count()
+
+    def get_days_remaining(self, obj) -> int:
+        return obj.days_remaining
+
+
+class ListingDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer détaillé pour la page d'une annonce (public).
+    Inclut toutes les images + vidéos (thumbnails uniquement, pas le fichier).
+    """
+    agent = AgentMiniSerializer(read_only=True)
+    images = ListingImageSerializer(many=True, read_only=True)
+    videos = VideoReadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'description', 'listing_type', 'status',
+            'city', 'neighborhood', 'address', 'latitude', 'longitude',
+            'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
+            'furnishing', 'amenities',
+            'views_count', 'favorites_count',
+            'agent', 'images', 'videos',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+
+class AgentListingDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer détaillé pour l'agent propriétaire.
+    Inclut les vidéos complètes (avec fichier) et toutes les stats.
+    """
+    images = ListingImageSerializer(many=True, read_only=True)
+    videos = VideoAgentSerializer(many=True, read_only=True)
+    days_remaining = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'description', 'listing_type', 'status',
+            'city', 'neighborhood', 'address', 'latitude', 'longitude',
+            'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
+            'furnishing', 'amenities',
+            'views_count', 'favorites_count', 'reports_count',
+            'published_at', 'expires_at', 'days_remaining',
+            'images', 'videos',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'views_count', 'favorites_count', 'reports_count',
+            'published_at', 'expires_at', 'created_at', 'updated_at',
+        ]
+
+    def get_days_remaining(self, obj) -> int:
+        return obj.days_remaining
+
+
+class ListingCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour la création / modification d'une annonce.
+    L'agent est assigné automatiquement par la vue.
+    """
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'title', 'description', 'listing_type', 'status',
+            'city', 'neighborhood', 'address', 'latitude', 'longitude',
+            'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
+            'furnishing', 'amenities',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_price(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Le prix doit être supérieur à 0.")
+        return value
+
+    def validate_amenities(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Les commodités doivent être une liste.")
+        if not all(isinstance(item, str) for item in value):
+            raise serializers.ValidationError("Chaque commodité doit être une chaîne de caractères.")
+        return value
+
+
+# ═══════════════════════════════════════════════════════════════
+# Serializers upload (images + vidéos)
+# ═══════════════════════════════════════════════════════════════
+
+
+class ListingImageUploadSerializer(serializers.ModelSerializer):
+    """Upload d'une image pour une annonce."""
+
+    class Meta:
+        model = ListingImage
+        fields = ['id', 'image', 'caption', 'order', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class VideoUploadSerializer(serializers.ModelSerializer):
+    """Upload d'une vidéo pour une annonce."""
+
+    class Meta:
+        model = Video
+        fields = ['id', 'file', 'thumbnail', 'duration_sec', 'access_key', 'created_at']
+        read_only_fields = ['id', 'access_key', 'created_at']

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'apps.packs',
     'apps.wallet',
     'apps.visits',
+
     'apps.payments',
     'apps.favorites',
 ]
@@ -173,17 +174,31 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
-        # Auth core
+        # ── Auth core ────────────────────────────
         'auth_login': '5/min',
         'auth_refresh': '30/min',
         'auth_logout': '60/min',
-        # OTP flows
+        # ── OTP flows ────────────────────────────
         'otp_request': '3/min',
         'otp_verify': '6/min',
-        # Password reset flows
+        # ── Password reset flows ─────────────────
         'password_reset_request': '3/min',
         'password_reset_verify': '6/min',
         'password_reset_finalize': '6/min',
+        # ── Listings ─────────────────────────────
+        'listing_create': '30/hour',
+        'listing_search': '60/min',
+        # ── Vidéos ───────────────────────────────
+        'video_view': '120/hour',       # consommation de clés virtuelles
+        'video_upload': '20/hour',
+        # ── Packs ────────────────────────────────
+        'pack_purchase': '10/hour',
+        # ── Visites ──────────────────────────────
+        'visit_request': '10/hour',
+        # ── Wallet ───────────────────────────────
+        'wallet_withdraw': '5/hour',
+        # ── Favoris ──────────────────────────────
+        'favorite_toggle': '120/hour',
     },
 }
 
@@ -262,4 +277,53 @@ ORANGE_DLR_NOTIFY_URL = env('ORANGE_DLR_NOTIFY_URL', default='')
 # D7 Verify
 D7_API_BASE_URL = env('D7_API_BASE_URL', default='https://api.d7networks.com')
 D7_API_TOKEN = env('D7_API_TOKEN', default='')
+
+# ── Cloudflare R2 (stockage médias) ──────────────────────────
+# Activer en prod : USE_R2=True dans .env
+# En dev : fichiers stockés localement dans MEDIA_ROOT
+USE_R2 = env.bool('USE_R2', default=False)
+
+if USE_R2:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+    AWS_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = env('R2_BUCKET_NAME', default='monajent-media')
+    AWS_S3_ENDPOINT_URL = env('R2_ENDPOINT_URL')
+    AWS_S3_REGION_NAME = 'auto'
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True           # URLs signées (vidéos protégées)
+    AWS_QUERYSTRING_EXPIRE = 3600         # Expiration URL signée : 1h
+    AWS_S3_FILE_OVERWRITE = False         # Ne pas écraser les fichiers existants
+    AWS_S3_SIGNATURE_VERSION = 's3v4'     # Requis par R2
 D7_ORIGINATOR = env('D7_ORIGINATOR', default='SignOTP')
+
+# ── Payment Gateway ──────────────────────────────────────────
+# Provider actif : 'simulation' (dev), 'cinetpay', 'moneroo', 'flutterwave'
+PAYMENT_GATEWAY = env('PAYMENT_GATEWAY', default='simulation')
+
+PAYMENT_CONFIG = {
+    'simulation': {},
+    'cinetpay': {
+        'api_key': env('CINETPAY_API_KEY', default=''),
+        'site_id': env('CINETPAY_SITE_ID', default=''),
+        'secret_key': env('CINETPAY_SECRET_KEY', default=''),
+    },
+    'flutterwave': {
+        'secret_key': env('FLW_SECRET_KEY', default=''),
+        'public_key': env('FLW_PUBLIC_KEY', default=''),
+    },
+    'moneroo': {
+        'secret_key': env('MONEROO_SECRET_KEY', default=''),
+    },
+}
+
+PAYMENT_SIMULATION_BASE_URL = env('PAYMENT_SIMULATION_BASE_URL', default='http://localhost:8000')
+PAYMENT_WEBHOOK_BASE_URL = env('PAYMENT_WEBHOOK_BASE_URL', default='http://localhost:8000')
+PAYMENT_DEFAULT_RETURN_URL = env('PAYMENT_DEFAULT_RETURN_URL', default='http://localhost:5173/packs')

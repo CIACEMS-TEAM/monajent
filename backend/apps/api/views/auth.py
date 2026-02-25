@@ -143,11 +143,14 @@ def _cache_key_login_lock(phone_e164: str) -> str:
 def _login_is_locked(phone_e164: str) -> int:
     """Retourne secondes restantes si verrouillé, sinon 0."""
     key = _cache_key_login_lock(phone_e164)
-    ttl = cache.ttl(key)
-    if ttl is None:
-        # backend sans ttl natif, fallback
+    try:
+        ttl = cache.ttl(key)
+        if ttl is None:
+            return 1 if cache.get(key) else 0
+        return max(ttl, 0)
+    except AttributeError:
+        # LocMemCache n'a pas .ttl() — fallback simple
         return 1 if cache.get(key) else 0
-    return max(ttl, 0)
 
 
 def _register_login_failure(phone_e164: str) -> int:
@@ -554,3 +557,36 @@ class PasswordResetFinalizeView(APIView):
         return Response({'detail': 'Mot de passe mis à jour'}, status=status.HTTP_200_OK)
 
 
+class PasswordChangeView(APIView):
+    """
+    POST /api/auth/password/change
+    Body: { "current_password": "...", "new_password": "..." }
+    Authenticated users only.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get('current_password', '')
+        new_password = request.data.get('new_password', '')
+
+        if not current_password or not new_password:
+            return Response(
+                {'detail': 'Les deux champs sont requis.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not request.user.check_password(current_password):
+            return Response(
+                {'detail': 'Mot de passe actuel incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8:
+            return Response(
+                {'detail': 'Le nouveau mot de passe doit contenir au moins 8 caractères.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=['password'])
+        return Response({'detail': 'Mot de passe modifié avec succès.'})
