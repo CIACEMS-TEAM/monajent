@@ -134,7 +134,7 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
     raw_id_fields = ('wallet', 'wallet_entry', 'processed_by')
     readonly_fields = (
         'wallet', 'amount', 'method', 'phone_number',
-        'wallet_entry', 'processed_by', 'processed_at',
+        'status', 'wallet_entry', 'processed_by', 'processed_at',
         'created_at', 'updated_at',
     )
     ordering = ('-created_at',)

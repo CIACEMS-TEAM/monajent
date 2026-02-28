@@ -99,7 +99,8 @@ class VirtualKeyUsage(models.Model):
         PackPurchase, on_delete=models.CASCADE, related_name='key_usages',
     )
     video = models.ForeignKey(
-        'listings.Video', on_delete=models.CASCADE, related_name='key_usages',
+        'listings.Video', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='key_usages',
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -130,6 +131,7 @@ class VirtualKeyUsage(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['pack', 'video', 'user'],
+                condition=models.Q(video__isnull=False),
                 name='unique_pack_video_user',
             ),
         ]

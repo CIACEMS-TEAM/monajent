@@ -88,31 +88,52 @@ const methods = [
     </div>
 
     <template v-else>
-      <!-- Balance card -->
-      <div class="wlt__balance-card">
-        <div class="wlt__balance-left">
-          <span class="wlt__balance-label">Solde disponible</span>
-          <span class="wlt__balance-amount">{{ formatPrice(agent.walletBalance) }}</span>
-          <div class="wlt__balance-stats">
-            <span>Total gagné : <strong>{{ formatPrice(agent.walletTotalEarned) }}</strong></span>
-            <span>Total retiré : <strong>{{ formatPrice(agent.walletTotalWithdrawn) }}</strong></span>
+      <!-- KPI Cards -->
+      <div class="wlt__kpi-row">
+        <div class="wlt__kpi wlt__kpi--balance">
+          <div class="wlt__kpi-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 00-2 2v8a2 2 0 002 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+          </div>
+          <div class="wlt__kpi-body">
+            <span class="wlt__kpi-label">Solde disponible</span>
+            <span class="wlt__kpi-value wlt__kpi-value--balance">{{ formatPrice(agent.walletBalance) }}</span>
+          </div>
+          <button
+            class="wlt__withdraw-btn"
+            :disabled="!agent.walletCanWithdraw"
+            @click="showWithdraw = true"
+            :title="!agent.walletHasPin ? 'Configurez votre PIN dans les paramètres' : !agent.walletCanWithdraw ? 'Solde insuffisant (min. 2 000 F)' : ''"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" transform="rotate(180 12 12)"/></svg>
+            Retirer
+          </button>
+        </div>
+        <div class="wlt__kpi wlt__kpi--earned">
+          <div class="wlt__kpi-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7 14l5-5 5 5H7z"/></svg>
+          </div>
+          <div class="wlt__kpi-body">
+            <span class="wlt__kpi-label">Total gagné</span>
+            <span class="wlt__kpi-value wlt__kpi-value--earned">{{ formatPrice(agent.walletTotalEarned) }}</span>
+            <span class="wlt__kpi-sub">Cumul de tous vos revenus</span>
           </div>
         </div>
-        <button
-          class="wlt__withdraw-btn"
-          :disabled="!agent.walletCanWithdraw"
-          @click="showWithdraw = true"
-          :title="!agent.walletHasPin ? 'Configurez votre PIN dans les paramètres' : !agent.walletCanWithdraw ? 'Solde insuffisant' : ''"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" transform="rotate(180 12 12)"/></svg>
-          Demander un retrait
-        </button>
+        <div class="wlt__kpi wlt__kpi--withdrawn">
+          <div class="wlt__kpi-icon">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M7 10l5 5 5-5H7z"/></svg>
+          </div>
+          <div class="wlt__kpi-body">
+            <span class="wlt__kpi-label">Total retiré</span>
+            <span class="wlt__kpi-value wlt__kpi-value--withdrawn">{{ formatPrice(agent.walletTotalWithdrawn) }}</span>
+            <span class="wlt__kpi-sub">Cumul de tous vos retraits</span>
+          </div>
+        </div>
       </div>
 
       <!-- Pending withdrawal alert -->
       <div v-if="agent.wallet?.pending_withdrawal" class="wlt__pending-alert">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#d97706" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-        <span>Retrait en attente de {{ formatPrice(agent.wallet.pending_withdrawal.amount) }} via {{ agent.wallet.pending_withdrawal.method }}</span>
+        <span>Retrait en attente de <strong>{{ formatPrice(agent.wallet.pending_withdrawal.amount) }}</strong> via {{ agent.wallet.pending_withdrawal.method }}</span>
       </div>
 
       <div class="wlt__grid">
@@ -227,34 +248,61 @@ const methods = [
 .wlt__title { font-size: 24px; font-weight: 700; color: #0F0F0F; margin-bottom: 24px; }
 .wlt__loading { padding: 48px 0; text-align: center; color: #606060; }
 
-.wlt__balance-card {
-  background: #fff;
-  border: 1px solid #E0E0E0;
-  border-radius: 16px;
-  padding: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* KPI Row */
+.wlt__kpi-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 16px;
   margin-bottom: 16px;
 }
-.wlt__balance-label { display: block; font-size: 14px; color: #606060; margin-bottom: 4px; }
-.wlt__balance-amount { font-size: 36px; font-weight: 700; color: #1DA53F; display: block; }
-.wlt__balance-stats { display: flex; gap: 20px; font-size: 13px; color: #606060; margin-top: 8px; }
+.wlt__kpi {
+  background: #fff;
+  border: 1px solid #E0E0E0;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+}
+.wlt__kpi--balance { border-left: 4px solid #1DA53F; }
+.wlt__kpi--earned { border-left: 4px solid #0F0F0F; }
+.wlt__kpi--withdrawn { border-left: 4px solid #d97706; }
+
+.wlt__kpi-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.wlt__kpi--balance .wlt__kpi-icon { background: rgba(29,165,63,.1); color: #1DA53F; }
+.wlt__kpi--earned .wlt__kpi-icon { background: #f3f4f6; color: #0F0F0F; }
+.wlt__kpi--withdrawn .wlt__kpi-icon { background: #fef3c7; color: #d97706; }
+
+.wlt__kpi-body { flex: 1; min-width: 0; }
+.wlt__kpi-label { display: block; font-size: 12px; color: #606060; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.wlt__kpi-value { display: block; font-size: 24px; font-weight: 700; line-height: 1.2; }
+.wlt__kpi-value--balance { color: #1DA53F; }
+.wlt__kpi-value--earned { color: #0F0F0F; }
+.wlt__kpi-value--withdrawn { color: #d97706; }
+.wlt__kpi-sub { display: block; font-size: 11px; color: #999; margin-top: 4px; }
 
 .wlt__withdraw-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
+  gap: 6px;
+  padding: 8px 18px;
   border: none;
-  border-radius: 24px;
+  border-radius: 20px;
   background: #1DA53F;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background .15s;
   flex-shrink: 0;
+  white-space: nowrap;
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 .wlt__withdraw-btn:hover:not(:disabled) { background: #178A33; }
 .wlt__withdraw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -457,10 +505,11 @@ const methods = [
 .wlt__modal-btn.confirm:hover:not(:disabled) { background: #178A33; }
 
 @media (max-width: 768px) {
-  .wlt__balance-card { flex-direction: column; gap: 16px; text-align: center; }
-  .wlt__balance-stats { justify-content: center; }
+  .wlt__kpi-row { grid-template-columns: 1fr; }
+  .wlt__kpi-value { font-size: 20px; }
+  .wlt__withdraw-btn { position: static; margin-top: 12px; }
+  .wlt__kpi--balance { flex-wrap: wrap; }
   .wlt__grid { grid-template-columns: 1fr; }
-  .wlt__balance-amount { font-size: 28px; }
   .wlt__modal-methods { flex-direction: column; }
 }
 </style>

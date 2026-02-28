@@ -131,7 +131,7 @@ def cleanup_expired_media(days_after_expiry: int = 30, dry_run: bool = True) -> 
                     img.image.delete(save=False)
                 img.delete()
 
-        # Supprimer les fichiers vidéos
+        # Supprimer les fichiers vidéos (mais garder l'enregistrement Video en base)
         for vid in listing.videos.all():
             stats['videos_deleted'] += 1
             if not dry_run:
@@ -139,11 +139,11 @@ def cleanup_expired_media(days_after_expiry: int = 30, dry_run: bool = True) -> 
                     vid.file.delete(save=False)
                 if vid.thumbnail:
                     vid.thumbnail.delete(save=False)
-                vid.delete()
+                vid.save(update_fields=[])  # conserve l'enregistrement
 
-        # Supprimer l'annonce elle-même
+        # Soft-delete de l'annonce (jamais de hard-delete)
         if not dry_run:
-            listing.delete()
+            listing.soft_delete()
 
     action = "DRY RUN" if dry_run else "SUPPRIMÉ"
     logger.info(

@@ -1,14 +1,35 @@
+Voici le **bilan complet des fonctionnalités agent** :
 
+---
 
-	Correction	Effort	Priorité
-1	isProfileComplete ne vérifie que agency_name mais pas le contact (phone/email). Un agent pourrait bypass l'onboarding.	2 min	Critique
-2	Clic notification ne navigue nulle part (la visite, l'annonce concernée...)	Moyen	Important
-3	Recherche mobile : la barre de recherche est masquée sur mobile	Petit	Moyen
-4	Pas de nombre minimum d'images/vidéos pour publier	Petit	Moyen
-Nice-to-have (post-MVP)
-Fonctionnalité	Détails
-Date range sur les mouvements wallet	Filtrer par période
-Export CSV (analytics, wallet)	Téléchargement des données
-Notifications push / WebSocket	Temps réel au lieu de polling 60s
-2FA	Sécurité renforcée
-Suppression de compte	RGPD
+## Bilan Agent — 12/12 fonctionnalités complètes
+
+| # | Fonctionnalité | Statut | Notes |
+|---|---|---|---|
+| 1 | **Onboarding** (inscription, profil, coordonnées) | ✅ | 4 étapes, KYC optionnel |
+| 2 | **KYC** (upload, soumission, review admin) | ✅ | Documents verrouillés après soumission |
+| 3 | **Dashboard** (stats, cartes, top listings) | ✅ | Solde, vues, favoris, visites en attente |
+| 4 | **Annonces** (CRUD, images, vidéos, conditions, GPS, partage) | ✅ | Anti-fraude vidéo SHA-256 + perceptuel |
+| 5 | **Visites** (confirmation enrichie, code, NO_SHOW, annulation) | ✅ | Time-lock 15 min, meeting location, motifs |
+| 6 | **Wallet** (solde, mouvements, filtres, retraits) | ✅ | Filtres source + type |
+| 7 | **Analytics** (graphiques, tendances, conversion) | ✅ | Presets 7/14/28/90 jours |
+| 8 | **Notifications** (liste, badge, polling, navigation clic) | ✅ | Liens vers page concernée |
+| 9 | **Paramètres** (profil, sécurité, KYC, mot de passe, avatar) | ✅ | Eye toggle, PIN wallet |
+| 10 | **Recherche** (desktop + mobile) | ✅ | Overlay mobile, filtre par titre/ville |
+| 11 | **Lecteur vidéo sécurisé** (signed URL, thumbnail, anti-download) | ✅ | Token 1h, Content-Disposition |
+| 12 | **Disponibilités** (créneaux récurrents + agenda ponctuel) | ✅ | CRUD + toggle actif |
+
+## Ce qui reste en post-MVP (agent)
+
+| Fonctionnalité | Statut |
+|---|---|
+| Notifications push/email/WebSocket | Reporté post-MVP |
+| 2FA | Reporté post-MVP |
+| Suppression de compte (RGPD) | Reporté post-MVP |
+| Export CSV (analytics, wallet) | Reporté post-MVP |
+| Date range wallet | Reporté post-MVP |
+
+---
+
+**Conclusion : le côté agent est complet pour le MVP.** Toutes les fonctionnalités essentielles sont en place (backend + frontend). On peut passer sereinement aux fonctionnalités client.
+

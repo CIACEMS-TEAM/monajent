@@ -131,6 +131,7 @@ class AgentListingListCreateView(generics.ListCreateAPIView):
         return (
             Listing.objects
             .filter(agent=self.request.user)
+            .exclude(status=Listing.Status.DELETED)
             .select_related('agent__agent_profile')
             .prefetch_related('images', 'videos')
         )
@@ -184,12 +185,16 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
                 )
         serializer.save()
 
+    def perform_destroy(self, instance):
+        instance.soft_delete()
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Listing.objects.none()
         return (
             Listing.objects
             .filter(agent=self.request.user)
+            .exclude(status=Listing.Status.DELETED)
             .select_related('agent__agent_profile')
             .prefetch_related('images', 'videos')
         )
@@ -242,7 +247,10 @@ class AgentListingBulkActionView(APIView):
             count = qs.filter(status=Listing.Status.ACTIF).update(status=Listing.Status.INACTIF)
             return Response({'detail': f'{count} annonce(s) désactivée(s).'})
         elif action == 'delete':
-            count, _ = qs.delete()
+            from django.utils import timezone as tz
+            count = qs.exclude(status=Listing.Status.DELETED).update(
+                status=Listing.Status.DELETED, deleted_at=tz.now(),
+            )
             return Response({'detail': f'{count} annonce(s) supprimée(s).'})
 
 

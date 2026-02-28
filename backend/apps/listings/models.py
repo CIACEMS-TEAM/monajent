@@ -36,6 +36,7 @@ class Listing(models.Model):
         INACTIF = 'INACTIF', 'Inactif'
         EXPIRED = 'EXPIRED', 'Expirée'
         SUSPENDED = 'SUSPENDED', 'Suspendue'
+        DELETED = 'DELETED', 'Supprimée'
 
     class Furnishing(models.TextChoices):
         FURNISHED = 'FURNISHED', 'Meublé'
@@ -130,6 +131,7 @@ class Listing(models.Model):
     # ── Timestamps ────────────────────────────────────────────
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField('Supprimé le', null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -173,6 +175,12 @@ class Listing(models.Model):
         self.published_at = now
         self.expires_at = now + timedelta(days=days)
         self.save(update_fields=['status', 'published_at', 'expires_at', 'updated_at'])
+
+    def soft_delete(self):
+        """Marque l'annonce comme supprimée sans la détruire en base."""
+        self.status = self.Status.DELETED
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['status', 'deleted_at', 'updated_at'])
 
 
 class ListingImage(models.Model):

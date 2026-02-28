@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useAgentStore } from '@/Stores/agent'
+import { mediaUrl } from '@/services/http'
 
 const agent = useAgentStore()
 
@@ -46,7 +47,8 @@ function statusClass(s: string) {
           <h2 class="db-card__title">Performance de la dernière annonce</h2>
           <div v-if="dash.latest_listing" class="db-perf">
             <div class="db-perf__thumb">
-              <svg viewBox="0 0 24 24" width="28" height="28"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+              <img v-if="dash.latest_listing.cover_image" :src="mediaUrl(dash.latest_listing.cover_image)!" :alt="dash.latest_listing.title" />
+              <svg v-else viewBox="0 0 24 24" width="28" height="28"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </div>
             <div class="db-perf__name">{{ dash.latest_listing.title }}</div>
             <div class="db-perf__stats">
@@ -72,7 +74,10 @@ function statusClass(s: string) {
           <h3 class="db-card__subtitle">Annonces populaires</h3>
           <div class="db-popular">
             <div v-for="listing in dash.top_listings" :key="listing.id" class="db-popular__item">
-              <div class="db-popular__thumb"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>
+              <div class="db-popular__thumb">
+                <img v-if="listing.cover_image" :src="mediaUrl(listing.cover_image)!" :alt="listing.title" />
+                <svg v-else viewBox="0 0 24 24" width="16" height="16"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+              </div>
               <div class="db-popular__info"><span class="db-popular__name">{{ listing.title }}</span><span class="db-popular__views">{{ listing.views_count }} vues</span></div>
             </div>
             <p v-if="!dash.top_listings.length" class="db-empty">Aucune annonce active</p>
@@ -88,12 +93,16 @@ function statusClass(s: string) {
           </div>
           <div class="db-wallet">
             <div class="db-wallet__stat">
-              <span class="db-wallet__lbl">Solde actuel</span>
+              <span class="db-wallet__lbl">Solde disponible</span>
               <span class="db-wallet__amount">{{ formatPrice(dash.wallet.balance) }}</span>
             </div>
             <div class="db-wallet__stat">
               <span class="db-wallet__lbl">Total gagné</span>
               <span class="db-wallet__amount db-wallet__amount--total">{{ formatPrice(dash.wallet.total_earned) }}</span>
+            </div>
+            <div class="db-wallet__stat">
+              <span class="db-wallet__lbl">Total retiré</span>
+              <span class="db-wallet__amount db-wallet__amount--withdrawn">{{ formatPrice(dash.wallet.total_withdrawn) }}</span>
             </div>
           </div>
           <div v-if="dash.recent_entries.length" class="db-entries">
@@ -135,7 +144,10 @@ function statusClass(s: string) {
           </div>
           <div v-for="l in agent.listings.slice(0, 5)" :key="l.id" class="db-table__row">
             <span class="db-table__col db-table__col--name">
-              <div class="db-table__thumb"><svg viewBox="0 0 24 24" width="14" height="14"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg></div>
+              <div class="db-table__thumb">
+                <img v-if="l.cover_image" :src="mediaUrl(l.cover_image)!" :alt="l.title" />
+                <svg v-else viewBox="0 0 24 24" width="12" height="12"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+              </div>
               {{ l.title }}
             </span>
             <span class="db-table__col"><span class="db-badge" :class="statusClass(l.status)">{{ statusLabel(l.status) }}</span></span>
@@ -182,8 +194,12 @@ function statusClass(s: string) {
 
 /* Perf */
 .db-perf__thumb {
-  width: 100%; height: 100px; background: #f5f5f5; border-radius: 8px;
+  width: 100%; height: 120px; background: #f5f5f5; border-radius: 8px;
   display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
+  overflow: hidden;
+}
+.db-perf__thumb img {
+  width: 100%; height: 100%; object-fit: cover;
 }
 .db-perf__name { font-size: 13px; font-weight: 500; color: #0f0f0f; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .db-perf__stats { display: flex; gap: 20px; }
@@ -205,6 +221,10 @@ function statusClass(s: string) {
 .db-popular__thumb {
   width: 36px; height: 26px; background: #f2f2f2; border-radius: 4px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  overflow: hidden;
+}
+.db-popular__thumb img {
+  width: 100%; height: 100%; object-fit: cover;
 }
 .db-popular__info { display: flex; flex-direction: column; min-width: 0; }
 .db-popular__name { font-size: 12px; color: #0f0f0f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -216,6 +236,7 @@ function statusClass(s: string) {
 .db-wallet__lbl { font-size: 12px; color: #606060; }
 .db-wallet__amount { font-size: 24px; font-weight: 700; color: #1DA53F; }
 .db-wallet__amount--total { font-size: 18px; color: #0f0f0f; }
+.db-wallet__amount--withdrawn { font-size: 18px; color: #d97706; }
 
 .db-entries { border-top: 1px solid #f2f2f2; padding-top: 10px; }
 .db-entry { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
@@ -270,6 +291,10 @@ function statusClass(s: string) {
 .db-table__thumb {
   width: 32px; height: 22px; background: #f2f2f2; border-radius: 3px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  overflow: hidden;
+}
+.db-table__thumb img {
+  width: 100%; height: 100%; object-fit: cover;
 }
 
 .db-badge {

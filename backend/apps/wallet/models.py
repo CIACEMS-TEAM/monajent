@@ -171,7 +171,7 @@ class PlatformRevenue(models.Model):
     # Exactement UNE des deux FK doit être renseignée
     usage = models.OneToOneField(
         'packs.VirtualKeyUsage',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True, blank=True,
         related_name='platform_revenue',
     )

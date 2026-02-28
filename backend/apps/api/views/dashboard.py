@@ -33,7 +33,7 @@ class AgentDashboardView(APIView):
 
         wallet, _ = Wallet.objects.get_or_create(agent=user)
 
-        listings = Listing.objects.filter(agent=user)
+        listings = Listing.objects.filter(agent=user).exclude(status=Listing.Status.DELETED)
         listings_count = listings.count()
         published_count = listings.filter(status=Listing.Status.ACTIF).count()
         total_views = listings.aggregate(total=Sum('views_count'))['total'] or 0
@@ -57,22 +57,45 @@ class AgentDashboardView(APIView):
             for e in recent_entries
         ]
 
-        latest_listing = (
-            listings.order_by('-created_at').values(
-                'id', 'title', 'views_count', 'favorites_count', 'price',
-                'created_at',
-            ).first()
-        )
-        if latest_listing:
-            latest_listing['price'] = str(latest_listing['price'])
-            latest_listing['created_at'] = latest_listing['created_at'].isoformat()
+        def _listing_cover(listing_obj):
+            """Retourne l'URL de couverture (image ou thumbnail vidéo)."""
+            img = listing_obj.images.first()
+            if img and img.image:
+                return request.build_absolute_uri(img.image.url)
+            vid = listing_obj.videos.first()
+            if vid and vid.thumbnail:
+                return request.build_absolute_uri(vid.thumbnail.url)
+            return None
 
-        top_listings = list(
+        latest_obj = listings.prefetch_related('images', 'videos').order_by('-created_at').first()
+        latest_listing = None
+        if latest_obj:
+            latest_listing = {
+                'id': latest_obj.id,
+                'title': latest_obj.title,
+                'views_count': latest_obj.views_count,
+                'favorites_count': latest_obj.favorites_count,
+                'price': str(latest_obj.price),
+                'created_at': latest_obj.created_at.isoformat(),
+                'cover_image': _listing_cover(latest_obj),
+            }
+
+        top_qs = (
             listings
             .filter(status=Listing.Status.ACTIF)
+            .prefetch_related('images', 'videos')
             .order_by('-views_count')[:3]
-            .values('id', 'title', 'views_count', 'favorites_count')
         )
+        top_listings = [
+            {
+                'id': l.id,
+                'title': l.title,
+                'views_count': l.views_count,
+                'favorites_count': l.favorites_count,
+                'cover_image': _listing_cover(l),
+            }
+            for l in top_qs
+        ]
 
         now = timezone.now()
         views_28d = VirtualKeyUsage.objects.filter(
@@ -84,6 +107,7 @@ class AgentDashboardView(APIView):
             'wallet': {
                 'balance': str(wallet.balance),
                 'total_earned': str(wallet.total_earned),
+                'total_withdrawn': str(wallet.total_withdrawn),
                 'has_pin': wallet.has_pin,
             },
             'listings': {
@@ -155,7 +179,7 @@ class AgentAnalyticsView(APIView):
         else:
             trend_pct = 100.0 if total_views_period > 0 else 0.0
 
-        listings = Listing.objects.filter(agent=user)
+        listings = Listing.objects.filter(agent=user).exclude(status=Listing.Status.DELETED)
         total_views_all = listings.aggregate(total=Sum('views_count'))['total'] or 0
         total_favorites_all = listings.aggregate(total=Sum('favorites_count'))['total'] or 0
         published_count = listings.filter(status=Listing.Status.ACTIF).count()
