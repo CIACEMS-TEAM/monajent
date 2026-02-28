@@ -56,16 +56,30 @@ class VideoReadSerializer(serializers.ModelSerializer):
 class VideoAgentSerializer(serializers.ModelSerializer):
     """
     Serializer vidéo pour l'agent propriétaire.
-    Inclut le fichier vidéo (l'agent peut voir/gérer ses propres vidéos).
+    Génère une URL de streaming signée (token temporaire 1h)
+    pour que le tag <video> puisse lire sans header JWT.
     """
+    stream_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Video
         fields = [
-            'id', 'file', 'thumbnail', 'duration_sec', 'access_key',
+            'id', 'file', 'stream_url', 'thumbnail', 'duration_sec', 'access_key',
             'views_count', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'access_key', 'views_count', 'created_at', 'updated_at']
+
+    def get_stream_url(self, obj) -> str | None:
+        from django.core import signing
+        request = self.context.get('request')
+        token = signing.dumps(
+            {'v': obj.pk, 'u': request.user.pk if request else 0},
+            salt='video-stream',
+        )
+        path = f'/api/videos/stream/{token}/'
+        if request:
+            return request.build_absolute_uri(path)
+        return path
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -89,6 +103,7 @@ class ListingListSerializer(serializers.ModelSerializer):
             'id', 'title', 'listing_type', 'status',
             'city', 'neighborhood', 'price',
             'rooms', 'bedrooms', 'surface_m2', 'furnishing',
+            'deposit_months', 'advance_months', 'agency_fee_months',
             'views_count', 'favorites_count', 'reports_count',
             'agent', 'cover_image', 'videos_count',
             'published_at', 'expires_at', 'days_remaining',
@@ -100,6 +115,9 @@ class ListingListSerializer(serializers.ModelSerializer):
         first = obj.images.first()
         if first and first.image:
             return self.context['request'].build_absolute_uri(first.image.url)
+        first_vid = obj.videos.first()
+        if first_vid and first_vid.thumbnail:
+            return self.context['request'].build_absolute_uri(first_vid.thumbnail.url)
         return None
 
     def get_videos_count(self, obj) -> int:
@@ -125,6 +143,8 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
+            'deposit_months', 'advance_months', 'agency_fee_months',
+            'other_conditions',
             'views_count', 'favorites_count',
             'agent', 'images', 'videos',
             'created_at', 'updated_at',
@@ -148,6 +168,8 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
+            'deposit_months', 'advance_months', 'agency_fee_months',
+            'other_conditions',
             'views_count', 'favorites_count', 'reports_count',
             'published_at', 'expires_at', 'days_remaining',
             'images', 'videos',
@@ -175,6 +197,8 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
+            'deposit_months', 'advance_months', 'agency_fee_months',
+            'other_conditions',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

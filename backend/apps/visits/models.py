@@ -158,9 +158,10 @@ class VisitRequest(models.Model):
     )
     pack = models.OneToOneField(
         'packs.PackPurchase',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
         related_name='visit_request',
-        help_text='Pack dont la clé physique est consommée (1 visite max par pack).',
+        help_text='Pack dont la clé physique a été consommée. NULL si annulé/expiré (pack libéré).',
     )
     slot = models.ForeignKey(
         AgentAvailabilitySlot,
@@ -203,9 +204,22 @@ class VisitRequest(models.Model):
                   'sinon la visite expire et les clés sont restaurées.',
     )
 
+    # ── Lieu de rencontre ───────────────────────────────────────
+    meeting_address = models.CharField(
+        'Lieu de rendez-vous', max_length=255, blank=True,
+        help_text='Description textuelle du point de rencontre (ex: « Devant la pharmacie »).',
+    )
+    meeting_latitude = models.DecimalField(
+        'Latitude RDV', max_digits=9, decimal_places=6, null=True, blank=True,
+    )
+    meeting_longitude = models.DecimalField(
+        'Longitude RDV', max_digits=9, decimal_places=6, null=True, blank=True,
+    )
+
     # ── Notes ─────────────────────────────────────────────────
     client_note = models.TextField('Note du client', blank=True)
     agent_note = models.TextField('Note de l\'agent', blank=True)
+    cancel_reason = models.TextField('Motif d\'annulation', blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

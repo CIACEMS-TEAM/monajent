@@ -472,11 +472,11 @@ async function submitChangePin() {
         </div>
         <div class="stg__info-row">
           <span class="stg__info-label">Email</span>
-          <span class="stg__info-val">{{ agent.profile?.email || '—' }}</span>
+          <span class="stg__info-val">{{ agent.profile?.email || agent.profile?.contact_email || '—' }}</span>
         </div>
         <div class="stg__info-row">
-          <span class="stg__info-label">Rôle</span>
-          <span class="stg__info-val">Agent</span>
+          <span class="stg__info-label">Type de compte</span>
+          <span class="stg__info-val">{{ agent.profile?.role === 'AGENT' ? 'Agent immobilier' : 'Administrateur' }}</span>
         </div>
         <div class="stg__info-row">
           <span class="stg__info-label">Membre depuis</span>

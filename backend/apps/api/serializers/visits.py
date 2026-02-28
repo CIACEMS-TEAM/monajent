@@ -64,6 +64,7 @@ class VisitRequestClientSerializer(serializers.ModelSerializer):
     listing_city = serializers.CharField(source='listing.city', read_only=True)
     agent_phone = serializers.CharField(source='listing.agent.phone', read_only=True)
     slot_label = serializers.SerializerMethodField()
+    meeting_map_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VisitRequest
@@ -72,19 +73,28 @@ class VisitRequestClientSerializer(serializers.ModelSerializer):
             'agent_phone', 'status',
             'verification_code', 'virtual_key_consumed',
             'slot_id', 'slot_label', 'scheduled_at', 'response_deadline',
-            'client_note', 'agent_note',
+            'client_note', 'agent_note', 'cancel_reason',
+            'meeting_address', 'meeting_latitude', 'meeting_longitude',
+            'meeting_map_url',
             'created_at',
         ]
         read_only_fields = [
             'id', 'listing_title', 'listing_city', 'agent_phone',
             'status', 'verification_code', 'virtual_key_consumed',
             'slot_label', 'scheduled_at', 'response_deadline',
-            'agent_note', 'created_at',
+            'agent_note', 'cancel_reason', 'meeting_address',
+            'meeting_latitude', 'meeting_longitude', 'meeting_map_url',
+            'created_at',
         ]
 
     def get_slot_label(self, obj):
         if obj.slot:
             return str(obj.slot)
+        return None
+
+    def get_meeting_map_url(self, obj) -> str | None:
+        if obj.meeting_latitude and obj.meeting_longitude:
+            return f"https://www.google.com/maps?q={obj.meeting_latitude},{obj.meeting_longitude}"
         return None
 
 
@@ -94,6 +104,7 @@ class VisitRequestAgentSerializer(serializers.ModelSerializer):
     listing_title = serializers.CharField(source='listing.title', read_only=True)
     is_deadline_passed = serializers.BooleanField(read_only=True)
     slot_label = serializers.SerializerMethodField()
+    meeting_map_url = serializers.SerializerMethodField()
 
     class Meta:
         model = VisitRequest
@@ -102,7 +113,9 @@ class VisitRequestAgentSerializer(serializers.ModelSerializer):
             'client_phone', 'status',
             'slot_id', 'slot_label', 'scheduled_at',
             'response_deadline', 'is_deadline_passed',
-            'client_note', 'agent_note',
+            'client_note', 'agent_note', 'cancel_reason',
+            'meeting_address', 'meeting_latitude', 'meeting_longitude',
+            'meeting_map_url',
             'created_at',
         ]
         read_only_fields = fields
@@ -110,6 +123,11 @@ class VisitRequestAgentSerializer(serializers.ModelSerializer):
     def get_slot_label(self, obj):
         if obj.slot:
             return str(obj.slot)
+        return None
+
+    def get_meeting_map_url(self, obj) -> str | None:
+        if obj.meeting_latitude and obj.meeting_longitude:
+            return f"https://www.google.com/maps?q={obj.meeting_latitude},{obj.meeting_longitude}"
         return None
 
 
@@ -130,9 +148,16 @@ class VisitRequestCreateSerializer(serializers.Serializer):
 
 
 class VisitConfirmSerializer(serializers.Serializer):
-    """Agent confirme la visite (peut ajuster la date)."""
+    """Agent confirme la visite (peut ajuster la date et indiquer le lieu de RDV)."""
     scheduled_at = serializers.DateTimeField(required=False)
     agent_note = serializers.CharField(required=False, allow_blank=True, default='')
+    meeting_address = serializers.CharField(required=False, allow_blank=True, default='')
+    meeting_latitude = serializers.DecimalField(
+        max_digits=9, decimal_places=6, required=False, allow_null=True, default=None,
+    )
+    meeting_longitude = serializers.DecimalField(
+        max_digits=9, decimal_places=6, required=False, allow_null=True, default=None,
+    )
 
 
 class VisitValidateCodeSerializer(serializers.Serializer):

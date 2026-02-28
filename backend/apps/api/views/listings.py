@@ -32,7 +32,10 @@ from apps.listings.models import Listing, ListingImage, Video
 from apps.core.permissions import (
     IsAgent, IsVerifiedAgent, IsListingOwner, IsOwnerOrReadOnly,
 )
-from apps.core.services.video_dedup import validate_and_hash_video, DuplicateVideoError
+from apps.core.services.video_dedup import (
+    validate_and_hash_video, DuplicateVideoError, check_hash_exists,
+)
+from apps.core.services.video_thumbnail import generate_thumbnail, get_video_duration
 from ..serializers.listings import (
     ListingListSerializer,
     ListingDetailSerializer,
@@ -166,6 +169,19 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
                 raise PermissionDenied(
                     "Votre identité doit être vérifiée (KYC) avant de pouvoir publier une annonce."
                 )
+            listing = self.get_object()
+            img_count = listing.images.count()
+            vid_count = listing.videos.count()
+            if img_count < 1 or vid_count < 1:
+                from rest_framework.exceptions import ValidationError
+                missing = []
+                if img_count < 1:
+                    missing.append('au moins 1 photo')
+                if vid_count < 1:
+                    missing.append('au moins 1 vidéo')
+                raise ValidationError(
+                    f"Pour publier, votre annonce doit contenir {' et '.join(missing)}."
+                )
         serializer.save()
 
     def get_queryset(self):
@@ -210,8 +226,18 @@ class AgentListingBulkActionView(APIView):
                     {'detail': 'Vérification KYC requise pour activer des annonces.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            count = qs.filter(status__in=[Listing.Status.INACTIF]).update(status=Listing.Status.ACTIF)
-            return Response({'detail': f'{count} annonce(s) activée(s).'})
+            from django.db.models import Count
+            eligible = (
+                qs.filter(status__in=[Listing.Status.INACTIF])
+                .annotate(img_count=Count('images'), vid_count=Count('videos'))
+                .filter(img_count__gte=1, vid_count__gte=1)
+            )
+            skipped = qs.filter(status__in=[Listing.Status.INACTIF]).count() - eligible.count()
+            count = Listing.objects.filter(pk__in=eligible.values_list('pk', flat=True)).update(status=Listing.Status.ACTIF)
+            msg = f'{count} annonce(s) activée(s).'
+            if skipped:
+                msg += f' {skipped} annonce(s) ignorée(s) (photo ou vidéo manquante).'
+            return Response({'detail': msg})
         elif action == 'deactivate':
             count = qs.filter(status=Listing.Status.ACTIF).update(status=Listing.Status.INACTIF)
             return Response({'detail': f'{count} annonce(s) désactivée(s).'})
@@ -340,20 +366,40 @@ class AgentListingVideoUploadView(generics.CreateAPIView):
         listing = self.get_listing()
         video_file = serializer.validated_data.get('file')
 
-        # Anti-fraude : hash + déduplication
         file_hash = ''
+        perceptual_hash = ''
         if video_file:
             try:
-                file_hash = validate_and_hash_video(self.request.user, video_file)
+                file_hash, perceptual_hash = validate_and_hash_video(
+                    self.request.user, video_file,
+                    exclude_listing_id=listing.pk,
+                )
             except DuplicateVideoError as e:
                 from rest_framework.exceptions import ValidationError
+                label = 'identique' if e.method == 'exact' else 'visuellement similaire'
                 raise ValidationError({
-                    'file': f"Vidéo identique déjà présente sur l'annonce "
+                    'file': f"Vidéo {label} déjà utilisée sur l'annonce "
                             f"« {e.existing_video.listing.title} » "
-                            f"(ID #{e.existing_video.listing_id})."
+                            f"(ID #{e.existing_video.listing_id}). "
+                            f"Chaque annonce doit avoir sa propre vidéo."
                 })
 
-        serializer.save(listing=listing, file_hash=file_hash)
+        extra = {
+            'listing': listing,
+            'file_hash': file_hash,
+            'perceptual_hash': perceptual_hash,
+        }
+
+        if video_file:
+            thumb = generate_thumbnail(video_file)
+            if thumb:
+                extra['thumbnail'] = thumb
+
+            duration = get_video_duration(video_file)
+            if duration:
+                extra['duration_sec'] = duration
+
+        serializer.save(**extra)
 
 
 class AgentListingVideoDeleteView(generics.DestroyAPIView):
@@ -369,3 +415,61 @@ class AgentListingVideoDeleteView(generics.DestroyAPIView):
             listing_id=self.kwargs['listing_id'],
             listing__agent=self.request.user,
         )
+
+
+class AgentVideoStreamView(APIView):
+    """
+    GET /api/agent/videos/{pk}/stream/
+    L'agent peut lire ses propres vidéos sans restriction.
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def get(self, request, pk):
+        from django.http import FileResponse
+        try:
+            video = Video.objects.select_related('listing').get(
+                pk=pk, listing__agent=request.user,
+            )
+        except Video.DoesNotExist:
+            return Response(
+                {'detail': 'Vidéo introuvable.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not video.file:
+            return Response(
+                {'detail': 'Fichier vidéo manquant.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        response = FileResponse(video.file.open('rb'), content_type='video/mp4')
+        response['Cache-Control'] = 'private, max-age=3600'
+        response['Content-Disposition'] = 'inline'
+        return response
+
+
+class VideoHashPreCheckView(APIView):
+    """
+    POST /api/agent/videos/precheck/
+    Pré-vérification SHA-256 côté client AVANT l'upload.
+    Body : { "file_hash": "<sha256hex>" }
+    Retourne 200 { "duplicate": false } ou 200 { "duplicate": true, "listing_title": ..., "listing_id": ... }
+    """
+    permission_classes = [permissions.IsAuthenticated, IsAgent]
+
+    def post(self, request):
+        file_hash = request.data.get('file_hash', '').strip().lower()
+        if not file_hash or len(file_hash) != 64:
+            return Response(
+                {'detail': 'file_hash SHA-256 (64 hex chars) requis.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        existing = check_hash_exists(request.user, file_hash)
+        if existing:
+            return Response({
+                'duplicate': True,
+                'listing_id': existing.listing_id,
+                'listing_title': existing.listing.title,
+            })
+        return Response({'duplicate': False})

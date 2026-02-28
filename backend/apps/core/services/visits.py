@@ -23,6 +23,8 @@ Annulation / Expiration :
   • Clé virtuelle → JAMAIS restaurée (l'interaction a eu lieu, agent payé)
 """
 
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
@@ -209,8 +211,15 @@ def request_visit(
 # ═══════════════════════════════════════════════════════════════
 
 
-def confirm_visit(visit: VisitRequest, scheduled_at=None, agent_note: str = '') -> VisitRequest:
-    """L'agent confirme la visite (peut ajuster la date)."""
+def confirm_visit(
+    visit: VisitRequest,
+    scheduled_at=None,
+    agent_note: str = '',
+    meeting_address: str = '',
+    meeting_latitude=None,
+    meeting_longitude=None,
+) -> VisitRequest:
+    """L'agent confirme la visite (peut ajuster la date et indiquer le lieu de RDV)."""
     if visit.status != VisitRequest.Status.REQUESTED:
         raise VisitError(
             f"Impossible de confirmer : statut « {visit.get_status_display()} »."
@@ -220,7 +229,16 @@ def confirm_visit(visit: VisitRequest, scheduled_at=None, agent_note: str = '') 
     if scheduled_at:
         visit.scheduled_at = scheduled_at
     visit.agent_note = agent_note
-    visit.save(update_fields=['status', 'scheduled_at', 'agent_note', 'updated_at'])
+    visit.meeting_address = meeting_address
+    if meeting_latitude is not None:
+        visit.meeting_latitude = meeting_latitude
+    if meeting_longitude is not None:
+        visit.meeting_longitude = meeting_longitude
+    visit.save(update_fields=[
+        'status', 'scheduled_at', 'agent_note',
+        'meeting_address', 'meeting_latitude', 'meeting_longitude',
+        'updated_at',
+    ])
     return visit
 
 
@@ -253,10 +271,17 @@ def validate_visit_code(visit: VisitRequest, code: str) -> VisitRequest:
 # ═══════════════════════════════════════════════════════════════
 
 
-def mark_no_show(visit: VisitRequest) -> VisitRequest:
+NO_SHOW_DELAY_MINUTES = 15
+
+
+def mark_no_show(visit: VisitRequest, reason: str = '') -> VisitRequest:
     """
     L'agent marque le client comme absent.
-    Uniquement si la visite est CONFIRMED (rendez-vous prévu mais client absent).
+    Gardes anti-abus :
+      1. Visite doit être CONFIRMED
+      2. scheduled_at doit être défini (l'agent a fixé une date)
+      3. Le délai de grâce (15 min après scheduled_at) doit être dépassé
+      4. L'agent doit fournir un motif
     La clé physique N'EST PAS restaurée (le créneau a été bloqué).
     """
     if visit.status != VisitRequest.Status.CONFIRMED:
@@ -265,8 +290,31 @@ def mark_no_show(visit: VisitRequest) -> VisitRequest:
             "Seules les visites confirmées peuvent être marquées NO_SHOW."
         )
 
+    if not visit.scheduled_at:
+        raise VisitError(
+            "Impossible de marquer absent : aucune date de rendez-vous n'a été fixée. "
+            "Veuillez d'abord définir une date de visite."
+        )
+
+    threshold = visit.scheduled_at + timedelta(minutes=NO_SHOW_DELAY_MINUTES)
+    if timezone.now() < threshold:
+        remaining = (threshold - timezone.now()).total_seconds()
+        mins = int(remaining // 60) + 1
+        raise VisitError(
+            f"Vous pourrez marquer le client comme absent dans {mins} min "
+            f"(15 min après l'heure de rendez-vous : "
+            f"{visit.scheduled_at.strftime('%H:%M')})."
+        )
+
+    if not reason.strip():
+        raise VisitError(
+            "Veuillez indiquer un motif (ex: « Le client n'est pas venu », "
+            "« Numéro injoignable »)."
+        )
+
     visit.status = VisitRequest.Status.NO_SHOW
-    visit.save(update_fields=['status', 'updated_at'])
+    visit.agent_note = (visit.agent_note + '\n' + reason.strip()).strip() if visit.agent_note else reason.strip()
+    visit.save(update_fields=['status', 'agent_note', 'updated_at'])
     return visit
 
 
@@ -275,23 +323,36 @@ def mark_no_show(visit: VisitRequest) -> VisitRequest:
 # ═══════════════════════════════════════════════════════════════
 
 
-def cancel_visit(visit: VisitRequest) -> None:
+def cancel_visit(visit: VisitRequest, reason: str = '') -> VisitRequest:
     """
     Le client annule sa demande.
-    Clé physique → restaurée.
-    Clé virtuelle → NON restaurée (agent a déjà touché, interaction a eu lieu).
-    VisitRequest supprimée pour libérer le OneToOneField du pack.
+
+    Règles :
+      • REQUESTED → annulable, clé physique restaurée (l'agent n'a rien fait)
+      • CONFIRMED → annulable, clé physique NON restaurée (l'agent a bloqué un créneau)
+      • DONE / CANCELED / EXPIRED / NO_SHOW → non annulable
+    La clé virtuelle n'est JAMAIS restaurée (l'interaction a eu lieu, agent payé).
     """
     if visit.status in (VisitRequest.Status.DONE, VisitRequest.Status.CANCELED,
-                        VisitRequest.Status.EXPIRED):
+                        VisitRequest.Status.EXPIRED, VisitRequest.Status.NO_SHOW):
         raise VisitError(
             f"Impossible d'annuler : statut « {visit.get_status_display()} »."
         )
 
+    if not reason.strip():
+        raise VisitError("Veuillez indiquer un motif d'annulation.")
+
+    restore_key = visit.status == VisitRequest.Status.REQUESTED
+
     with transaction.atomic():
         pack = visit.pack
-        visit.delete()
-        _restore_physical_key(pack)
+        visit.status = VisitRequest.Status.CANCELED
+        visit.cancel_reason = reason.strip()
+        visit.pack = None
+        visit.save(update_fields=['status', 'cancel_reason', 'pack', 'updated_at'])
+        if pack and restore_key:
+            _restore_physical_key(pack)
+    return visit
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -303,6 +364,7 @@ def expire_unresponded_visits() -> int:
     """
     Expire les visites REQUESTED dont le deadline est passé.
     Restaure la clé physique (la clé virtuelle reste consommée).
+    La visite est conservée (statut EXPIRED) pour l'historique.
     """
     now = timezone.now()
     expired_visits = (
@@ -318,8 +380,11 @@ def expire_unresponded_visits() -> int:
     for visit in expired_visits:
         with transaction.atomic():
             pack = visit.pack
-            visit.delete()
-            _restore_physical_key(pack)
+            visit.status = VisitRequest.Status.EXPIRED
+            visit.pack = None
+            visit.save(update_fields=['status', 'pack', 'updated_at'])
+            if pack:
+                _restore_physical_key(pack)
             count += 1
 
     return count

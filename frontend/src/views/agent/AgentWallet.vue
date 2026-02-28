@@ -127,10 +127,9 @@ const methods = [
             </select>
             <select v-model="filterSource" @change="applyFilters" class="wlt__filter-select">
               <option value="">Toutes les sources</option>
-              <option value="VIEW_EARNING">Visionnage</option>
-              <option value="VISIT_EARNING">Visite</option>
+              <option value="VIDEO_VIEW">Visionnage vidéo</option>
+              <option value="PHYSICAL_VISIT">Visite physique</option>
               <option value="WITHDRAWAL">Retrait</option>
-              <option value="BONUS">Bonus</option>
               <option value="ADJUSTMENT">Ajustement</option>
             </select>
             <button v-if="filterType || filterSource" class="wlt__filter-clear" @click="clearFilters">&times; Effacer</button>

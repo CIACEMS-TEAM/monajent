@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAgentStore, type ListingListItem } from '@/Stores/agent'
 import ListingFormDialog from './ListingFormDialog.vue'
 import ListingDetailDialog from './ListingDetailDialog.vue'
@@ -15,9 +16,10 @@ import { useToast } from 'vue-toastification'
 
 const agent = useAgentStore()
 const toast = useToast()
+const route = useRoute()
 
 const filter = ref('ALL')
-const search = ref('')
+const search = ref((route.query.q as string) || '')
 const deleteTarget = ref<ListingListItem | null>(null)
 const deleting = ref(false)
 const renewing = ref<number | null>(null)
@@ -36,6 +38,14 @@ const showKycModal = ref(false)
 onMounted(async () => {
   try { await agent.fetchListings() } catch (_) {}
 })
+
+watch(() => route.query.q, (q) => {
+  search.value = (q as string) || ''
+})
+
+watch(() => route.query.action, (action) => {
+  if (action === 'new') openNew()
+}, { immediate: true })
 
 const filtered = computed(() => {
   let list = agent.listings

@@ -2,21 +2,34 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useAgentStore, type AvailabilitySlot, type DateSlot } from '@/Stores/agent'
+import MapPicker from '@/components/MapPicker.vue'
 
 const agent = useAgentStore()
 const toast = useToast()
 
 const filter = ref<'ALL' | 'REQUESTED' | 'CONFIRMED' | 'DONE' | 'NO_SHOW' | 'CANCELED'>('ALL')
 const noShowLoading = ref<number | null>(null)
+const showNoShowModal = ref(false)
+const noShowTarget = ref<number | null>(null)
+const noShowReason = ref('')
 const activeTab = ref<'visits' | 'availability' | 'agenda'>('visits')
 
 const validateCodeId = ref<number | null>(null)
 const codeInput = ref('')
 const codeLoading = ref(false)
 const confirmLoading = ref<number | null>(null)
+const showConfirmModal = ref(false)
+const confirmTarget = ref<number | null>(null)
+const confirmForm = ref({
+  scheduled_at: '',
+  agent_note: '',
+  meeting_address: '',
+  meeting_latitude: null as number | null,
+  meeting_longitude: null as number | null,
+})
 
 const showSlotForm = ref(false)
-const slotForm = ref({ day_of_week: 1, start_time: '09:00', end_time: '12:00' })
+const slotForm = ref({ day_of_week: 0, start_time: '09:00', end_time: '12:00' })
 const slotLoading = ref(false)
 
 const showDateSlotForm = ref(false)
@@ -53,13 +66,29 @@ const filterTabs = [
   { key: 'CONFIRMED', label: 'Confirmées' },
   { key: 'DONE', label: 'Terminées' },
   { key: 'NO_SHOW', label: 'Absents' },
+  { key: 'CANCELED', label: 'Annulées' },
 ]
 
-async function handleConfirm(id: number) {
-  confirmLoading.value = id
+function openConfirmModal(id: number) {
+  confirmTarget.value = id
+  confirmForm.value = { scheduled_at: '', agent_note: '', meeting_address: '', meeting_latitude: null, meeting_longitude: null }
+  showConfirmModal.value = true
+}
+
+async function handleConfirm() {
+  if (!confirmTarget.value) return
+  confirmLoading.value = confirmTarget.value
   try {
-    await agent.confirmVisit(id)
+    const payload: any = {}
+    if (confirmForm.value.scheduled_at) payload.scheduled_at = confirmForm.value.scheduled_at
+    if (confirmForm.value.agent_note) payload.agent_note = confirmForm.value.agent_note
+    if (confirmForm.value.meeting_address) payload.meeting_address = confirmForm.value.meeting_address
+    if (confirmForm.value.meeting_latitude != null) payload.meeting_latitude = confirmForm.value.meeting_latitude
+    if (confirmForm.value.meeting_longitude != null) payload.meeting_longitude = confirmForm.value.meeting_longitude
+    await agent.confirmVisit(confirmTarget.value, payload)
     toast.success('Visite confirmée')
+    showConfirmModal.value = false
+    confirmTarget.value = null
   } catch (e: any) {
     toast.error(e?.response?.data?.detail || 'Erreur lors de la confirmation')
   } finally {
@@ -82,11 +111,37 @@ async function handleValidateCode() {
   }
 }
 
-async function handleNoShow(id: number) {
-  noShowLoading.value = id
+function noShowAvailableIn(v: { scheduled_at: string | null }): string | null {
+  if (!v.scheduled_at) return 'Fixez d\'abord une date de RDV'
+  const threshold = new Date(new Date(v.scheduled_at).getTime() + 15 * 60_000)
+  if (new Date() < threshold) {
+    const diff = Math.ceil((threshold.getTime() - Date.now()) / 60_000)
+    const h = Math.floor(diff / 60)
+    const m = diff % 60
+    const temps = h > 0 ? `${h}h${m > 0 ? m.toString().padStart(2, '0') : ''}` : `${m} min`
+    return `Absent dans ${temps}`
+  }
+  return null
+}
+
+function openNoShowModal(id: number) {
+  noShowTarget.value = id
+  noShowReason.value = ''
+  showNoShowModal.value = true
+}
+
+async function handleNoShow() {
+  if (!noShowTarget.value) return
+  if (!noShowReason.value.trim()) {
+    toast.error('Veuillez indiquer un motif')
+    return
+  }
+  noShowLoading.value = noShowTarget.value
   try {
-    await agent.markNoShow(id)
+    await agent.markNoShow(noShowTarget.value, noShowReason.value.trim())
     toast.success('Client marqué comme absent')
+    showNoShowModal.value = false
+    noShowTarget.value = null
   } catch (e: any) {
     toast.error(e?.response?.data?.detail || 'Erreur')
   } finally {
@@ -104,7 +159,7 @@ async function handleCreateSlot() {
     })
     toast.success('Créneau ajouté')
     showSlotForm.value = false
-    slotForm.value = { day_of_week: 1, start_time: '09:00', end_time: '12:00' }
+    slotForm.value = { day_of_week: 0, start_time: '09:00', end_time: '12:00' }
   } catch (e: any) {
     toast.error(e?.response?.data?.detail || e?.response?.data?.non_field_errors?.[0] || 'Erreur')
   } finally {
@@ -167,13 +222,13 @@ async function deleteDateSlot(id: number) {
 }
 
 const dayOptions = [
-  { value: 1, label: 'Lundi' },
-  { value: 2, label: 'Mardi' },
-  { value: 3, label: 'Mercredi' },
-  { value: 4, label: 'Jeudi' },
-  { value: 5, label: 'Vendredi' },
-  { value: 6, label: 'Samedi' },
-  { value: 7, label: 'Dimanche' },
+  { value: 0, label: 'Lundi' },
+  { value: 1, label: 'Mardi' },
+  { value: 2, label: 'Mercredi' },
+  { value: 3, label: 'Jeudi' },
+  { value: 4, label: 'Vendredi' },
+  { value: 5, label: 'Samedi' },
+  { value: 6, label: 'Dimanche' },
 ]
 </script>
 
@@ -227,6 +282,13 @@ const dayOptions = [
                 <span>{{ v.slot_label }}</span>
               </div>
               <p v-if="v.client_note" class="vis__card-note">« {{ v.client_note }} »</p>
+              <p v-if="v.agent_note" class="vis__card-note vis__card-note--agent">Note : {{ v.agent_note }}</p>
+              <p v-if="v.cancel_reason && v.status === 'CANCELED'" class="vis__card-note vis__card-note--cancel">Motif d'annulation : {{ v.cancel_reason }}</p>
+              <div v-if="v.meeting_address || v.meeting_map_url" class="vis__card-meeting">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#1DA53F" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+                <span v-if="v.meeting_address">{{ v.meeting_address }}</span>
+                <a v-if="v.meeting_map_url" :href="v.meeting_map_url" target="_blank" rel="noopener" class="vis__map-link">Voir sur la carte</a>
+              </div>
             </div>
             <div class="vis__card-right">
               <span class="vis__badge" :class="statusClass(v.status)">{{ statusLabel(v.status) }}</span>
@@ -257,9 +319,8 @@ const dayOptions = [
             <button
               v-if="v.status === 'REQUESTED'"
               class="vis__btn vis__btn--confirm"
-              :disabled="confirmLoading === v.id"
-              @click="handleConfirm(v.id)"
-            >{{ confirmLoading === v.id ? 'Confirmation...' : 'Confirmer' }}</button>
+              @click="openConfirmModal(v.id)"
+            >Confirmer</button>
             <button
               v-if="v.status === 'CONFIRMED'"
               class="vis__btn vis__btn--complete"
@@ -268,9 +329,13 @@ const dayOptions = [
             <button
               v-if="v.status === 'CONFIRMED'"
               class="vis__btn vis__btn--noshow"
-              :disabled="noShowLoading === v.id"
-              @click="handleNoShow(v.id)"
-            >{{ noShowLoading === v.id ? '...' : 'Client absent' }}</button>
+              :disabled="!!noShowAvailableIn(v)"
+              :title="noShowAvailableIn(v) || 'Signaler l\'absence du client'"
+              @click="openNoShowModal(v.id)"
+            >
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/></svg>
+              {{ noShowAvailableIn(v) || 'Client absent' }}
+            </button>
           </div>
         </div>
 
@@ -415,6 +480,105 @@ const dayOptions = [
         </div>
       </div>
     </template>
+
+    <!-- ═══ Modal Confirmation enrichie ═══ -->
+    <div v-if="showConfirmModal" class="wlt__modal-overlay" @click.self="showConfirmModal = false">
+      <div class="wlt__modal wlt__modal--lg">
+        <h3 class="wlt__modal-title">Confirmer la visite</h3>
+        <p class="confirm__subtitle">Planifiez le rendez-vous et indiquez le lieu de rencontre au client.</p>
+
+        <div class="wlt__modal-field">
+          <label>Date et heure du rendez-vous</label>
+          <input
+            v-model="confirmForm.scheduled_at"
+            type="datetime-local"
+            class="avail__date-input"
+            :min="new Date().toISOString().slice(0, 16)"
+          />
+        </div>
+
+        <div class="wlt__modal-field">
+          <label>Lieu de rendez-vous</label>
+          <input
+            v-model="confirmForm.meeting_address"
+            type="text"
+            class="avail__date-input"
+            placeholder="Ex: Devant la pharmacie du quartier, Carrefour Palmeraie..."
+          />
+        </div>
+
+        <div class="confirm__coords-section">
+          <label class="confirm__coords-label">Position du rendez-vous sur la carte</label>
+          <MapPicker
+            :latitude="confirmForm.meeting_latitude"
+            :longitude="confirmForm.meeting_longitude"
+            @update="(c) => { confirmForm.meeting_latitude = c.latitude; confirmForm.meeting_longitude = c.longitude }"
+          />
+          <div v-if="confirmForm.meeting_latitude && confirmForm.meeting_longitude" class="confirm__coords-info">
+            <span class="confirm__coords-text">{{ confirmForm.meeting_latitude }}, {{ confirmForm.meeting_longitude }}</span>
+            <a
+              :href="`https://www.google.com/maps?q=${confirmForm.meeting_latitude},${confirmForm.meeting_longitude}`"
+              target="_blank"
+              rel="noopener"
+              class="confirm__preview-link"
+            >Google Maps</a>
+          </div>
+        </div>
+
+        <div class="wlt__modal-field">
+          <label>Note pour le client (optionnel)</label>
+          <textarea
+            v-model="confirmForm.agent_note"
+            class="confirm__textarea"
+            rows="3"
+            placeholder="Ex: Apportez une pièce d'identité, prévoyez 30 min..."
+          ></textarea>
+        </div>
+
+        <div class="wlt__modal-actions">
+          <button class="wlt__modal-btn cancel" @click="showConfirmModal = false" :disabled="confirmLoading !== null">Annuler</button>
+          <button class="wlt__modal-btn confirm" @click="handleConfirm" :disabled="confirmLoading !== null">
+            {{ confirmLoading !== null ? 'Confirmation...' : 'Confirmer la visite' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Modal NO_SHOW (motif obligatoire) ═══ -->
+    <div v-if="showNoShowModal" class="wlt__modal-overlay" @click.self="showNoShowModal = false">
+      <div class="wlt__modal">
+        <h3 class="wlt__modal-title">Signaler l'absence du client</h3>
+        <p class="noshow__info">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#d97706" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          Cette action est irréversible. Le client sera notifié et sa clé physique ne sera pas restaurée.
+        </p>
+        <div class="wlt__modal-field">
+          <label>Motif de l'absence <span style="color: #dc2626">*</span></label>
+          <select v-model="noShowReason" class="avail__select">
+            <option value="">— Sélectionnez un motif —</option>
+            <option value="Le client ne s'est pas présenté au rendez-vous">Le client ne s'est pas présenté</option>
+            <option value="Le client est injoignable par téléphone">Client injoignable par téléphone</option>
+            <option value="Le client a annulé de vive voix sans passer par l'application">Annulation verbale du client</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div v-if="noShowReason === 'Autre'" class="wlt__modal-field">
+          <label>Précisez le motif <span style="color: #dc2626">*</span></label>
+          <textarea
+            v-model="noShowReason"
+            class="confirm__textarea"
+            rows="2"
+            placeholder="Décrivez brièvement la situation..."
+          ></textarea>
+        </div>
+        <div class="wlt__modal-actions">
+          <button class="wlt__modal-btn cancel" @click="showNoShowModal = false" :disabled="noShowLoading !== null">Annuler</button>
+          <button class="wlt__modal-btn noshow" @click="handleNoShow" :disabled="noShowLoading !== null || !noShowReason.trim()">
+            {{ noShowLoading !== null ? '...' : 'Confirmer l\'absence' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -748,8 +912,118 @@ const dayOptions = [
 .wlt__modal-btn.confirm { background: #1DA53F; color: #fff; }
 .wlt__modal-btn.confirm:hover:not(:disabled) { background: #178A33; }
 
+/* ═══ Confirm modal enrichi ═══ */
+.wlt__modal--lg { max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.confirm__subtitle {
+  font-size: 13px;
+  color: #606060;
+  margin-bottom: 18px;
+}
+.confirm__coords-section {
+  margin-bottom: 18px;
+}
+.confirm__coords-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #272727;
+  margin-bottom: 8px;
+}
+.confirm__coords-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+.confirm__coords-text {
+  font-size: 13px;
+  color: #272727;
+  font-family: monospace;
+  flex: 1;
+}
+.confirm__preview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #1DA53F;
+  text-decoration: none;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.confirm__preview-link:hover { text-decoration: underline; }
+.confirm__textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #0F0F0F;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.confirm__textarea:focus { outline: none; border-color: #1DA53F; }
+
+/* NO_SHOW modal */
+.noshow__info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.noshow__info svg { flex-shrink: 0; margin-top: 1px; }
+.wlt__modal-btn.noshow {
+  background: #dc2626;
+  color: #fff;
+}
+.wlt__modal-btn.noshow:hover:not(:disabled) { background: #b91c1c; }
+.wlt__modal-btn.noshow:disabled { opacity: 0.5; }
+
+/* Meeting point display in visit card */
+.vis__card-meeting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #272727;
+  margin-top: 6px;
+}
+.vis__map-link {
+  color: #1DA53F;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 13px;
+}
+.vis__map-link:hover { text-decoration: underline; }
+.vis__card-note--agent {
+  color: #272727;
+  font-style: normal;
+  font-weight: 500;
+}
+.vis__card-note--cancel {
+  color: #991b1b;
+  font-style: normal;
+  background: #fef2f2;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
 @media (max-width: 768px) {
   .avail__header { flex-direction: column; align-items: flex-start; }
   .avail__time-row { flex-direction: column; gap: 0; }
+  .confirm__coords-row { flex-direction: column; gap: 0; }
 }
 </style>

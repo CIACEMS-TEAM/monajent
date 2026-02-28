@@ -26,6 +26,8 @@ from .views.listings import (
     AgentListingImageDeleteView,
     AgentListingVideoUploadView,
     AgentListingVideoDeleteView,
+    AgentVideoStreamView,
+    VideoHashPreCheckView,
 )
 from .views.packs import (
     ClientPackListCreateView,
@@ -123,6 +125,12 @@ urlpatterns = [
     # ── Agent : vidéos d'une annonce ──────────────────────────
     path('agent/listings/<int:listing_id>/videos/', AgentListingVideoUploadView.as_view(), name='agent-listing-video-upload'),
     path('agent/listings/<int:listing_id>/videos/<int:pk>/', AgentListingVideoDeleteView.as_view(), name='agent-listing-video-delete'),
+
+    # ── Agent : stream vidéo (propre contenu, sans restriction) ─
+    path('agent/videos/<int:pk>/stream/', AgentVideoStreamView.as_view(), name='agent-video-stream'),
+
+    # ── Agent : pré-check anti-fraude vidéo ──────────────────
+    path('agent/videos/precheck/', VideoHashPreCheckView.as_view(), name='video-hash-precheck'),
 
     # ── Client : Packs ──────────────────────────────────────
     path('client/packs/', ClientPackListCreateView.as_view(), name='client-pack-list-create'),

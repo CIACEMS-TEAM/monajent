@@ -78,6 +78,9 @@
               <span class="yt-card__dot">&middot;</span>
               {{ listing.publishedAgo }}
             </p>
+            <p v-if="listing.conditions" class="yt-card__conditions">
+              <i class="pi pi-file-edit"></i> {{ listing.conditions }}
+            </p>
           </div>
         </div>
       </div>
@@ -90,6 +93,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore, type ListingListItem, type PublicListingAgent } from '@/Stores/public'
+import { API_BASE } from '@/services/http'
 
 const auth = useAuthStore()
 const pub = usePublicStore()
@@ -108,13 +112,12 @@ const chips = [
   { label: 'Yopougon', value: 'Yopougon' },
 ]
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
-
 interface DisplayListing {
   id: number
   title: string
   type: 'LOCATION' | 'VENTE'
   price: string
+  conditions: string
   coverImage: string | null
   thumbGradient: string
   videosCount: number
@@ -172,19 +175,27 @@ const mockGradients = [
 ]
 
 const mockListings: DisplayListing[] = [
-  { id: 1, title: 'Bel appartement 3 pièces avec vue sur la lagune - Cocody Riviera', type: 'LOCATION', price: '250 000 F/mois', coverImage: null, thumbGradient: mockGradients[0], videosCount: 1, videoDuration: '2:34', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,2k vues', publishedAgo: 'il y a 2 jours' },
-  { id: 2, title: 'Villa duplex 5 chambres avec piscine et jardin - Cocody Angré', type: 'VENTE', price: '85 000 000 F', coverImage: null, thumbGradient: mockGradients[1], videosCount: 2, videoDuration: '4:12', agentName: 'Traoré Properties', agentInitial: 'T', agentColor: '#2d6a4f', agentPhoto: null, agentVerified: true, views: '3,8k vues', publishedAgo: 'il y a 5 jours' },
-  { id: 3, title: 'Studio meublé climatisé - idéal étudiant - Plateau Dokui', type: 'LOCATION', price: '120 000 F/mois', coverImage: null, thumbGradient: mockGradients[2], videosCount: 1, videoDuration: '1:45', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '876 vues', publishedAgo: 'il y a 1 jour' },
-  { id: 4, title: 'Appartement 4 pièces standing - Marcory Résidentiel', type: 'LOCATION', price: '350 000 F/mois', coverImage: null, thumbGradient: mockGradients[3], videosCount: 1, videoDuration: '3:08', agentName: 'Diallo & Fils Immo', agentInitial: 'D', agentColor: '#7b2cbf', agentPhoto: null, agentVerified: true, views: '2,1k vues', publishedAgo: 'il y a 3 jours' },
-  { id: 5, title: 'Grande villa 6 pièces avec dépendance - Yopougon Niangon', type: 'VENTE', price: '45 000 000 F', coverImage: null, thumbGradient: mockGradients[4], videosCount: 1, videoDuration: '5:20', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: false, views: '654 vues', publishedAgo: 'il y a 6 jours' },
-  { id: 6, title: 'Bureau open space 120m² climatisé - Plateau centre', type: 'LOCATION', price: '800 000 F/mois', coverImage: null, thumbGradient: mockGradients[5], videosCount: 1, videoDuration: '2:55', agentName: 'Coulibaly Business', agentInitial: 'C', agentColor: '#457b9d', agentPhoto: null, agentVerified: true, views: '432 vues', publishedAgo: 'il y a 4 jours' },
-  { id: 7, title: 'Appartement 2 pièces rénové - Riviera Palmeraie', type: 'LOCATION', price: '180 000 F/mois', coverImage: null, thumbGradient: mockGradients[6], videosCount: 1, videoDuration: '2:10', agentName: "N'Guessan Habitat", agentInitial: 'N', agentColor: '#606c38', agentPhoto: null, agentVerified: false, views: '1,5k vues', publishedAgo: 'il y a 1 jour' },
-  { id: 8, title: 'Villa moderne 4 chambres avec garage - Riviera Golf', type: 'VENTE', price: '120 000 000 F', coverImage: null, thumbGradient: mockGradients[7], videosCount: 3, videoDuration: '6:45', agentName: 'Bamba Elite Immo', agentInitial: 'B', agentColor: '#9d4edd', agentPhoto: null, agentVerified: true, views: '5,2k vues', publishedAgo: 'il y a 2 jours' },
-  { id: 9, title: 'Magasin 80m² bord de route - Yopougon Maroc', type: 'LOCATION', price: '450 000 F/mois', coverImage: null, thumbGradient: mockGradients[8], videosCount: 1, videoDuration: '1:58', agentName: 'Ouattara & Co', agentInitial: 'O', agentColor: '#e76f51', agentPhoto: null, agentVerified: false, views: '298 vues', publishedAgo: 'il y a 5 jours' },
-  { id: 10, title: 'Appartement haut standing 5 pièces - Cocody II Plateaux', type: 'VENTE', price: '55 000 000 F', coverImage: null, thumbGradient: mockGradients[9], videosCount: 2, videoDuration: '3:42', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,8k vues', publishedAgo: 'il y a 3 jours' },
-  { id: 11, title: 'Studio moderne tout équipé - Marcory Zone 4', type: 'LOCATION', price: '150 000 F/mois', coverImage: null, thumbGradient: mockGradients[10], videosCount: 1, videoDuration: '2:22', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '721 vues', publishedAgo: 'il y a 2 jours' },
-  { id: 12, title: 'Villa basse 3 chambres avec cour - Yopougon Selmer', type: 'VENTE', price: '28 000 000 F', coverImage: null, thumbGradient: mockGradients[11], videosCount: 1, videoDuration: '3:15', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: true, views: '1,1k vues', publishedAgo: 'il y a 4 jours' },
+  { id: 1, title: 'Bel appartement 3 pièces avec vue sur la lagune - Cocody Riviera', type: 'LOCATION', price: '250 000 F/mois', conditions: '2 caution + 2 avance', coverImage: null, thumbGradient: mockGradients[0], videosCount: 1, videoDuration: '2:34', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,2k vues', publishedAgo: 'il y a 2 jours' },
+  { id: 2, title: 'Villa duplex 5 chambres avec piscine et jardin - Cocody Angré', type: 'VENTE', price: '85 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[1], videosCount: 2, videoDuration: '4:12', agentName: 'Traoré Properties', agentInitial: 'T', agentColor: '#2d6a4f', agentPhoto: null, agentVerified: true, views: '3,8k vues', publishedAgo: 'il y a 5 jours' },
+  { id: 3, title: 'Studio meublé climatisé - idéal étudiant - Plateau Dokui', type: 'LOCATION', price: '120 000 F/mois', conditions: '1 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[2], videosCount: 1, videoDuration: '1:45', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '876 vues', publishedAgo: 'il y a 1 jour' },
+  { id: 4, title: 'Appartement 4 pièces standing - Marcory Résidentiel', type: 'LOCATION', price: '350 000 F/mois', conditions: '2 caution + 2 avance + 1 agence', coverImage: null, thumbGradient: mockGradients[3], videosCount: 1, videoDuration: '3:08', agentName: 'Diallo & Fils Immo', agentInitial: 'D', agentColor: '#7b2cbf', agentPhoto: null, agentVerified: true, views: '2,1k vues', publishedAgo: 'il y a 3 jours' },
+  { id: 5, title: 'Grande villa 6 pièces avec dépendance - Yopougon Niangon', type: 'VENTE', price: '45 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[4], videosCount: 1, videoDuration: '5:20', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: false, views: '654 vues', publishedAgo: 'il y a 6 jours' },
+  { id: 6, title: 'Bureau open space 120m² climatisé - Plateau centre', type: 'LOCATION', price: '800 000 F/mois', conditions: '', coverImage: null, thumbGradient: mockGradients[5], videosCount: 1, videoDuration: '2:55', agentName: 'Coulibaly Business', agentInitial: 'C', agentColor: '#457b9d', agentPhoto: null, agentVerified: true, views: '432 vues', publishedAgo: 'il y a 4 jours' },
+  { id: 7, title: 'Appartement 2 pièces rénové - Riviera Palmeraie', type: 'LOCATION', price: '180 000 F/mois', conditions: '2 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[6], videosCount: 1, videoDuration: '2:10', agentName: "N'Guessan Habitat", agentInitial: 'N', agentColor: '#606c38', agentPhoto: null, agentVerified: false, views: '1,5k vues', publishedAgo: 'il y a 1 jour' },
+  { id: 8, title: 'Villa moderne 4 chambres avec garage - Riviera Golf', type: 'VENTE', price: '120 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[7], videosCount: 3, videoDuration: '6:45', agentName: 'Bamba Elite Immo', agentInitial: 'B', agentColor: '#9d4edd', agentPhoto: null, agentVerified: true, views: '5,2k vues', publishedAgo: 'il y a 2 jours' },
+  { id: 9, title: 'Magasin 80m² bord de route - Yopougon Maroc', type: 'LOCATION', price: '450 000 F/mois', conditions: '3 caution + 2 avance + 2 agence', coverImage: null, thumbGradient: mockGradients[8], videosCount: 1, videoDuration: '1:58', agentName: 'Ouattara & Co', agentInitial: 'O', agentColor: '#e76f51', agentPhoto: null, agentVerified: false, views: '298 vues', publishedAgo: 'il y a 5 jours' },
+  { id: 10, title: 'Appartement haut standing 5 pièces - Cocody II Plateaux', type: 'VENTE', price: '55 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[9], videosCount: 2, videoDuration: '3:42', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,8k vues', publishedAgo: 'il y a 3 jours' },
+  { id: 11, title: 'Studio moderne tout équipé - Marcory Zone 4', type: 'LOCATION', price: '150 000 F/mois', conditions: '1 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[10], videosCount: 1, videoDuration: '2:22', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '721 vues', publishedAgo: 'il y a 2 jours' },
+  { id: 12, title: 'Villa basse 3 chambres avec cour - Yopougon Selmer', type: 'VENTE', price: '28 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[11], videosCount: 1, videoDuration: '3:15', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: true, views: '1,1k vues', publishedAgo: 'il y a 4 jours' },
 ]
+
+function conditionsLabel(item: ListingListItem): string {
+  const parts: string[] = []
+  if (item.deposit_months) parts.push(`${item.deposit_months} caution`)
+  if (item.advance_months) parts.push(`${item.advance_months} avance`)
+  if (item.agency_fee_months) parts.push(`${item.agency_fee_months} agence`)
+  return parts.length ? parts.join(' + ') : ''
+}
 
 function apiToDisplay(item: ListingListItem): DisplayListing {
   const cover = item.cover_image
@@ -196,6 +207,7 @@ function apiToDisplay(item: ListingListItem): DisplayListing {
     title: item.title,
     type: item.listing_type,
     price: formatPrice(item.price),
+    conditions: conditionsLabel(item),
     coverImage: cover,
     thumbGradient: mockGradients[item.id % mockGradients.length],
     videosCount: item.videos_count,
@@ -369,6 +381,15 @@ watch(() => auth.me, (me) => {
 }
 .yt-card__price { font-weight: 600; color: #1da53f; }
 .yt-card__dot { margin: 0 4px; }
+.yt-card__conditions {
+  font-size: 11px;
+  color: #d97706;
+  margin: 2px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.yt-card__conditions i { font-size: 10px; }
 
 @media (max-width: 768px) {
   .yt-chips-bar { margin-bottom: 16px; }

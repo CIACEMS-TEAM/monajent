@@ -5,8 +5,8 @@ from .models import AgentProfile, Notification
 
 
 @receiver(pre_save, sender=AgentProfile)
-def notify_agent_kyc_change(sender, instance, **kwargs):
-    """Create a notification when admin changes an agent's verified status."""
+def sync_kyc_status_and_notify(sender, instance, **kwargs):
+    """Synchronise kyc_status avec verified et envoie une notification."""
     if instance.pk is None:
         return
 
@@ -19,6 +19,8 @@ def notify_agent_kyc_change(sender, instance, **kwargs):
         return
 
     if instance.verified:
+        instance.kyc_status = AgentProfile.KycStatus.APPROVED
+        instance.kyc_rejection_reason = ''
         Notification.objects.create(
             user=instance.user,
             category=Notification.Category.KYC,
@@ -27,8 +29,10 @@ def notify_agent_kyc_change(sender, instance, **kwargs):
                 'Félicitations ! Votre profil a été vérifié avec succès. '
                 'Vous pouvez maintenant publier des annonces sur MonaJent.'
             ),
+            link='/agent/settings#kyc',
         )
     else:
+        instance.kyc_status = AgentProfile.KycStatus.REJECTED
         Notification.objects.create(
             user=instance.user,
             category=Notification.Category.KYC,
@@ -37,4 +41,5 @@ def notify_agent_kyc_change(sender, instance, **kwargs):
                 'Votre demande de vérification a été rejetée. '
                 'Veuillez soumettre de nouveaux documents depuis vos paramètres.'
             ),
+            link='/agent/settings#kyc',
         )

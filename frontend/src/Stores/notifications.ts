@@ -7,6 +7,7 @@ export interface NotificationItem {
   category: 'KYC' | 'SYSTEM' | 'VISIT' | 'WALLET'
   title: string
   message: string
+  link: string
   is_read: boolean
   created_at: string
 }

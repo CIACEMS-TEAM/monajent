@@ -147,8 +147,8 @@ function furnishLabel(f: string) {
           <div v-for="vid in listing.videos" :key="vid.id" class="ld__video-card">
             <div class="ld__video-player">
               <video
-                v-if="vid.file"
-                :src="mediaUrl(vid.file)!"
+                v-if="vid.stream_url || vid.file"
+                :src="vid.stream_url || mediaUrl(vid.file)!"
                 controls
                 preload="metadata"
                 :poster="vid.thumbnail ? mediaUrl(vid.thumbnail)! : undefined"
@@ -185,6 +185,20 @@ function furnishLabel(f: string) {
             <div class="ld__field" v-if="listing.address">
               <span class="ld__label">Adresse</span>
               <span class="ld__value">{{ listing.address }}</span>
+            </div>
+            <div class="ld__field" v-if="listing.latitude && listing.longitude">
+              <span class="ld__label">Position GPS</span>
+              <span class="ld__value">
+                <a
+                  :href="`https://www.google.com/maps?q=${listing.latitude},${listing.longitude}`"
+                  target="_blank"
+                  rel="noopener"
+                  class="ld__map-link"
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+                  Voir sur la carte
+                </a>
+              </span>
             </div>
           </div>
         </section>
@@ -227,6 +241,35 @@ function furnishLabel(f: string) {
         <h3 class="ld__section-title">Commodités</h3>
         <div class="ld__amenities">
           <Tag v-for="(a, i) in listing.amenities" :key="i" :value="a" severity="info" rounded />
+        </div>
+      </section>
+
+      <!-- Conditions d'acquisition / location -->
+      <section v-if="listing.deposit_months || listing.advance_months || listing.agency_fee_months || listing.other_conditions" class="ld__section">
+        <h3 class="ld__section-title">
+          {{ listing.listing_type === 'LOCATION' ? 'Conditions de location' : 'Conditions de vente' }}
+        </h3>
+        <div class="ld__conditions">
+          <div v-if="listing.deposit_months" class="ld__condition-item">
+            <i class="pi pi-shield"></i>
+            <span><strong>{{ listing.deposit_months }}</strong> mois de caution</span>
+            <span class="ld__condition-amount">{{ formatPrice(Number(listing.price) * listing.deposit_months) }}</span>
+          </div>
+          <div v-if="listing.advance_months" class="ld__condition-item">
+            <i class="pi pi-calendar"></i>
+            <span><strong>{{ listing.advance_months }}</strong> mois d'avance</span>
+            <span class="ld__condition-amount">{{ formatPrice(Number(listing.price) * listing.advance_months) }}</span>
+          </div>
+          <div v-if="listing.agency_fee_months" class="ld__condition-item">
+            <i class="pi pi-briefcase"></i>
+            <span><strong>{{ listing.agency_fee_months }}</strong> mois de frais d'agence</span>
+            <span class="ld__condition-amount">{{ formatPrice(Number(listing.price) * listing.agency_fee_months) }}</span>
+          </div>
+          <div v-if="listing.deposit_months || listing.advance_months || listing.agency_fee_months" class="ld__condition-total">
+            <strong>Total à l'entrée :</strong>
+            <strong>{{ formatPrice(Number(listing.price) * ((listing.deposit_months || 0) + (listing.advance_months || 0) + (listing.agency_fee_months || 0))) }}</strong>
+          </div>
+          <p v-if="listing.other_conditions" class="ld__condition-other">{{ listing.other_conditions }}</p>
         </div>
       </section>
 
@@ -463,6 +506,16 @@ function furnishLabel(f: string) {
   color: #0F0F0F;
   font-weight: 500;
 }
+.ld__map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1DA53F;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ld__map-link:hover { text-decoration: underline; }
 
 /* Description */
 .ld__description {
@@ -478,6 +531,49 @@ function furnishLabel(f: string) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Conditions */
+.ld__conditions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ld__condition-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #272727;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+.ld__condition-item i {
+  color: #1DA53F;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.ld__condition-amount {
+  margin-left: auto;
+  font-weight: 600;
+  color: #0F0F0F;
+  white-space: nowrap;
+}
+.ld__condition-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #e8f5e9;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1DA53F;
+}
+.ld__condition-other {
+  font-size: 13px;
+  color: #606060;
+  margin: 4px 0 0;
+  font-style: italic;
 }
 
 /* Dates grid */

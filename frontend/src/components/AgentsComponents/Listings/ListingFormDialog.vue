@@ -11,6 +11,7 @@ import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import Dialog from 'primevue/dialog'
 import ProgressBar from 'primevue/progressbar'
+import MapPicker from '@/components/MapPicker.vue'
 import { useToast } from 'vue-toastification'
 
 const props = defineProps<{
@@ -50,6 +51,10 @@ const form = reactive<ListingCreatePayload>({
   surface_m2: null,
   furnishing: '',
   amenities: [],
+  deposit_months: null,
+  advance_months: null,
+  agency_fee_months: null,
+  other_conditions: '',
 })
 
 // Fichiers en attente (mode création)
@@ -72,6 +77,43 @@ const statusOptions = computed(() => {
     { label: 'Brouillon (KYC requis pour publier)', value: 'INACTIF' },
   ]
 })
+const canPublish = computed(() => {
+  if (isEdit.value && agent.currentListing) {
+    return agent.currentListing.images.length >= 1 && agent.currentListing.videos.length >= 1
+  }
+  return pendingImages.value.length >= 1 && !!pendingVideo.value
+})
+
+const publishBlockReason = computed(() => {
+  if (canPublish.value) return ''
+  const missing: string[] = []
+  if (isEdit.value && agent.currentListing) {
+    if (agent.currentListing.images.length < 1) missing.push('1 photo')
+    if (agent.currentListing.videos.length < 1) missing.push('1 vidéo')
+  } else {
+    if (pendingImages.value.length < 1) missing.push('1 photo')
+    if (!pendingVideo.value) missing.push('1 vidéo')
+  }
+  return `Ajoutez au moins ${missing.join(' et ')} pour publier`
+})
+
+const conditionsSummary = computed(() => {
+  if (form.listing_type !== 'LOCATION') return ''
+  const parts: string[] = []
+  if (form.deposit_months) parts.push(`${form.deposit_months} mois de caution`)
+  if (form.advance_months) parts.push(`${form.advance_months} mois d'avance`)
+  if (form.agency_fee_months) parts.push(`${form.agency_fee_months} mois d'agence`)
+  if (!parts.length) return ''
+  const monthly = form.price || 0
+  const total = (
+    (form.deposit_months || 0) +
+    (form.advance_months || 0) +
+    (form.agency_fee_months || 0)
+  ) * monthly
+  const fmt = new Intl.NumberFormat('fr-FR').format(total)
+  return `${parts.join(' + ')} = ${fmt} F CFA à l'entrée`
+})
+
 const furnishingOptions = [
   { label: 'Non précisé', value: '' },
   { label: 'Meublé', value: 'FURNISHED' },
@@ -96,11 +138,16 @@ function resetForm() {
   form.surface_m2 = null
   form.furnishing = ''
   form.amenities = []
+  form.deposit_months = null
+  form.advance_months = null
+  form.agency_fee_months = null
+  form.other_conditions = ''
   amenityInput.value = ''
   serverError.value = ''
   savingStep.value = ''
   pendingImages.value = []
   pendingVideo.value = null
+  resetVideoCheck()
   agent.currentListing = null
 }
 
@@ -126,6 +173,10 @@ watch(() => props.visible, async (open) => {
       form.surface_m2 = data.surface_m2 ? Number(data.surface_m2) : null
       form.furnishing = data.furnishing || ''
       form.amenities = data.amenities || []
+      form.deposit_months = data.deposit_months ?? null
+      form.advance_months = data.advance_months ?? null
+      form.agency_fee_months = data.agency_fee_months ?? null
+      form.other_conditions = data.other_conditions || ''
     } catch (_) {
       toast.error('Impossible de charger l\'annonce')
       close()
@@ -152,6 +203,83 @@ function removeAmenity(idx: number) {
   form.amenities!.splice(idx, 1)
 }
 
+// ─── Anti-fraude vidéo : vérification style YouTube ─────────
+
+type VideoCheckStep = 'idle' | 'hashing' | 'checking' | 'passed' | 'rejected'
+const videoCheckStep = ref<VideoCheckStep>('idle')
+const videoCheckMessage = ref('')
+const videoCheckProgress = ref(0)
+let videoCheckTimer: ReturnType<typeof setInterval> | null = null
+
+const videoChecking = computed(() => videoCheckStep.value === 'hashing' || videoCheckStep.value === 'checking')
+
+function resetVideoCheck() {
+  videoCheckStep.value = 'idle'
+  videoCheckMessage.value = ''
+  videoCheckProgress.value = 0
+  if (videoCheckTimer) { clearInterval(videoCheckTimer); videoCheckTimer = null }
+}
+
+function startProgressAnimation() {
+  videoCheckProgress.value = 0
+  if (videoCheckTimer) clearInterval(videoCheckTimer)
+  videoCheckTimer = setInterval(() => {
+    if (videoCheckProgress.value < 90) {
+      videoCheckProgress.value += Math.random() * 8 + 2
+      if (videoCheckProgress.value > 90) videoCheckProgress.value = 90
+    }
+  }, 300)
+}
+
+function finishProgress(success: boolean) {
+  if (videoCheckTimer) { clearInterval(videoCheckTimer); videoCheckTimer = null }
+  videoCheckProgress.value = 100
+  videoCheckStep.value = success ? 'passed' : 'rejected'
+}
+
+async function computeFileSha256(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function precheckVideoHash(file: File): Promise<{ ok: boolean; msg?: string }> {
+  resetVideoCheck()
+  videoCheckStep.value = 'hashing'
+  videoCheckMessage.value = 'Analyse de l\'empreinte numérique de la vidéo…'
+  startProgressAnimation()
+
+  try {
+    const hash = await computeFileSha256(file)
+
+    videoCheckStep.value = 'checking'
+    videoCheckMessage.value = 'Vérification des doublons en cours…'
+
+    const { data } = await http.post<{
+      duplicate: boolean
+      listing_id?: number
+      listing_title?: string
+    }>('/api/agent/videos/precheck/', { file_hash: hash })
+
+    if (data.duplicate) {
+      const msg = `Cette vidéo est déjà utilisée sur l'annonce « ${data.listing_title} » (ID #${data.listing_id}). Chaque annonce doit avoir sa propre vidéo.`
+      videoCheckMessage.value = msg
+      finishProgress(false)
+      return { ok: false, msg }
+    }
+
+    videoCheckMessage.value = 'Aucun doublon détecté — vidéo acceptée.'
+    finishProgress(true)
+    return { ok: true }
+  } catch {
+    finishProgress(true)
+    videoCheckMessage.value = 'Pré-vérification ignorée (erreur réseau).'
+    return { ok: true }
+  }
+}
+
 // ─── Fichiers locaux (mode création) ────────────────────────
 
 function onSelectImages(e: Event) {
@@ -165,11 +293,16 @@ function removePendingImage(idx: number) {
   pendingImages.value.splice(idx, 1)
 }
 
-function onSelectVideo(e: Event) {
+async function onSelectVideo(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-  pendingVideo.value = input.files[0]
+  const file = input.files[0]
   input.value = ''
+
+  const check = await precheckVideoHash(file)
+  if (!check.ok) return
+  pendingVideo.value = file
+  setTimeout(() => resetVideoCheck(), 3000)
 }
 
 function removePendingVideo() {
@@ -233,14 +366,27 @@ async function onEditVideoUpload(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length || !props.listingId) return
   const file = input.files[0]
+  input.value = ''
+
+  const check = await precheckVideoHash(file)
+  if (!check.ok) return
+
+  videoCheckStep.value = 'checking'
+  videoCheckMessage.value = 'Upload et vérification serveur en cours…'
+  startProgressAnimation()
+
   try {
     await agent.uploadListingVideo(props.listingId, file)
+    videoCheckMessage.value = 'Vidéo ajoutée avec succès.'
+    finishProgress(true)
     toast.success('Vidéo ajoutée')
+    setTimeout(() => resetVideoCheck(), 3000)
   } catch (err: any) {
     const msg = err?.response?.data?.file
-    toast.error(typeof msg === 'string' ? msg : Array.isArray(msg) ? msg.join(', ') : `Erreur upload vidéo`)
+    const errMsg = typeof msg === 'string' ? msg : Array.isArray(msg) ? msg.join(', ') : 'Erreur upload vidéo'
+    videoCheckMessage.value = errMsg
+    finishProgress(false)
   }
-  input.value = ''
 }
 
 async function removeVideo(videoId: number) {
@@ -269,7 +415,7 @@ async function doSubmit(targetStatus: string) {
   savingAs.value = targetStatus === 'ACTIF' ? 'publish' : 'draft'
   saving.value = true
 
-  const payload = { ...form, status: targetStatus }
+  const payload = { ...form, status: targetStatus as 'ACTIF' | 'INACTIF' }
 
   try {
     if (isEdit.value && props.listingId) {
@@ -350,7 +496,7 @@ async function doSubmit(targetStatus: string) {
       Chargement...
     </div>
 
-    <form v-else class="lf__form" @submit.prevent="submit">
+    <form v-else class="lf__form" @submit.prevent>
       <!-- Progress pendant la sauvegarde -->
       <div v-if="saving" class="lf__progress">
         <ProgressBar mode="indeterminate" style="height: 4px" />
@@ -396,6 +542,23 @@ async function doSubmit(targetStatus: string) {
               <div class="lf__field lf__field--full">
                 <label>Adresse</label>
                 <InputText v-model="form.address" placeholder="Adresse complète" fluid :disabled="saving" />
+              </div>
+              <div class="lf__field lf__field--full">
+                <label>Position sur la carte</label>
+                <MapPicker
+                  :latitude="form.latitude"
+                  :longitude="form.longitude"
+                  @update="(c) => { form.latitude = c.latitude; form.longitude = c.longitude }"
+                />
+                <div v-if="form.latitude && form.longitude" class="lf__coords-display">
+                  <span class="lf__coords-text">{{ form.latitude }}, {{ form.longitude }}</span>
+                  <a :href="`https://www.google.com/maps?q=${form.latitude},${form.longitude}`" target="_blank" rel="noopener" class="lf__maps-link">
+                    <i class="pi pi-external-link"></i> Google Maps
+                  </a>
+                  <button type="button" class="lf__coords-clear" @click="form.latitude = null; form.longitude = null" :disabled="saving">
+                    <i class="pi pi-times"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -449,6 +612,44 @@ async function doSubmit(targetStatus: string) {
             </div>
           </section>
 
+          <!-- ═══ CONDITIONS (après caractéristiques) ═══ -->
+          <section v-if="form.listing_type === 'LOCATION'" class="lf__section">
+            <h2 class="lf__section-title">Conditions de location</h2>
+            <p class="lf__section-hint">Indiquez les conditions financières pour le locataire (en nombre de mois de loyer).</p>
+            <div class="lf__grid">
+              <div class="lf__field">
+                <label>Caution (mois)</label>
+                <InputNumber v-model="form.deposit_months" :min="0" :max="24" placeholder="Ex: 2" fluid :disabled="saving" />
+              </div>
+              <div class="lf__field">
+                <label>Avance (mois)</label>
+                <InputNumber v-model="form.advance_months" :min="0" :max="24" placeholder="Ex: 2" fluid :disabled="saving" />
+              </div>
+              <div class="lf__field">
+                <label>Frais d'agence (mois)</label>
+                <InputNumber v-model="form.agency_fee_months" :min="0" :max="12" placeholder="Ex: 1" fluid :disabled="saving" />
+              </div>
+              <div class="lf__field lf__field--full">
+                <label>Autres conditions</label>
+                <Textarea v-model="form.other_conditions" rows="2" placeholder="Ex: engagement minimum 12 mois, pas d'animaux..." fluid autoResize :disabled="saving" />
+              </div>
+            </div>
+            <div v-if="conditionsSummary" class="lf__conditions-summary">
+              <i class="pi pi-info-circle"></i>
+              <span>{{ conditionsSummary }}</span>
+            </div>
+          </section>
+
+          <section v-if="form.listing_type === 'VENTE'" class="lf__section">
+            <h2 class="lf__section-title">Conditions de vente</h2>
+            <div class="lf__grid">
+              <div class="lf__field lf__field--full">
+                <label>Conditions particulières</label>
+                <Textarea v-model="form.other_conditions" rows="2" placeholder="Ex: négociable, titre foncier disponible, terrain clôturé..." fluid autoResize :disabled="saving" />
+              </div>
+            </div>
+          </section>
+
           <!-- ═══ MÉDIAS : MODE CRÉATION ═══ -->
           <section v-if="!isEdit" class="lf__section">
             <h2 class="lf__section-title">Photos</h2>
@@ -467,7 +668,41 @@ async function doSubmit(targetStatus: string) {
             </label>
 
             <h2 class="lf__section-title" style="margin-top: 24px">Vidéo</h2>
-            <div v-if="pendingVideo" class="lf__pending-video">
+
+            <!-- Checker anti-fraude inline -->
+            <div v-if="videoCheckStep !== 'idle'" class="lf__video-checker" :class="{
+              'lf__video-checker--active': videoChecking,
+              'lf__video-checker--passed': videoCheckStep === 'passed',
+              'lf__video-checker--rejected': videoCheckStep === 'rejected',
+            }">
+              <div class="lf__checker-header">
+                <i v-if="videoChecking" class="pi pi-spin pi-spinner lf__checker-icon"></i>
+                <i v-else-if="videoCheckStep === 'passed'" class="pi pi-check-circle lf__checker-icon"></i>
+                <i v-else class="pi pi-times-circle lf__checker-icon"></i>
+                <span class="lf__checker-title">
+                  {{ videoChecking ? 'Vérification anti-fraude' : videoCheckStep === 'passed' ? 'Vérification réussie' : 'Vidéo rejetée' }}
+                </span>
+              </div>
+              <div class="lf__checker-bar">
+                <div class="lf__checker-bar-fill" :style="{ width: videoCheckProgress + '%' }"></div>
+              </div>
+              <div class="lf__checker-steps">
+                <div class="lf__checker-step" :class="{ active: videoCheckStep === 'hashing', done: videoCheckStep !== 'hashing' }">
+                  <i class="pi" :class="videoCheckStep === 'hashing' ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                  <span>Analyse de l'empreinte numérique</span>
+                </div>
+                <div class="lf__checker-step" :class="{ active: videoCheckStep === 'checking', done: videoCheckStep === 'passed' || videoCheckStep === 'rejected' }">
+                  <i class="pi" :class="videoCheckStep === 'checking' ? 'pi-spin pi-spinner' : (videoCheckStep === 'passed' ? 'pi-check' : 'pi-times')"></i>
+                  <span>Recherche de doublons</span>
+                </div>
+              </div>
+              <p class="lf__checker-msg">{{ videoCheckMessage }}</p>
+              <button v-if="videoCheckStep === 'rejected'" type="button" class="lf__checker-dismiss" @click="resetVideoCheck">
+                <i class="pi pi-replay"></i> Choisir une autre vidéo
+              </button>
+            </div>
+
+            <div v-if="pendingVideo && videoCheckStep !== 'rejected'" class="lf__pending-video">
               <div class="lf__pending-video-icon">
                 <i class="pi pi-video" style="font-size: 20px; color: #1DA53F"></i>
               </div>
@@ -475,17 +710,21 @@ async function doSubmit(targetStatus: string) {
                 <span class="lf__pending-video-name">{{ pendingVideo.name }}</span>
                 <span class="lf__pending-video-size">{{ (pendingVideo.size / 1024 / 1024).toFixed(1) }} Mo</span>
               </div>
-              <button type="button" class="lf__pending-video-remove" @click="removePendingVideo" :disabled="saving">
+              <button type="button" class="lf__pending-video-remove" @click="removePendingVideo(); resetVideoCheck()" :disabled="saving">
                 <i class="pi pi-times"></i>
               </button>
             </div>
-            <label v-else class="lf__file-btn" :class="{ disabled: saving }">
+            <label v-if="!pendingVideo && videoCheckStep === 'idle'" class="lf__file-btn" :class="{ disabled: saving }">
               <i class="pi pi-video"></i> Ajouter une vidéo
               <input type="file" accept="video/*" hidden @change="onSelectVideo" :disabled="saving" />
             </label>
             <p class="lf__media-hint">
               <i class="pi pi-info-circle"></i>
               La vidéo est la pièce maîtresse de votre annonce MonaJent. Les clients paient pour la visionner.
+            </p>
+            <p class="lf__media-hint lf__media-hint--security">
+              <i class="pi pi-shield"></i>
+              Chaque vidéo passe par notre système de vérification automatique pour garantir l'unicité des annonces.
             </p>
           </section>
 
@@ -517,6 +756,40 @@ async function doSubmit(targetStatus: string) {
             </label>
 
             <h2 class="lf__section-title" style="margin-top: 24px">Vidéos</h2>
+
+            <!-- Checker anti-fraude inline (mode édition) -->
+            <div v-if="videoCheckStep !== 'idle'" class="lf__video-checker" :class="{
+              'lf__video-checker--active': videoChecking,
+              'lf__video-checker--passed': videoCheckStep === 'passed',
+              'lf__video-checker--rejected': videoCheckStep === 'rejected',
+            }">
+              <div class="lf__checker-header">
+                <i v-if="videoChecking" class="pi pi-spin pi-spinner lf__checker-icon"></i>
+                <i v-else-if="videoCheckStep === 'passed'" class="pi pi-check-circle lf__checker-icon"></i>
+                <i v-else class="pi pi-times-circle lf__checker-icon"></i>
+                <span class="lf__checker-title">
+                  {{ videoChecking ? 'Vérification anti-fraude' : videoCheckStep === 'passed' ? 'Vérification réussie' : 'Vidéo rejetée' }}
+                </span>
+              </div>
+              <div class="lf__checker-bar">
+                <div class="lf__checker-bar-fill" :style="{ width: videoCheckProgress + '%' }"></div>
+              </div>
+              <div class="lf__checker-steps">
+                <div class="lf__checker-step" :class="{ active: videoCheckStep === 'hashing', done: videoCheckStep !== 'hashing' }">
+                  <i class="pi" :class="videoCheckStep === 'hashing' ? 'pi-spin pi-spinner' : 'pi-check'"></i>
+                  <span>Analyse de l'empreinte numérique</span>
+                </div>
+                <div class="lf__checker-step" :class="{ active: videoCheckStep === 'checking', done: videoCheckStep === 'passed' || videoCheckStep === 'rejected' }">
+                  <i class="pi" :class="videoCheckStep === 'checking' ? 'pi-spin pi-spinner' : (videoCheckStep === 'passed' ? 'pi-check' : 'pi-times')"></i>
+                  <span>Recherche de doublons</span>
+                </div>
+              </div>
+              <p class="lf__checker-msg">{{ videoCheckMessage }}</p>
+              <button v-if="videoCheckStep === 'rejected'" type="button" class="lf__checker-dismiss" @click="resetVideoCheck">
+                <i class="pi pi-replay"></i> Choisir une autre vidéo
+              </button>
+            </div>
+
             <div class="lf__media-grid" v-if="agent.currentListing.videos.length">
               <div v-for="vid in agent.currentListing.videos" :key="vid.id" class="lf__media-item lf__media-item--video">
                 <div class="lf__video-thumb">
@@ -535,13 +808,17 @@ async function doSubmit(targetStatus: string) {
                 </button>
               </div>
             </div>
-            <label class="lf__file-btn">
+            <label v-if="videoCheckStep === 'idle'" class="lf__file-btn">
               <i class="pi pi-video"></i> Ajouter une vidéo
               <input type="file" accept="video/*" hidden @change="onEditVideoUpload" />
             </label>
             <p class="lf__media-hint">
               <i class="pi pi-info-circle"></i>
               La vidéo est la pièce maîtresse de votre annonce MonaJent.
+            </p>
+            <p class="lf__media-hint lf__media-hint--security">
+              <i class="pi pi-shield"></i>
+              Chaque vidéo passe par notre système de vérification automatique pour garantir l'unicité des annonces.
             </p>
           </section>
         </div>
@@ -570,6 +847,16 @@ async function doSubmit(targetStatus: string) {
               class="lf__publish-btn--disabled"
             />
             <span class="lf__publish-badge">KYC requis</span>
+          </span>
+          <span v-else-if="!canPublish" class="lf__publish-wrap" :title="publishBlockReason">
+            <Button
+              label="Publier l'annonce"
+              icon="pi pi-send"
+              severity="success"
+              disabled
+              class="lf__publish-btn--disabled"
+            />
+            <span class="lf__publish-badge lf__publish-badge--media">{{ publishBlockReason }}</span>
           </span>
           <Button
             v-else
@@ -674,6 +961,25 @@ async function doSubmit(targetStatus: string) {
   color: #272727;
 }
 .req { color: #dc2626; }
+
+.lf__section-hint {
+  font-size: 12px;
+  color: #888;
+  margin: -8px 0 14px;
+}
+
+.lf__conditions-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1DA53F;
+  background: rgba(29,165,63,.06);
+  padding: 10px 14px;
+  border-radius: 8px;
+}
 
 .lf__amenities-input {
   display: flex;
@@ -887,6 +1193,108 @@ async function doSubmit(targetStatus: string) {
   color: #606060;
 }
 
+/* ─── Video checker inline (style YouTube) ──────────── */
+.lf__video-checker {
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  transition: border-color .3s, background .3s;
+}
+.lf__video-checker--active {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+.lf__video-checker--passed {
+  border-color: #34d399;
+  background: #ecfdf5;
+}
+.lf__video-checker--rejected {
+  border-color: #f87171;
+  background: #fef2f2;
+}
+.lf__checker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lf__checker-icon {
+  font-size: 18px;
+}
+.lf__video-checker--active .lf__checker-icon { color: #d97706; }
+.lf__video-checker--passed .lf__checker-icon { color: #059669; }
+.lf__video-checker--rejected .lf__checker-icon { color: #dc2626; }
+.lf__checker-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.lf__video-checker--active .lf__checker-title { color: #92400e; }
+.lf__video-checker--passed .lf__checker-title { color: #065f46; }
+.lf__video-checker--rejected .lf__checker-title { color: #991b1b; }
+
+.lf__checker-bar {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.lf__checker-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+.lf__video-checker--active .lf__checker-bar-fill { background: #f59e0b; }
+.lf__video-checker--passed .lf__checker-bar-fill { background: #10b981; }
+.lf__video-checker--rejected .lf__checker-bar-fill { background: #ef4444; }
+
+.lf__checker-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.lf__checker-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+  transition: color .2s;
+}
+.lf__checker-step.active { color: #d97706; font-weight: 500; }
+.lf__checker-step.done { color: #059669; }
+.lf__video-checker--rejected .lf__checker-step.done:last-child { color: #dc2626; }
+.lf__checker-step i { font-size: 13px; width: 16px; text-align: center; }
+
+.lf__checker-msg {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin: 0;
+}
+.lf__video-checker--rejected .lf__checker-msg { color: #b91c1c; font-weight: 500; }
+.lf__video-checker--passed .lf__checker-msg { color: #047857; }
+
+.lf__checker-dismiss {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  background: #fff;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+}
+.lf__checker-dismiss:hover { background: #fef2f2; }
+
 .lf__media-hint {
   display: flex;
   align-items: center;
@@ -897,6 +1305,10 @@ async function doSubmit(targetStatus: string) {
   background: rgba(29,165,63,.06);
   padding: 8px 12px;
   border-radius: 6px;
+}
+.lf__media-hint--security {
+  color: #6366f1;
+  background: rgba(99,102,241,.06);
 }
 
 .lf__footer {
@@ -920,6 +1332,10 @@ async function doSubmit(targetStatus: string) {
   white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,.18);
   pointer-events: none;
 }
+.lf__publish-badge--media {
+  top: auto; bottom: -22px; right: 50%; transform: translateX(50%);
+  background: #6366f1; font-size: 9px; padding: 2px 6px;
+}
 .lf__submit-btn {
   background: #1DA53F !important;
   border-color: #1DA53F !important;
@@ -928,6 +1344,54 @@ async function doSubmit(targetStatus: string) {
   background: #178A33 !important;
   border-color: #178A33 !important;
 }
+
+.lf__hint {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+.lf__coords-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+.lf__coords-text {
+  font-size: 13px;
+  color: #272727;
+  font-family: monospace;
+  flex: 1;
+}
+.lf__maps-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #1DA53F;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.lf__maps-link:hover { text-decoration: underline; }
+.lf__coords-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lf__coords-clear:hover { background: #fef2f2; }
 
 @media (max-width: 768px) {
   .lf__columns { grid-template-columns: 1fr; }

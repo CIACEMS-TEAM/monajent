@@ -57,6 +57,7 @@ from apps.core.services.visits import (
     VisitError,
 )
 from apps.core.services.listing_lifecycle import process_report
+from apps.users.models import Notification
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -217,6 +218,15 @@ class ClientVisitListCreateView(APIView):
             .select_related('listing', 'listing__agent', 'slot')
             .get(pk=result['visit'].pk)
         )
+
+        Notification.objects.create(
+            user=listing.agent,
+            category=Notification.Category.VISIT,
+            title='Nouvelle demande de visite',
+            message=f'Un client a demandé une visite pour « {listing.title} ».',
+            link='/agent/visits',
+        )
+
         response_data = VisitRequestClientSerializer(visit).data
         response_data['virtual_key_consumed'] = result['virtual_key_consumed']
         response_data['already_interacted'] = result['already_interacted']
@@ -239,13 +249,33 @@ class ClientVisitCancelView(APIView):
             pk=pk,
             user=request.user,
         )
+        was_confirmed = visit.status == 'CONFIRMED'
+        reason = request.data.get('reason', '')
         try:
-            cancel_visit(visit)
+            cancel_visit(visit, reason=reason)
         except VisitError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+        if was_confirmed:
+            msg = (
+                "Visite annulée. L'agent avait déjà confirmé le rendez-vous, "
+                "votre clé physique n'est pas restaurée."
+            )
+        else:
+            msg = "Visite annulée. Clé physique restaurée."
+
+        Notification.objects.create(
+            user=visit.listing.agent,
+            category=Notification.Category.VISIT,
+            title='Visite annulée par le client',
+            message=f'Le client a annulé sa visite pour « {visit.listing.title} ».'
+                    + (f' Motif : {reason}' if reason.strip() else ''),
+            link='/agent/visits',
+        )
+
         return Response({
-            'detail': "Visite annulée. Clé physique restaurée (clé virtuelle conservée par l'agent).",
+            'detail': msg,
+            'physical_key_restored': not was_confirmed,
         })
 
 
@@ -289,9 +319,21 @@ class AgentVisitConfirmView(APIView):
                 visit,
                 scheduled_at=ser.validated_data.get('scheduled_at'),
                 agent_note=ser.validated_data.get('agent_note', ''),
+                meeting_address=ser.validated_data.get('meeting_address', ''),
+                meeting_latitude=ser.validated_data.get('meeting_latitude'),
+                meeting_longitude=ser.validated_data.get('meeting_longitude'),
             )
         except VisitError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        scheduled_info = f' pour le {visit.scheduled_at.strftime("%d/%m/%Y à %H:%M")}' if visit.scheduled_at else ''
+        Notification.objects.create(
+            user=visit.user,
+            category=Notification.Category.VISIT,
+            title='Visite confirmée',
+            message=f'Votre visite pour « {visit.listing.title} » a été confirmée{scheduled_info}.',
+            link='/client/visits',
+        )
 
         return Response({
             'detail': "Visite confirmée.",
@@ -329,6 +371,14 @@ class AgentVisitValidateCodeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        Notification.objects.create(
+            user=visit.user,
+            category=Notification.Category.VISIT,
+            title='Visite effectuée',
+            message=f'Votre visite pour « {visit.listing.title} » a bien été réalisée. Merci !',
+            link='/client/visits',
+        )
+
         return Response({'detail': "Code validé. Visite effectuée. Merci !"})
 
 
@@ -342,10 +392,19 @@ class AgentVisitNoShowView(APIView):
             pk=pk,
             listing__agent=request.user,
         )
+        reason = request.data.get('reason', '')
         try:
-            mark_no_show(visit)
+            mark_no_show(visit, reason=reason)
         except VisitError as e:
             return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        Notification.objects.create(
+            user=visit.user,
+            category=Notification.Category.VISIT,
+            title='Absence signalée',
+            message=f'Vous avez été marqué(e) absent(e) pour la visite de « {visit.listing.title} ».',
+            link='/client/visits',
+        )
 
         return Response({'detail': "Client marqué comme absent (NO_SHOW)."})
 

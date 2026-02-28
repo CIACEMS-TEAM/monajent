@@ -3,7 +3,8 @@ import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axio
 import { useAuthStore } from '@/Stores/auth'
 
 // Crée une instance Axios configurée pour l'API
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL
+  || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000')
 
 const http: AxiosInstance = axios.create({
   baseURL: API_BASE,

@@ -180,6 +180,10 @@ class Notification(models.Model):
     category = models.CharField(max_length=16, choices=Category.choices, default=Category.SYSTEM)
     title = models.CharField(max_length=255)
     message = models.TextField()
+    link = models.CharField(
+        'Lien de navigation', max_length=255, blank=True,
+        help_text='Route frontend (ex: /agent/visits, /agent/settings#kyc)',
+    )
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

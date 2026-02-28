@@ -6,6 +6,7 @@ import { useAuthStore } from '@/Stores/auth'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'vue-toastification'
+import { API_BASE } from '@/services/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,8 +26,6 @@ const heroIdx = ref(0)
 const descExpanded = ref(false)
 const otherListings = ref<ListingListItem[]>([])
 const activeChip = ref('all')
-
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
 
 const chips = [
   { label: 'Tous', value: 'all' },
@@ -167,6 +166,29 @@ async function confirmWatch() {
   } finally { watchLoading.value = false }
 }
 
+async function refreshVideoToken(vid: PublicListingVideo) {
+  try {
+    const result = await pub.watchVideo(vid.access_key)
+    toast.info('Lien vidéo renouvelé')
+    return result.video_url
+  } catch {
+    toast.error('Impossible de recharger la vidéo. Veuillez réessayer.')
+    return null
+  }
+}
+
+function onVideoError(event: Event, vid: PublicListingVideo) {
+  const videoEl = event.target as HTMLVideoElement
+  if (!videoEl) return
+  const code = videoEl.error?.code
+  if (code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED || code === MediaError.MEDIA_ERR_NETWORK) {
+    pub.unlockedVideos[vid.access_key] = ''
+    toast.warning('Le lien vidéo a expiré. Cliquez pour le recharger.')
+  }
+}
+
+function preventContextMenu(e: Event) { e.preventDefault() }
+
 function goBuyPack() { showNoPack.value = false; router.push({ name: 'client-packs' }) }
 
 function shareUrl(): string { return window.location.origin + `/home/annonce/${listingId.value}` }
@@ -234,6 +256,14 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
           <span class="yw-meta__info">
             {{ pub.listing.views_count }} vue{{ pub.listing.views_count !== 1 ? 's' : '' }}
             &middot; {{ pub.listing.city }}<template v-if="pub.listing.neighborhood">, {{ pub.listing.neighborhood }}</template>
+            <a
+              v-if="pub.listing.latitude && pub.listing.longitude"
+              :href="`https://www.google.com/maps?q=${pub.listing.latitude},${pub.listing.longitude}`"
+              target="_blank"
+              rel="noopener"
+              class="yw-map-link"
+              title="Voir sur la carte"
+            ><i class="pi pi-map-marker"></i> Carte</a>
           </span>
           <div class="yw-meta__price">
             <span class="yw-price">{{ formatPrice(pub.listing.price) }}</span>
@@ -243,6 +273,27 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
             </span>
           </div>
         </div>
+
+        <!-- Conditions d'acquisition -->
+        <div v-if="pub.listing.deposit_months || pub.listing.advance_months || pub.listing.agency_fee_months" class="yw-conditions">
+          <div class="yw-conditions__row" v-if="pub.listing.deposit_months">
+            <span class="yw-conditions__label">Caution</span>
+            <span class="yw-conditions__val">{{ pub.listing.deposit_months }} mois &middot; {{ formatPrice(Number(pub.listing.price) * pub.listing.deposit_months) }}</span>
+          </div>
+          <div class="yw-conditions__row" v-if="pub.listing.advance_months">
+            <span class="yw-conditions__label">Avance</span>
+            <span class="yw-conditions__val">{{ pub.listing.advance_months }} mois &middot; {{ formatPrice(Number(pub.listing.price) * pub.listing.advance_months) }}</span>
+          </div>
+          <div class="yw-conditions__row" v-if="pub.listing.agency_fee_months">
+            <span class="yw-conditions__label">Frais d'agence</span>
+            <span class="yw-conditions__val">{{ pub.listing.agency_fee_months }} mois &middot; {{ formatPrice(Number(pub.listing.price) * pub.listing.agency_fee_months) }}</span>
+          </div>
+          <div class="yw-conditions__total">
+            <span>Total à l'entrée</span>
+            <strong>{{ formatPrice(Number(pub.listing.price) * ((pub.listing.deposit_months || 0) + (pub.listing.advance_months || 0) + (pub.listing.agency_fee_months || 0))) }}</strong>
+          </div>
+        </div>
+        <p v-if="pub.listing.other_conditions" class="yw-conditions__other">{{ pub.listing.other_conditions }}</p>
 
         <!-- Actions -->
         <div class="yw-actions">
@@ -302,13 +353,28 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
           <p class="yw-vids__hint"><i class="pi pi-info-circle"></i> 1 clé par visionnage. Déjà débloquée = gratuite.</p>
           <div class="yw-vids__grid">
             <div v-for="vid in pub.listing.videos" :key="vid.id" :id="`video-${vid.access_key}`" class="yw-vcard" :class="{ 'yw-vcard--hl': highlightVideoKey === vid.access_key }">
-              <div v-if="pub.getUnlockedUrl(vid.access_key)" class="yw-vcard__player">
-                <video :src="pub.getUnlockedUrl(vid.access_key)!" controls preload="metadata" :poster="vid.thumbnail ? mediaUrl(vid.thumbnail)! : undefined"></video>
+              <!-- Vidéo débloquée — player sécurisé -->
+              <div v-if="pub.getUnlockedUrl(vid.access_key)" class="yw-vcard__player" @contextmenu="preventContextMenu">
+                <video
+                  :src="pub.getUnlockedUrl(vid.access_key)!"
+                  controls
+                  controlsList="nodownload noplaybackrate"
+                  disablePictureInPicture
+                  preload="metadata"
+                  :poster="vid.thumbnail ? mediaUrl(vid.thumbnail)! : undefined"
+                  @error="(e: Event) => onVideoError(e, vid)"
+                  @contextmenu="preventContextMenu"
+                ></video>
+                <div class="yw-vcard__watermark">MonaJent</div>
               </div>
+              <!-- Vidéo verrouillée -->
               <div v-else class="yw-vcard__locked" @click="isClient ? handleWatch(vid) : undefined">
                 <img v-if="vid.thumbnail" :src="mediaUrl(vid.thumbnail)!" alt="" class="yw-vcard__thumb" />
                 <div v-else class="yw-vcard__nothumb"><i class="pi pi-video"></i></div>
-                <div class="yw-vcard__ov"><div class="yw-vcard__play"><i class="pi pi-lock"></i></div><span class="yw-vcard__lbl">{{ isClient ? 'Débloquer (1 clé)' : 'Réservé' }}</span></div>
+                <div class="yw-vcard__ov">
+                  <div class="yw-vcard__play"><i class="pi pi-lock"></i></div>
+                  <span class="yw-vcard__lbl">{{ isClient ? 'Débloquer (1 clé)' : 'Connectez-vous pour visionner' }}</span>
+                </div>
                 <span v-if="vid.duration_sec" class="yw-vcard__dur">{{ durationStr(vid.duration_sec) }}</span>
               </div>
               <div class="yw-vcard__foot">
@@ -450,13 +516,59 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
 /* Meta */
 .yw-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.yw-meta__info { font-size: 13px; color: #606060; }
+.yw-meta__info { font-size: 13px; color: #606060; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.yw-map-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #1DA53F;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(29,165,63,.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.yw-map-link:hover { text-decoration: underline; background: rgba(29,165,63,.15); }
 .yw-meta__price { display: flex; align-items: center; gap: 6px; }
 .yw-price { font-size: 16px; font-weight: 700; color: #1DA53F; }
 .yw-price-per { font-size: 12px; color: #606060; }
 .yw-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; }
 .yw-badge--loc { background: #e8f0fe; color: #1a73e8; }
 .yw-badge--sale { background: #e6f4ea; color: #137333; }
+
+/* Conditions */
+.yw-conditions {
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.yw-conditions__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.yw-conditions__label { color: #606060; }
+.yw-conditions__val { font-weight: 500; color: #272727; }
+.yw-conditions__total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding-top: 6px;
+  border-top: 1px solid #e0e0e0;
+  color: #1DA53F;
+}
+.yw-conditions__other {
+  font-size: 12px;
+  color: #606060;
+  font-style: italic;
+  margin: 0 0 4px;
+}
 
 /* Actions */
 .yw-actions { display: flex; gap: 6px; padding: 6px 0; border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5; flex-wrap: wrap; }
@@ -519,8 +631,32 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
 .yw-vcard { border-radius: 8px; overflow: hidden; background: #fff; border: 1px solid #e5e5e5; }
 .yw-vcard--hl { box-shadow: 0 0 0 2px #1DA53F; }
-.yw-vcard__player { width: 100%; aspect-ratio: 16/9; }
-.yw-vcard__player video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.yw-vcard__player {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.yw-vcard__player video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  border-radius: 8px 8px 0 0;
+}
+.yw-vcard__watermark {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,.25);
+  letter-spacing: 1px;
+  pointer-events: none;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
 .yw-vcard__locked { position: relative; width: 100%; aspect-ratio: 16/9; cursor: pointer; overflow: hidden; }
 .yw-vcard__thumb { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.5); transition: filter 0.15s; }
 .yw-vcard__locked:hover .yw-vcard__thumb { filter: brightness(0.4); }

@@ -257,6 +257,7 @@ class AdminKycReviewView(APIView):
                 category='KYC',
                 title='Identité vérifiée',
                 message='Votre identité a été vérifiée avec succès. Vous pouvez maintenant publier vos annonces.',
+                link='/agent/settings#kyc',
             )
             return Response({'detail': 'KYC approuvé.', 'kyc_status': 'APPROVED'})
 
@@ -273,5 +274,6 @@ class AdminKycReviewView(APIView):
                 category='KYC',
                 title='Vérification rejetée',
                 message=f'Votre vérification d\'identité a été rejetée. Motif : {reason}',
+                link='/agent/settings#kyc',
             )
             return Response({'detail': 'KYC rejeté.', 'kyc_status': 'REJECTED'})

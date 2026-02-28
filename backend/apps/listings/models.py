@@ -86,6 +86,24 @@ class Listing(models.Model):
         blank=True,
     )
 
+    # ── Conditions d'acquisition / location ──────────────────
+    deposit_months = models.PositiveSmallIntegerField(
+        'Caution (mois)', null=True, blank=True,
+        help_text='Nombre de mois de caution exigés.',
+    )
+    advance_months = models.PositiveSmallIntegerField(
+        'Avance (mois)', null=True, blank=True,
+        help_text='Nombre de mois d\'avance exigés.',
+    )
+    agency_fee_months = models.PositiveSmallIntegerField(
+        'Frais d\'agence (mois)', null=True, blank=True,
+        help_text='Nombre de mois de frais d\'agence.',
+    )
+    other_conditions = models.TextField(
+        'Autres conditions', blank=True,
+        help_text='Conditions supplémentaires en texte libre.',
+    )
+
     # ── Commodités (JSON list) ────────────────────────────────
     amenities = models.JSONField(
         'Commodités', default=list, blank=True,
@@ -181,8 +199,9 @@ class Video(models.Model):
     Accès protégé : seul le thumbnail est visible gratuitement.
     La lecture complète nécessite la consommation d'une clé virtuelle.
 
-    Anti-fraude : file_hash (SHA-256) empêche un agent de téléverser
-    la même vidéo plusieurs fois pour gonfler ses revenus.
+    Anti-fraude double couche :
+      1. file_hash (SHA-256) — doublons bit-à-bit identiques
+      2. perceptual_hash (VideoHash) — copies recompressées / recadrées
     """
 
     listing = models.ForeignKey(
@@ -197,10 +216,16 @@ class Video(models.Model):
     # Identifiant unique pour les URLs signées / accès protégé
     access_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
-    # Anti-fraude : SHA-256 du fichier vidéo
+    # Anti-fraude couche 1 : SHA-256 (doublons exacts)
     file_hash = models.CharField(
         'Hash SHA-256', max_length=64, blank=True, db_index=True,
-        help_text='SHA-256 du fichier vidéo, calculé à l\'upload pour détection de doublons.',
+        help_text='SHA-256 du fichier vidéo — détection de doublons exacts.',
+    )
+
+    # Anti-fraude couche 2 : hash perceptuel (copies modifiées)
+    perceptual_hash = models.CharField(
+        'Hash perceptuel', max_length=16, blank=True, db_index=True,
+        help_text='Hash perceptuel 64-bit (hex) via VideoHash — détection de copies visuellement similaires.',
     )
 
     # Compteur dénormalisé

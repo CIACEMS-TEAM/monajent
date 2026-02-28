@@ -182,7 +182,10 @@ class VideoStreamView(APIView):
             return Response({'detail': 'Fichier vidéo manquant.'}, status=status.HTTP_404_NOT_FOUND)
 
         response = FileResponse(video.file.open('rb'), content_type='video/mp4')
-        response['Cache-Control'] = 'private, no-store'
+        response['Cache-Control'] = 'private, no-store, no-cache, must-revalidate'
+        response['Content-Disposition'] = 'inline'
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['X-Robots-Tag'] = 'noindex, nofollow'
         return response
 
 

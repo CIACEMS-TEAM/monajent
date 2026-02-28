@@ -45,6 +45,10 @@ export interface PublicListing {
   surface_m2: string | null
   furnishing: '' | 'FURNISHED' | 'UNFURNISHED' | 'SEMI_FURNISHED'
   amenities: string[]
+  deposit_months: number | null
+  advance_months: number | null
+  agency_fee_months: number | null
+  other_conditions: string
   views_count: number
   favorites_count: number
   agent: PublicListingAgent
@@ -75,6 +79,9 @@ export interface ListingListItem {
   bedrooms: number | null
   surface_m2: string | null
   furnishing: string
+  deposit_months: number | null
+  advance_months: number | null
+  agency_fee_months: number | null
   views_count: number
   favorites_count: number
   agent: PublicListingAgent

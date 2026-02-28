@@ -18,6 +18,7 @@ const profileOpen = ref(false)
 const notifOpen = ref(false)
 const isMobile = ref(false)
 const searchQuery = ref('')
+const mobileSearchOpen = ref(false)
 
 function checkMobile() {
   isMobile.value = window.innerWidth < 1024
@@ -88,7 +89,10 @@ function formatNotifTime(iso: string): string {
 
 function handleSearch() {
   const q = searchQuery.value.trim()
-  if (q) router.push({ name: 'agent-listings', query: { q } })
+  if (q) {
+    router.push({ name: 'agent-listings', query: { q } })
+    mobileSearchOpen.value = false
+  }
 }
 
 function toggleNotif() {
@@ -101,6 +105,14 @@ function toggleNotif() {
 
 async function markAllRead() {
   await notifStore.markAllRead()
+}
+
+function handleNotifClick(n: import('@/Stores/notifications').NotificationItem) {
+  notifStore.markRead([n.id])
+  notifOpen.value = false
+  if (n.link) {
+    router.push(n.link)
+  }
 }
 
 function closePopupsOnClickOutside(e: MouseEvent) {
@@ -137,8 +149,23 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
         </form>
       </div>
 
+      <!-- Mobile search overlay -->
+      <div v-if="mobileSearchOpen" class="agt-mobile-search-overlay">
+        <form class="agt-mobile-search-form" @submit.prevent="handleSearch">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#606060" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input v-model="searchQuery" type="text" placeholder="Rechercher dans vos annonces" autofocus />
+          <button type="button" class="agt-mobile-search-close" @click="mobileSearchOpen = false" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </form>
+      </div>
+
       <div class="agt-header__end">
-        <router-link to="/agent/listings" class="agt-header__create" title="Nouvelle annonce">
+        <button class="agt-header__mobile-search" @click="mobileSearchOpen = true" title="Rechercher" aria-label="Rechercher">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        </button>
+
+        <router-link to="/agent/listings?action=new" class="agt-header__create" title="Nouvelle annonce">
           <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
           <span class="agt-header__create-text">Nouvelle annonce</span>
         </router-link>
@@ -161,8 +188,8 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
                 v-for="n in notifStore.notifications"
                 :key="n.id"
                 class="agt-notif-item"
-                :class="{ unread: !n.is_read }"
-                @click="notifStore.markRead([n.id]); notifOpen = false"
+                :class="{ unread: !n.is_read, clickable: !!n.link }"
+                @click="handleNotifClick(n)"
               >
                 <div class="agt-notif-item__icon" :class="'cat-' + n.category.toLowerCase()">
                   <svg v-if="n.category === 'KYC'" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
@@ -175,6 +202,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
                   <div class="agt-notif-item__msg">{{ n.message }}</div>
                   <div class="agt-notif-item__time">{{ formatNotifTime(n.created_at) }}</div>
                 </div>
+                <svg v-if="n.link" class="agt-notif-item__arrow" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
               </div>
             </div>
           </div>
@@ -388,6 +416,39 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
   font-size: 14px;
   color: var(--text);
 }
+
+/* Mobile search button - hidden on desktop */
+.agt-header__mobile-search {
+  display: none;
+  background: none; border: none; cursor: pointer; color: var(--text);
+  padding: 6px; border-radius: 50%;
+}
+.agt-header__mobile-search:hover { background: #f0f0f0; }
+
+/* Mobile search overlay */
+.agt-mobile-search-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: #fff; z-index: 10; display: flex; align-items: center;
+  padding: 0 12px;
+}
+.agt-mobile-search-form {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 40px; padding: 0 12px; height: 38px;
+}
+.agt-mobile-search-form:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(29,165,63,.12);
+}
+.agt-mobile-search-form input {
+  border: none; background: none; outline: none;
+  flex: 1; font-size: 14px; color: var(--text);
+}
+.agt-mobile-search-close {
+  background: none; border: none; cursor: pointer; color: #666;
+  padding: 4px; border-radius: 50%; display: flex; flex-shrink: 0;
+}
+.agt-mobile-search-close:hover { color: #333; background: #f0f0f0; }
 
 .agt-header__end {
   display: flex;
@@ -673,6 +734,12 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 .agt-notif-item__title { font-weight: 600; font-size: .85rem; margin-bottom: 2px; }
 .agt-notif-item__msg { font-size: .8rem; color: #555; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .agt-notif-item__time { font-size: .72rem; color: #999; margin-top: 4px; }
+.agt-notif-item__arrow { flex-shrink: 0; color: #aaa; transition: color .15s; }
+.agt-notif-item.clickable:hover .agt-notif-item__arrow { color: #2563eb; }
+.agt-notif-item.clickable:hover { background: #eef6ff; }
+.agt-notif-item {
+  align-items: center;
+}
 
 @media (max-width: 480px) {
   .agt-notif-panel { width: calc(100vw - 16px); right: -60px; }
@@ -691,6 +758,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 /* ====== MOBILE ====== */
 @media (max-width: 1023px) {
   .agt-header__center { display: none; }
+  .agt-header__mobile-search { display: flex; }
   .agt-header__create-text { display: none; }
   .agt-header__create { padding: 0 10px; }
   .agt-header__studio { font-size: 18px; }

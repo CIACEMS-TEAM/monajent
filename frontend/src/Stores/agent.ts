@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia'
-import http from '@/services/http'
-
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000'
+import http, { API_BASE } from '@/services/http'
 
 function absUrl(url: string | null | undefined): string | null {
   if (!url) return null
@@ -66,6 +64,7 @@ export interface ListingImage {
 export interface ListingVideo {
   id: number
   file: string
+  stream_url: string | null
   thumbnail: string | null
   duration_sec: number | null
   access_key: string
@@ -101,6 +100,10 @@ export interface Listing {
   surface_m2: string | null
   furnishing: '' | 'FURNISHED' | 'UNFURNISHED' | 'SEMI_FURNISHED'
   amenities: string[]
+  deposit_months: number | null
+  advance_months: number | null
+  agency_fee_months: number | null
+  other_conditions: string
   views_count: number
   favorites_count: number
   reports_count: number
@@ -125,6 +128,9 @@ export interface ListingListItem {
   bedrooms: number | null
   surface_m2: string | null
   furnishing: string
+  deposit_months: number | null
+  advance_months: number | null
+  agency_fee_months: number | null
   views_count: number
   favorites_count: number
   reports_count: number
@@ -154,6 +160,10 @@ export interface ListingCreatePayload {
   surface_m2?: number | null
   furnishing?: string
   amenities?: string[]
+  deposit_months?: number | null
+  advance_months?: number | null
+  agency_fee_months?: number | null
+  other_conditions?: string
 }
 
 // ─── Types : Wallet (alignées sur le backend) ───────────────
@@ -218,6 +228,11 @@ export interface Visit {
   is_deadline_passed: boolean
   client_note: string
   agent_note: string
+  cancel_reason: string
+  meeting_address: string
+  meeting_latitude: string | null
+  meeting_longitude: string | null
+  meeting_map_url: string | null
   created_at: string
 }
 
@@ -321,7 +336,10 @@ export const useAgentStore = defineStore('agent', {
     agencyName: (s) => s.profile?.agency_name || '',
     profilePhoto: (s) => absUrl(s.profile?.profile_photo),
     isVerified: (s) => s.profile?.verified ?? false,
-    kycStatus: (s) => s.profile?.kyc_status ?? 'NOT_SUBMITTED',
+    kycStatus: (s) => {
+      if (s.profile?.verified) return 'APPROVED'
+      return s.profile?.kyc_status ?? 'NOT_SUBMITTED'
+    },
     kycRejectionReason: (s) => s.profile?.kyc_rejection_reason ?? '',
     isKycEditable: (s) => {
       const st = s.profile?.kyc_status
@@ -329,7 +347,8 @@ export const useAgentStore = defineStore('agent', {
     },
     hasKycDocuments: (s) =>
       !!(s.profile?.national_id_document) || s.documents.length > 0,
-    isProfileComplete: (s) => !!(s.profile?.agency_name),
+    isProfileComplete: (s) =>
+      !!(s.profile?.agency_name) && !!(s.profile?.contact_phone || s.profile?.contact_email),
     totalViews: (s) => s.listings.reduce((t, l) => t + l.views_count, 0),
     publishedCount: (s) => s.listings.filter(l => l.status === 'ACTIF').length,
     inactifCount: (s) => s.listings.filter(l => l.status === 'INACTIF').length,
@@ -603,7 +622,13 @@ export const useAgentStore = defineStore('agent', {
       }
     },
 
-    async confirmVisit(id: number, payload?: { scheduled_at?: string; agent_note?: string }) {
+    async confirmVisit(id: number, payload?: {
+      scheduled_at?: string
+      agent_note?: string
+      meeting_address?: string
+      meeting_latitude?: number | null
+      meeting_longitude?: number | null
+    }) {
       const { data } = await http.post(`/api/agent/visits/${id}/confirm/`, payload || {})
       await this.fetchVisits()
       return data
@@ -615,8 +640,8 @@ export const useAgentStore = defineStore('agent', {
       return data
     },
 
-    async markNoShow(id: number) {
-      const { data } = await http.post(`/api/agent/visits/${id}/no-show/`)
+    async markNoShow(id: number, reason: string) {
+      const { data } = await http.post(`/api/agent/visits/${id}/no-show/`, { reason })
       await this.fetchVisits()
       return data
     },
