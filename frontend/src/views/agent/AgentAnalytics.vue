@@ -56,6 +56,10 @@ function formatDay(dateStr: string) {
   const d = new Date(dateStr)
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
+
+const maxReportCount = computed(() =>
+  Math.max(...(data.value?.reports_by_reason?.map((r: any) => r.count) ?? [0]), 1)
+)
 </script>
 
 <template>
@@ -162,6 +166,31 @@ function formatDay(dateStr: string) {
           </div>
         </div>
         <p v-else class="anl__empty">Aucune annonce active</p>
+      </section>
+
+      <!-- Reports breakdown -->
+      <section v-if="data.reports_by_reason?.length" class="anl__reports-section">
+        <h2 class="anl__section-title">
+          <i class="pi pi-flag" style="color: #e53935; font-size: 14px"></i>
+          Signalements par motif ({{ data.summary.total_reports }} au total)
+        </h2>
+        <div class="anl__reports-grid">
+          <div v-for="r in data.reports_by_reason" :key="r.reason" class="anl__report-card">
+            <span class="anl__report-count">{{ r.count }}</span>
+            <span class="anl__report-label">{{ r.reason_label }}</span>
+            <div class="anl__report-bar">
+              <div class="anl__report-bar-fill" :style="{ width: maxReportCount > 0 ? (r.count / maxReportCount * 100) + '%' : '0%' }"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="data.summary.total_reports === 0" class="anl__reports-section">
+        <h2 class="anl__section-title">
+          <i class="pi pi-check-circle" style="color: #1DA53F; font-size: 14px"></i>
+          Signalements
+        </h2>
+        <p class="anl__empty anl__reports-ok">Aucun signalement sur vos annonces. Continuez comme ça !</p>
       </section>
 
       <!-- Average -->
@@ -348,6 +377,52 @@ function formatDay(dateStr: string) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Reports */
+.anl__reports-section {
+  background: #fff;
+  border: 1px solid #E0E0E0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+.anl__reports-section .anl__section-title {
+  display: flex; align-items: center; gap: 8px;
+}
+.anl__reports-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anl__report-card {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: auto auto;
+  gap: 2px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+.anl__report-count {
+  grid-row: 1 / 3;
+  font-size: 22px; font-weight: 700; color: #e53935;
+  text-align: center;
+}
+.anl__report-label {
+  font-size: 13px; font-weight: 500; color: #333;
+}
+.anl__report-bar {
+  height: 4px; background: #fecaca; border-radius: 2px;
+  overflow: hidden;
+}
+.anl__report-bar-fill {
+  height: 100%; background: #e53935; border-radius: 2px;
+  transition: width 0.3s;
+}
+.anl__reports-ok {
+  color: #1DA53F; font-weight: 500;
 }
 
 .anl__avg {

@@ -8,6 +8,8 @@ export interface PublicListingAgent {
   agency_name: string
   profile_photo: string | null
   verified: boolean
+  contact_phone?: string
+  contact_email?: string
 }
 
 export interface PublicListingImage {
@@ -97,7 +99,16 @@ export const usePublicStore = defineStore('public', {
     unlockedVideos: {} as Record<string, string>,
     listings: [] as ListingListItem[],
     listingsLoading: false,
+    virtualKeys: 0,
+    physicalKeys: 0,
+    keysLoaded: false,
+    favoriteIds: new Set<number>(),
+    favoritesLoaded: false,
   }),
+
+  getters: {
+    isFavorite: (state) => (listingId: number) => state.favoriteIds.has(listingId),
+  },
 
   actions: {
     async fetchListings(params?: Record<string, string>) {
@@ -122,16 +133,70 @@ export const usePublicStore = defineStore('public', {
       }
     },
 
+    async fetchKeyCounts() {
+      try {
+        const { data } = await http.get<any[]>('/api/client/packs/')
+        const packs = Array.isArray(data) ? data : (data as any).results ?? []
+        this.virtualKeys = packs.reduce((s: number, p: any) => s + Math.max(p.virtual_total - p.virtual_used, 0), 0)
+        this.physicalKeys = packs.reduce((s: number, p: any) => s + (p.has_physical_key ? 1 : 0), 0)
+        this.keysLoaded = true
+      } catch { /* silent */ }
+    },
+
     async watchVideo(accessKey: string): Promise<WatchVideoResult> {
       const { data } = await http.post<WatchVideoResult>(
         `/api/videos/${accessKey}/watch/`,
       )
       this.unlockedVideos[accessKey] = data.video_url
+
+      if (!data.already_watched) {
+        if (this.virtualKeys > 0) this.virtualKeys--
+
+        if (this.listing) {
+          const vid = this.listing.videos.find(v => v.access_key === accessKey)
+          if (vid) vid.views_count++
+          this.listing.views_count++
+        }
+      }
+
       return data
     },
 
     getUnlockedUrl(accessKey: string): string | null {
       return this.unlockedVideos[accessKey] || null
+    },
+
+    async fetchFavoriteIds() {
+      try {
+        const { data } = await http.get<number[]>('/api/client/favorites/ids/')
+        this.favoriteIds = new Set(data)
+        this.favoritesLoaded = true
+      } catch { /* silent */ }
+    },
+
+    async toggleFavorite(listingId: number): Promise<boolean> {
+      const wasFav = this.favoriteIds.has(listingId)
+      if (wasFav) {
+        this.favoriteIds.delete(listingId)
+        try {
+          await http.delete(`/api/client/favorites/${listingId}/`)
+        } catch {
+          this.favoriteIds.add(listingId)
+          return true
+        }
+        if (this.listing?.id === listingId) this.listing.favorites_count--
+        return false
+      } else {
+        this.favoriteIds.add(listingId)
+        try {
+          await http.post(`/api/client/favorites/${listingId}/`)
+        } catch {
+          this.favoriteIds.delete(listingId)
+          return false
+        }
+        if (this.listing?.id === listingId) this.listing.favorites_count++
+        return true
+      }
     },
   },
 })

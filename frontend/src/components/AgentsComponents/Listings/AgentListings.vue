@@ -358,6 +358,21 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
         </template>
       </Column>
 
+      <Column header="Favoris" field="favorites_count" :sortable="true" style="width: 80px; text-align: center">
+        <template #body="{ data }">
+          <span class="lstg__fav-count" :class="{ 'lstg__fav-count--active': data.favorites_count > 0 }">
+            <i class="pi pi-heart"></i> {{ data.favorites_count }}
+          </span>
+        </template>
+      </Column>
+
+      <Column header="Signalements" field="reports_count" :sortable="true" style="width: 100px; text-align: center">
+        <template #body="{ data }">
+          <Tag v-if="data.reports_count > 0" :value="`${data.reports_count}`" severity="danger" icon="pi pi-flag" />
+          <span v-else class="lstg__no-reports">0</span>
+        </template>
+      </Column>
+
       <Column header="Date" field="created_at" :sortable="true" style="width: 100px">
         <template #body="{ data }">
           {{ new Date(data.created_at).toLocaleDateString('fr-FR') }}
@@ -627,6 +642,13 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
   gap: 4px;
   color: #606060;
 }
+.lstg__fav-count {
+  display: flex; align-items: center; justify-content: center;
+  gap: 4px; color: #ccc; font-size: 13px;
+}
+.lstg__fav-count--active { color: #ef4444; font-weight: 600; }
+.lstg__fav-count--active i { color: #ef4444; }
+.lstg__no-reports { color: #ccc; font-size: 13px; }
 
 .lstg__actions {
   display: flex;

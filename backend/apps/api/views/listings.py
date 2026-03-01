@@ -196,7 +196,7 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
             .filter(agent=self.request.user)
             .exclude(status=Listing.Status.DELETED)
             .select_related('agent__agent_profile')
-            .prefetch_related('images', 'videos')
+            .prefetch_related('images', 'videos', 'reports__user', 'favorited_by__user')
         )
 
 

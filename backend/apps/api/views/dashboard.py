@@ -205,6 +205,18 @@ class AgentAnalyticsView(APIView):
 
         visit_conversion = round((visits_done / max(visits_total, 1)) * 100, 1)
 
+        from apps.listings.models import ListingReport
+        total_reports = ListingReport.objects.filter(listing__agent=user).count()
+        reports_by_reason = list(
+            ListingReport.objects.filter(listing__agent=user)
+            .values('reason')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+        reason_labels = dict(ListingReport.Reason.choices)
+        for item in reports_by_reason:
+            item['reason_label'] = reason_labels.get(item['reason'], item['reason'])
+
         return Response({
             'daily_stats': daily_stats,
             'total_views_28d': total_views_period,
@@ -213,11 +225,13 @@ class AgentAnalyticsView(APIView):
             'summary': {
                 'total_views': total_views_all,
                 'total_favorites': total_favorites_all,
+                'total_reports': total_reports,
                 'published_count': published_count,
                 'total_listings': listings_count,
                 'avg_views_per_listing': avg_views,
             },
             'top_listings': top_listings,
+            'reports_by_reason': reports_by_reason,
             'visits': {
                 'done': visits_done,
                 'total': visits_total,

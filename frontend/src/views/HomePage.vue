@@ -49,6 +49,18 @@
           </svg>
         </button>
         <template v-if="auth.me">
+          <!-- Keys indicators (client only) -->
+          <div v-if="auth.me.role === 'CLIENT' && pub.keysLoaded" class="yt-keys">
+            <router-link to="/home/packs" class="yt-keys__item yt-keys__item--virt" title="Clés virtuelles">
+              <img :src="keyVirtImg" alt="" class="yt-keys__icon" />
+              <span class="yt-keys__count">{{ pub.virtualKeys }}</span>
+            </router-link>
+            <router-link to="/home/packs" class="yt-keys__item yt-keys__item--phy" title="Clés physiques (visites gratuites)">
+              <img :src="keyPhyImg" alt="" class="yt-keys__icon" />
+              <span class="yt-keys__count">{{ pub.physicalKeys }}</span>
+            </router-link>
+          </div>
+
           <button class="yt-icon-btn yt-notif-btn" aria-label="Notifications">
             <svg viewBox="0 0 24 24" width="24" height="24">
               <path
@@ -155,6 +167,13 @@
 
         <div class="yt-sidebar__heading">Vous</div>
 
+        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/dashboard')">
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+          </svg>
+          <span class="yt-sidebar__label">Mon espace</span>
+        </a>
+
         <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/history')">
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
@@ -193,6 +212,20 @@
             />
           </svg>
           <span class="yt-sidebar__label">Visites</span>
+        </a>
+
+        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/payments')">
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+          </svg>
+          <span class="yt-sidebar__label">Paiements</span>
+        </a>
+
+        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/reports')">
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/>
+          </svg>
+          <span class="yt-sidebar__label">Signalements</span>
         </a>
 
         <div class="yt-sidebar__separator"></div>
@@ -319,9 +352,13 @@
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
+import { usePublicStore } from '@/Stores/public'
 import WelcomeOverlay from '@/components/WelcomeOverlay.vue'
+import keyVirtImg from '@/assets/icons/key_virt.png'
+import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const auth = useAuthStore()
+const pub = usePublicStore()
 const router = useRouter()
 const sidebarOpen = ref(false)
 const mobileSearchOpen = ref(false)
@@ -329,6 +366,13 @@ const mobileSearchInput = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
 const showLoginModal = ref(false)
 const userMenuOpen = ref(false)
+
+function fetchClientData() {
+  if (auth.me?.role === 'CLIENT') {
+    pub.fetchKeyCounts()
+    pub.fetchFavoriteIds()
+  }
+}
 
 watch(mobileSearchOpen, (open) => {
   if (open) nextTick(() => mobileSearchInput.value?.focus())
@@ -339,8 +383,13 @@ function closeUserMenu(e: MouseEvent) {
   if (!wrapper) userMenuOpen.value = false
 }
 
-onMounted(() => document.addEventListener('click', closeUserMenu))
+onMounted(() => {
+  document.addEventListener('click', closeUserMenu)
+  fetchClientData()
+})
 onUnmounted(() => document.removeEventListener('click', closeUserMenu))
+
+watch(() => auth.me, () => fetchClientData())
 
 const userInitial = computed(() => {
   if (!auth.me) return ''
@@ -536,6 +585,40 @@ function handleBottomNavProfile() {
   min-width: 200px;
   justify-content: flex-end;
 }
+
+/* Keys indicators */
+.yt-keys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 2px;
+}
+.yt-keys__item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  text-decoration: none;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.yt-keys__item--virt { background: rgba(37,99,235,.08); }
+.yt-keys__item--virt:hover { background: rgba(37,99,235,.15); }
+.yt-keys__item--phy { background: rgba(234,160,12,.08); }
+.yt-keys__item--phy:hover { background: rgba(234,160,12,.15); }
+.yt-keys__icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+.yt-keys__count {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.yt-keys__item--virt .yt-keys__count { color: #2563eb; }
+.yt-keys__item--phy .yt-keys__count { color: #d97706; }
 
 .yt-notif-btn {
   position: relative;

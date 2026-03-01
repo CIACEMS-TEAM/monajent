@@ -24,6 +24,7 @@ class Payment(models.Model):
         REFUNDED = 'REFUNDED', 'Remboursé'
 
     class Provider(models.TextChoices):
+        PAYSTACK = 'PAYSTACK', 'Paystack'
         ORANGE_MONEY = 'ORANGE_MONEY', 'Orange Money'
         WAVE = 'WAVE', 'Wave'
         MTN = 'MTN', 'MTN Money'

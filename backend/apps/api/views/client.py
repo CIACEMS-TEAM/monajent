@@ -163,6 +163,19 @@ class ClientFavoriteListView(generics.ListAPIView):
         )
 
 
+class ClientFavoriteIdsView(APIView):
+    """GET /api/client/favorites/ids/ → liste légère des listing_id en favori."""
+    permission_classes = [IsAuthenticated, IsClient]
+
+    def get(self, request):
+        ids = list(
+            FavoriteListing.objects
+            .filter(user=request.user)
+            .values_list('listing_id', flat=True)
+        )
+        return Response(ids)
+
+
 class ClientFavoriteToggleView(APIView):
     """
     POST   /api/client/favorites/{listing_id}/  → Ajouter
@@ -176,6 +189,9 @@ class ClientFavoriteToggleView(APIView):
             user=request.user, listing=listing,
         )
         if created:
+            Listing.objects.filter(pk=listing_id).update(
+                favorites_count=F('favorites_count') + 1,
+            )
             return Response(
                 {'detail': "Ajouté aux favoris.", 'favorited': True},
                 status=status.HTTP_201_CREATED,
@@ -190,6 +206,9 @@ class ClientFavoriteToggleView(APIView):
             user=request.user, listing_id=listing_id,
         ).delete()
         if deleted:
+            Listing.objects.filter(pk=listing_id).update(
+                favorites_count=F('favorites_count') - 1,
+            )
             return Response(
                 {'detail': "Retiré des favoris.", 'favorited': False},
             )

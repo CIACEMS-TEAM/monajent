@@ -82,6 +82,25 @@ export interface ListingAgent {
   verified: boolean
 }
 
+export interface ListingReportDetail {
+  id: number
+  reason: string
+  reason_label: string
+  description: string
+  status: string
+  status_label: string
+  user_phone: string
+  user_name: string
+  created_at: string
+}
+
+export interface ListingFavoriteDetail {
+  id: number
+  user_phone: string
+  user_name: string
+  created_at: string
+}
+
 export interface Listing {
   id: number
   title: string
@@ -112,6 +131,8 @@ export interface Listing {
   days_remaining: number
   images: ListingImage[]
   videos: ListingVideo[]
+  reports_detail: ListingReportDetail[]
+  favorites_detail: ListingFavoriteDetail[]
   created_at: string
   updated_at: string
 }
@@ -277,17 +298,24 @@ export interface DashboardData {
   views_28d: number
 }
 
+export interface ReportByReason {
+  reason: string
+  reason_label: string
+  count: number
+}
+
 export interface AnalyticsData {
   daily_stats: DailyStats[]
   total_views_28d: number
   period_days: number
   trend_pct: number
   summary: {
-    total_views: number; total_favorites: number
+    total_views: number; total_favorites: number; total_reports: number
     published_count: number; total_listings: number
     avg_views_per_listing: number
   }
   top_listings: { id: number; title: string; views_count: number; favorites_count: number }[]
+  reports_by_reason: ReportByReason[]
   visits: { done: number; total: number; conversion_pct: number }
 }
 

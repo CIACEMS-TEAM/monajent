@@ -96,6 +96,13 @@ function furnishLabel(f: string) {
   const m: Record<string, string> = { FURNISHED: 'Meublé', UNFURNISHED: 'Non meublé', SEMI_FURNISHED: 'Semi-meublé' }
   return m[f] || '—'
 }
+
+function reportStatusSeverity(s: string): "success" | "warn" | "danger" | "info" | "secondary" {
+  const m: Record<string, "success" | "warn" | "danger" | "info" | "secondary"> = {
+    PENDING: 'warn', REVIEWED: 'info', RESOLVED: 'danger', DISMISSED: 'secondary',
+  }
+  return m[s] || 'secondary'
+}
 </script>
 
 <template>
@@ -322,7 +329,7 @@ function furnishLabel(f: string) {
           <span>{{ listing.views_count }} vues</span>
         </div>
         <div class="ld__stat">
-          <i class="pi pi-heart"></i>
+          <i class="pi pi-heart" style="color: #ef4444"></i>
           <span>{{ listing.favorites_count }} favoris</span>
         </div>
         <div class="ld__stat" :class="{ 'ld__stat--alert': listing.reports_count > 0 }">
@@ -330,6 +337,46 @@ function furnishLabel(f: string) {
           <span>{{ listing.reports_count }} signalement{{ listing.reports_count !== 1 ? 's' : '' }}</span>
         </div>
       </div>
+
+      <!-- Favoris détaillés -->
+      <section v-if="listing.favorites_detail?.length" class="ld__section">
+        <h3 class="ld__section-title">
+          <i class="pi pi-heart" style="color: #ef4444; font-size: 13px"></i>
+          Utilisateurs ayant mis en favori ({{ listing.favorites_detail.length }})
+        </h3>
+        <div class="ld__fav-list">
+          <div v-for="fav in listing.favorites_detail" :key="fav.id" class="ld__fav-item">
+            <div class="ld__fav-avatar">{{ fav.user_name.charAt(0).toUpperCase() }}</div>
+            <div class="ld__fav-info">
+              <span class="ld__fav-name">{{ fav.user_name }}</span>
+              <span class="ld__fav-phone">{{ fav.user_phone }}</span>
+            </div>
+            <span class="ld__fav-date">{{ new Date(fav.created_at).toLocaleDateString('fr-FR') }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Signalements détaillés -->
+      <section v-if="listing.reports_detail?.length" class="ld__section">
+        <h3 class="ld__section-title ld__section-title--alert">
+          <i class="pi pi-flag" style="font-size: 13px"></i>
+          Signalements ({{ listing.reports_detail.length }})
+        </h3>
+        <div class="ld__report-list">
+          <div v-for="report in listing.reports_detail" :key="report.id" class="ld__report-item">
+            <div class="ld__report-head">
+              <Tag :value="report.reason_label" severity="warn" />
+              <Tag :value="report.status_label" :severity="reportStatusSeverity(report.status)" />
+              <span class="ld__report-date">{{ new Date(report.created_at).toLocaleDateString('fr-FR') }}</span>
+            </div>
+            <p v-if="report.description" class="ld__report-desc">{{ report.description }}</p>
+            <span class="ld__report-user">
+              <i class="pi pi-user" style="font-size: 11px"></i>
+              {{ report.user_name }} 
+            </span>
+          </div>
+        </div>
+      </section>
     </div>
 
     <template #footer>
@@ -644,6 +691,62 @@ function furnishLabel(f: string) {
 .ld__stat--alert {
   color: #e53935;
   font-weight: 600;
+}
+
+/* Favorites detail */
+.ld__fav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ld__fav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  border-radius: 8px;
+}
+.ld__fav-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #ef4444; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; flex-shrink: 0;
+}
+.ld__fav-info { flex: 1; min-width: 0; }
+.ld__fav-name { font-size: 13px; font-weight: 600; color: #0F0F0F; display: block; }
+.ld__fav-phone { font-size: 11px; color: #888; }
+.ld__fav-date { font-size: 11px; color: #999; white-space: nowrap; }
+
+/* Reports detail */
+.ld__section-title--alert { color: #e53935; }
+.ld__report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ld__report-item {
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+.ld__report-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.ld__report-date { font-size: 11px; color: #999; margin-left: auto; }
+.ld__report-desc {
+  font-size: 13px; color: #333;
+  margin: 4px 0 8px; line-height: 1.5;
+  font-style: italic;
+}
+.ld__report-user {
+  font-size: 11px; color: #888;
+  display: flex; align-items: center; gap: 4px;
 }
 
 /* Footer */
