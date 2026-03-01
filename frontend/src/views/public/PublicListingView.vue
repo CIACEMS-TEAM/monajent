@@ -6,7 +6,7 @@ import { useAuthStore } from '@/Stores/auth'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'vue-toastification'
-import { API_BASE } from '@/services/http'
+import http, { API_BASE } from '@/services/http'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,15 +17,47 @@ const toast = useToast()
 const listingId = computed(() => Number(route.params.id))
 const highlightVideoKey = computed(() => (route.query.video as string) || null)
 const isClient = computed(() => auth.me?.role === 'CLIENT')
+const isLoggedIn = computed(() => !!auth.me)
 
 const watchLoading = ref(false)
 const activeVideo = ref<PublicListingVideo | null>(null)
 const showPaywall = ref(false)
 const showNoPack = ref(false)
+const showLoginPrompt = ref(false)
 const heroIdx = ref(0)
 const descExpanded = ref(false)
 const otherListings = ref<ListingListItem[]>([])
 const activeChip = ref('all')
+
+// ── Visite physique ──
+interface AvailSlot {
+  id: number
+  day_of_week: number
+  day_label: string
+  start_time: string
+  end_time: string
+}
+const showVisitModal = ref(false)
+const visitSlots = ref<AvailSlot[]>([])
+const visitSlotsLoading = ref(false)
+const selectedSlotId = ref<number | null>(null)
+const visitNote = ref('')
+const visitSubmitting = ref(false)
+const visitNoPackModal = ref(false)
+
+// ── Signalement ──
+const showReportModal = ref(false)
+const reportReason = ref('')
+const reportDescription = ref('')
+const reportSubmitting = ref(false)
+const reportReasons = [
+  { value: 'ALREADY_SOLD', label: 'Bien déjà vendu' },
+  { value: 'ALREADY_RENTED', label: 'Bien déjà loué' },
+  { value: 'MISLEADING', label: 'Annonce trompeuse / vidéo ne correspond pas' },
+  { value: 'DUPLICATE_VIDEO', label: 'Même vidéo sur une autre annonce' },
+  { value: 'SCAM', label: 'Arnaque suspectée' },
+  { value: 'OTHER', label: 'Autre' },
+]
 
 const chips = [
   { label: 'Tous', value: 'all' },
@@ -69,13 +101,28 @@ function timeAgo(dateStr: string): string {
   return `il y a ${weeks} semaines`
 }
 
-function heroPrev() {
+async function handleToggleFavorite() {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  if (!isClient.value) { toast.info('Seuls les clients peuvent ajouter des favoris.'); return }
   if (!pub.listing) return
-  heroIdx.value = (heroIdx.value - 1 + pub.listing.images.length) % pub.listing.images.length
+  const isFav = await pub.toggleFavorite(pub.listing.id)
+  toast.success(isFav ? 'Ajouté aux favoris' : 'Retiré des favoris')
+}
+
+const heroImages = computed(() => pub.listing?.images ?? [])
+const firstVideoThumb = computed(() => {
+  const vid = pub.listing?.videos?.[0]
+  return vid?.thumbnail ? mediaUrl(vid.thumbnail) : null
+})
+const heroHasImages = computed(() => heroImages.value.length > 0)
+
+function heroPrev() {
+  if (!heroHasImages.value) return
+  heroIdx.value = (heroIdx.value - 1 + heroImages.value.length) % heroImages.value.length
 }
 function heroNext() {
-  if (!pub.listing) return
-  heroIdx.value = (heroIdx.value + 1) % pub.listing.images.length
+  if (!heroHasImages.value) return
+  heroIdx.value = (heroIdx.value + 1) % heroImages.value.length
 }
 
 const descriptionTruncated = computed(() => {
@@ -87,6 +134,9 @@ const descriptionTruncated = computed(() => {
 const needsTruncation = computed(() => (pub.listing?.description?.length ?? 0) > 200)
 const showToggle = computed(() => needsTruncation.value || (pub.listing?.amenities?.length ?? 0) > 0 || pub.listing?.address)
 
+const hasVideos = computed(() => (pub.listing?.videos?.length ?? 0) > 0)
+const firstVideo = computed(() => pub.listing?.videos?.[0] ?? null)
+
 function goToListing(id: number) {
   heroIdx.value = 0
   descExpanded.value = false
@@ -97,12 +147,6 @@ function coverUrl(item: ListingListItem): string | null {
   if (!item.cover_image) return null
   return item.cover_image.startsWith('http') ? item.cover_image : `${API_BASE}${item.cover_image}`
 }
-
-function agentInitial(agent: { agency_name: string; username: string; phone: string }): string {
-  return (agent.agency_name || agent.username || agent.phone).charAt(0).toUpperCase()
-}
-
-const agentColors = ['#e85d04', '#2d6a4f', '#0077b6', '#7b2cbf', '#d62828', '#457b9d', '#606c38', '#9d4edd']
 
 async function loadOtherListings() {
   try {
@@ -145,7 +189,108 @@ watch(listingId, () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 })
 
+function handleVirtualVisit() {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  if (!isClient.value) { toast.warning('Seuls les clients peuvent visionner les vidéos.'); return }
+  if (!firstVideo.value) return
+  const vid = firstVideo.value
+  if (pub.getUnlockedUrl(vid.access_key)) {
+    activeVideo.value = vid
+    scrollToVideo(vid.access_key)
+    return
+  }
+  activeVideo.value = vid
+  showPaywall.value = true
+}
+
+async function handlePhysicalVisit() {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  if (!isClient.value) { toast.warning('Seuls les clients peuvent demander une visite.'); return }
+  visitSlotsLoading.value = true
+  showVisitModal.value = true
+  selectedSlotId.value = null
+  visitNote.value = ''
+  try {
+    const { data } = await http.get<AvailSlot[]>(`/api/listings/${listingId.value}/availability/`)
+    visitSlots.value = data
+  } catch {
+    toast.error('Impossible de charger les créneaux disponibles.')
+    showVisitModal.value = false
+  } finally {
+    visitSlotsLoading.value = false
+  }
+}
+
+async function submitVisitRequest() {
+  if (!selectedSlotId.value) { toast.error('Veuillez choisir un créneau.'); return }
+  visitSubmitting.value = true
+  try {
+    await http.post('/api/client/visits/', {
+      listing_id: listingId.value,
+      slot_id: selectedSlotId.value,
+      client_note: visitNote.value.trim(),
+    })
+    showVisitModal.value = false
+    toast.success('Demande de visite envoyée ! Vous recevrez une confirmation de l\'agent.')
+    router.push({ name: 'client-visits' })
+  } catch (e: any) {
+    if (e?.response?.status === 402) {
+      showVisitModal.value = false
+      visitNoPackModal.value = true
+    } else {
+      toast.error(e?.response?.data?.detail || 'Erreur lors de la demande de visite.')
+    }
+  } finally {
+    visitSubmitting.value = false
+  }
+}
+
+function formatSlotTime(t: string) {
+  return t.slice(0, 5)
+}
+
+// ── Signalement ──
+function openReportModal() {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  if (!isClient.value) { toast.warning('Seuls les clients peuvent signaler.'); return }
+  reportReason.value = ''
+  reportDescription.value = ''
+  showReportModal.value = true
+}
+
+async function submitReport() {
+  if (!reportReason.value) { toast.error('Veuillez choisir un motif.'); return }
+  reportSubmitting.value = true
+  try {
+    await http.post(`/api/listings/${listingId.value}/report/`, {
+      listing: listingId.value,
+      reason: reportReason.value,
+      description: reportDescription.value.trim(),
+    })
+    showReportModal.value = false
+    toast.success('Signalement enregistré. Merci pour votre vigilance.')
+  } catch (e: any) {
+    if (e?.response?.status === 409) {
+      toast.info('Vous avez déjà signalé cette annonce.')
+      showReportModal.value = false
+    } else {
+      toast.error(e?.response?.data?.detail || 'Erreur lors du signalement.')
+    }
+  } finally {
+    reportSubmitting.value = false
+  }
+}
+
+function scrollToVideo(accessKey: string) {
+  nextTick(() => {
+    const el = document.getElementById(`video-${accessKey}`)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
+}
+
 async function handleWatch(vid: PublicListingVideo) {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  if (!isClient.value) { toast.warning('Seuls les clients peuvent visionner les vidéos.'); return }
   if (pub.getUnlockedUrl(vid.access_key)) { activeVideo.value = vid; return }
   activeVideo.value = vid
   showPaywall.value = true
@@ -166,17 +311,6 @@ async function confirmWatch() {
   } finally { watchLoading.value = false }
 }
 
-async function refreshVideoToken(vid: PublicListingVideo) {
-  try {
-    const result = await pub.watchVideo(vid.access_key)
-    toast.info('Lien vidéo renouvelé')
-    return result.video_url
-  } catch {
-    toast.error('Impossible de recharger la vidéo. Veuillez réessayer.')
-    return null
-  }
-}
-
 function onVideoError(event: Event, vid: PublicListingVideo) {
   const videoEl = event.target as HTMLVideoElement
   if (!videoEl) return
@@ -190,6 +324,7 @@ function onVideoError(event: Event, vid: PublicListingVideo) {
 function preventContextMenu(e: Event) { e.preventDefault() }
 
 function goBuyPack() { showNoPack.value = false; router.push({ name: 'client-packs' }) }
+function goLogin() { showLoginPrompt.value = false; router.push({ name: 'login' }) }
 
 function shareUrl(): string { return window.location.origin + `/home/annonce/${listingId.value}` }
 function shareText(): string {
@@ -224,28 +359,51 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
     <div v-else class="yw-grid">
       <!-- ===== LEFT: LISTING DETAIL ===== -->
       <div class="yw-left">
-        <!-- Player -->
+        <!-- Player / Hero -->
         <div class="yw-player">
-          <div v-if="pub.listing.images.length" class="yw-player__frame">
-            <img :src="mediaUrl(pub.listing.images[heroIdx].image)!" :alt="pub.listing.title" class="yw-player__img" />
-            <template v-if="pub.listing.images.length > 1">
+          <!-- Images disponibles -->
+          <div v-if="heroHasImages" class="yw-player__frame">
+            <img :src="mediaUrl(heroImages[heroIdx].image)!" :alt="pub.listing.title" class="yw-player__img" />
+            <template v-if="heroImages.length > 1">
               <button class="yw-player__nav yw-player__nav--prev" @click.stop="heroPrev"><i class="pi pi-chevron-left"></i></button>
               <button class="yw-player__nav yw-player__nav--next" @click.stop="heroNext"><i class="pi pi-chevron-right"></i></button>
-              <span class="yw-player__counter">{{ heroIdx + 1 }} / {{ pub.listing.images.length }}</span>
+              <span class="yw-player__counter">{{ heroIdx + 1 }} / {{ heroImages.length }}</span>
             </template>
           </div>
-          <div v-else class="yw-player__empty"><i class="pi pi-image" style="font-size:36px;color:#ccc"></i><span>Aucune photo</span></div>
+          <!-- Pas d'image mais thumbnail vidéo → l'afficher en hero -->
+          <div v-else-if="firstVideoThumb" class="yw-player__frame yw-player__frame--vid" @click="handleVirtualVisit">
+            <img :src="firstVideoThumb" :alt="pub.listing.title" class="yw-player__img" />
+            <div class="yw-player__play-ov">
+              <div class="yw-player__play-btn"><i class="pi pi-play-circle"></i></div>
+              <span class="yw-player__play-label">Voir la visite virtuelle</span>
+            </div>
+          </div>
+          <!-- Rien du tout -->
+          <div v-else class="yw-player__empty"><i class="pi pi-image" style="font-size:36px;color:#ccc"></i><span>Aucun média</span></div>
         </div>
 
         <!-- Thumbstrip -->
-        <div v-if="pub.listing.images.length > 1" class="yw-thumbs">
+        <div v-if="heroImages.length > 1" class="yw-thumbs">
           <div
-            v-for="(img, i) in pub.listing.images"
+            v-for="(img, i) in heroImages"
             :key="img.id"
             class="yw-thumbs__item"
             :class="{ 'yw-thumbs__item--on': heroIdx === i }"
             @click="heroIdx = i"
           ><img :src="mediaUrl(img.image)!" alt="" /></div>
+        </div>
+
+        <!-- === CTA BUTTONS: Visite Virtuelle + Visite Physique === -->
+        <div class="yw-cta">
+          <button v-if="hasVideos" class="yw-cta__btn yw-cta__btn--virtual" @click="handleVirtualVisit">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+            <span>Visite virtuelle</span>
+            <small v-if="firstVideo">{{ durationStr(firstVideo.duration_sec) }}</small>
+          </button>
+          <button class="yw-cta__btn yw-cta__btn--physical" @click="handlePhysicalVisit">
+            <i class="pi pi-map-marker"></i>
+            <span>Visite physique</span>
+          </button>
         </div>
 
         <!-- Title -->
@@ -297,10 +455,28 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
         <!-- Actions -->
         <div class="yw-actions">
+          <button
+            v-if="isClient"
+            class="yw-act yw-act--fav"
+            :class="{ 'yw-act--fav-on': pub.isFavorite(pub.listing.id) }"
+            @click="handleToggleFavorite"
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path
+                :fill="pub.isFavorite(pub.listing.id) ? '#ef4444' : 'none'"
+                :stroke="pub.isFavorite(pub.listing.id) ? '#ef4444' : 'currentColor'"
+                stroke-width="2"
+                d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
+              />
+            </svg>
+            <span>{{ pub.isFavorite(pub.listing.id) ? 'Favori' : 'Favori' }}</span>
+            <small class="yw-act__count">{{ pub.listing.favorites_count }}</small>
+          </button>
           <button class="yw-act" @click="shareWhatsApp"><i class="pi pi-whatsapp"></i><span>WhatsApp</span></button>
           <button class="yw-act" @click="shareFacebook"><i class="pi pi-facebook"></i><span>Facebook</span></button>
           <button class="yw-act" @click="copyLink"><i class="pi pi-share-alt"></i><span>Partager</span></button>
           <button class="yw-act" @click="copyLink"><i class="pi pi-link"></i><span>Copier</span></button>
+          <button class="yw-act yw-act--report" @click="openReportModal"><i class="pi pi-flag"></i><span>Signaler</span></button>
         </div>
 
         <!-- Agent -->
@@ -368,12 +544,12 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
                 <div class="yw-vcard__watermark">MonaJent</div>
               </div>
               <!-- Vidéo verrouillée -->
-              <div v-else class="yw-vcard__locked" @click="isClient ? handleWatch(vid) : undefined">
+              <div v-else class="yw-vcard__locked" @click="handleWatch(vid)">
                 <img v-if="vid.thumbnail" :src="mediaUrl(vid.thumbnail)!" alt="" class="yw-vcard__thumb" />
                 <div v-else class="yw-vcard__nothumb"><i class="pi pi-video"></i></div>
                 <div class="yw-vcard__ov">
                   <div class="yw-vcard__play"><i class="pi pi-lock"></i></div>
-                  <span class="yw-vcard__lbl">{{ isClient ? 'Débloquer (1 clé)' : 'Connectez-vous pour visionner' }}</span>
+                  <span class="yw-vcard__lbl">{{ isLoggedIn ? 'Débloquer (1 clé)' : 'Connectez-vous' }}</span>
                 </div>
                 <span v-if="vid.duration_sec" class="yw-vcard__dur">{{ durationStr(vid.duration_sec) }}</span>
               </div>
@@ -425,9 +601,23 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
       </aside>
     </div>
 
-    <!-- Paywall -->
-    <Dialog :visible="showPaywall" @update:visible="(v: boolean) => showPaywall = v" header="Débloquer la vidéo" :modal="true" :closable="!watchLoading" :style="{ width: '420px' }">
-      <div class="yw-pw"><i class="pi pi-video yw-pw__icon"></i><p>Ce visionnage consommera <strong>1 clé virtuelle</strong>.</p><p class="yw-pw__sub">Vidéo déjà vue = gratuite.</p></div>
+    <!-- Paywall — Visite virtuelle -->
+    <Dialog :visible="showPaywall" @update:visible="(v: boolean) => showPaywall = v" header="Visite virtuelle" :modal="true" :closable="!watchLoading" :style="{ width: '440px' }">
+      <div class="yw-pw-rich">
+        <!-- Grosse clé animée -->
+        <div class="yw-pw-rich__key" :class="{ 'yw-pw-rich__key--consuming': watchLoading }">
+          <img src="@/assets/icons/key_virt.png" alt="Clé virtuelle" class="yw-pw-rich__key-img" />
+          <span class="yw-pw-rich__badge">-1</span>
+        </div>
+
+        <h3 class="yw-pw-rich__title">Utiliser 1 clé virtuelle</h3>
+        <p class="yw-pw-rich__desc">Débloquez la vidéo de cette annonce pour une visite virtuelle du bien.</p>
+
+        <div class="yw-pw-rich__free-hint">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          <span>Déjà vue = <strong>gratuit</strong>, aucune clé consommée</span>
+        </div>
+      </div>
       <template #footer>
         <Button label="Annuler" severity="secondary" text @click="showPaywall = false" :disabled="watchLoading" />
         <Button label="Visionner" icon="pi pi-play" class="yw-pw__btn" :loading="watchLoading" @click="confirmWatch" />
@@ -442,6 +632,153 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
       <template #footer>
         <Button label="Plus tard" severity="secondary" text @click="showNoPack = false" />
         <Button label="Acheter un pack" icon="pi pi-wallet" class="yw-pw__btn" @click="goBuyPack" />
+      </template>
+    </Dialog>
+
+    <!-- Login required -->
+    <Dialog :visible="showLoginPrompt" @update:visible="(v: boolean) => showLoginPrompt = v" header="Connexion requise" :modal="true" :style="{ width: '400px' }">
+      <div class="yw-pw">
+        <i class="pi pi-user yw-pw__icon" style="color:#2563eb"></i>
+        <p>Connectez-vous ou créez un compte pour accéder aux visites virtuelles et physiques.</p>
+      </div>
+      <template #footer>
+        <Button label="Plus tard" severity="secondary" text @click="showLoginPrompt = false" />
+        <Button label="Se connecter" icon="pi pi-sign-in" class="yw-pw__btn" style="background:#2563eb!important;border-color:#2563eb!important" @click="goLogin" />
+      </template>
+    </Dialog>
+
+    <!-- ══ Visite physique — sélection créneau ══ -->
+    <Dialog :visible="showVisitModal" @update:visible="(v: boolean) => showVisitModal = v" header="Demander une visite physique" :modal="true" :closable="!visitSubmitting" :style="{ width: '520px' }">
+      <div class="yw-visit-modal">
+        <!-- Chargement créneaux -->
+        <div v-if="visitSlotsLoading" class="yw-visit-modal__loading">
+          <i class="pi pi-spin pi-spinner" style="font-size:24px;color:#1DA53F"></i>
+          <span>Chargement des disponibilités...</span>
+        </div>
+
+        <!-- Aucun créneau -->
+        <div v-else-if="visitSlots.length === 0" class="yw-visit-modal__empty">
+          <i class="pi pi-calendar-times" style="font-size:32px;color:#ccc"></i>
+          <p>Cet agent n'a pas encore configuré ses créneaux de disponibilité.</p>
+        </div>
+
+        <!-- Liste des créneaux -->
+        <template v-else>
+          <!-- Agent info + contact -->
+          <div v-if="pub.listing" class="yw-visit-agent">
+            <div class="yw-visit-agent__avatar">
+              <img v-if="pub.listing.agent.profile_photo" :src="mediaUrl(pub.listing.agent.profile_photo)!" alt="" />
+              <i v-else class="pi pi-user"></i>
+            </div>
+            <div class="yw-visit-agent__info">
+              <span class="yw-visit-agent__name">{{ pub.listing.agent.agency_name || pub.listing.agent.username || pub.listing.agent.phone }}</span>
+              <span v-if="pub.listing.agent.contact_phone" class="yw-visit-agent__contact">
+                <i class="pi pi-phone"></i> {{ pub.listing.agent.contact_phone }}
+              </span>
+              <span v-else-if="pub.listing.agent.phone" class="yw-visit-agent__contact">
+                <i class="pi pi-phone"></i> {{ pub.listing.agent.phone }}
+              </span>
+              <span v-if="pub.listing.agent.contact_email" class="yw-visit-agent__contact">
+                <i class="pi pi-envelope"></i> {{ pub.listing.agent.contact_email }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Badge gratuité -->
+          <div class="yw-visit-free">
+            <img src="@/assets/icons/key_phy.png" alt="" class="yw-visit-free__icon" />
+            <div class="yw-visit-free__text">
+              <strong>Visite gratuite</strong>
+              <span>Incluse dans votre pack via 1 clé physique</span>
+            </div>
+          </div>
+
+          <p class="yw-visit-modal__hint">Choisissez un créneau :</p>
+          <div class="yw-visit-slots">
+            <label
+              v-for="slot in visitSlots"
+              :key="slot.id"
+              class="yw-visit-slot"
+              :class="{ 'yw-visit-slot--on': selectedSlotId === slot.id }"
+            >
+              <input type="radio" :value="slot.id" v-model="selectedSlotId" class="yw-visit-slot__radio" />
+              <div class="yw-visit-slot__body">
+                <span class="yw-visit-slot__day">{{ slot.day_label }}</span>
+                <span class="yw-visit-slot__time">{{ formatSlotTime(slot.start_time) }} — {{ formatSlotTime(slot.end_time) }}</span>
+              </div>
+              <i v-if="selectedSlotId === slot.id" class="pi pi-check-circle yw-visit-slot__check"></i>
+            </label>
+          </div>
+
+          <div class="yw-visit-modal__note">
+            <label>Note pour l'agent <small>(optionnel)</small></label>
+            <textarea v-model="visitNote" rows="2" maxlength="500" placeholder="Précisez vos disponibilités, questions..."></textarea>
+          </div>
+
+          <div class="yw-visit-modal__info">
+            <i class="pi pi-info-circle"></i>
+            <span>L'agent vous contactera dès réception de votre demande. Il a <strong>48h pour confirmer</strong>, sinon votre clé physique sera automatiquement restaurée.</span>
+          </div>
+        </template>
+      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="showVisitModal = false" :disabled="visitSubmitting" />
+        <Button
+          v-if="visitSlots.length > 0"
+          label="Envoyer la demande"
+          icon="pi pi-send"
+          class="yw-pw__btn"
+          style="background:#ea580c!important;border-color:#ea580c!important"
+          :loading="visitSubmitting"
+          :disabled="!selectedSlotId || visitSubmitting"
+          @click="submitVisitRequest"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Pas de pack pour la visite physique -->
+    <Dialog :visible="visitNoPackModal" @update:visible="(v: boolean) => visitNoPackModal = v" header="Clé physique requise" :modal="true" :style="{ width: '440px' }">
+      <div class="yw-pw">
+        <i class="pi pi-key yw-pw__icon" style="color:#ea580c"></i>
+        <p>Vous n'avez pas de clé physique disponible. Achetez un pack pour demander une visite.</p>
+        <div class="yw-pw__pack"><span class="yw-pw__pack-price">500 F CFA</span><span class="yw-pw__pack-desc">33 vidéos + 1 visite physique</span></div>
+      </div>
+      <template #footer>
+        <Button label="Plus tard" severity="secondary" text @click="visitNoPackModal = false" />
+        <Button label="Acheter un pack" icon="pi pi-wallet" class="yw-pw__btn" style="background:#ea580c!important;border-color:#ea580c!important" @click="() => { visitNoPackModal = false; router.push({ name: 'client-packs' }) }" />
+      </template>
+    </Dialog>
+
+    <!-- ══ Signalement ══ -->
+    <Dialog :visible="showReportModal" @update:visible="(v: boolean) => showReportModal = v" header="Signaler cette annonce" :modal="true" :closable="!reportSubmitting" :style="{ width: '460px' }">
+      <div class="yw-report">
+        <p class="yw-report__hint">Aidez-nous à maintenir la qualité des annonces. Choisissez un motif :</p>
+        <div class="yw-report__reasons">
+          <label
+            v-for="r in reportReasons"
+            :key="r.value"
+            class="yw-report__reason"
+            :class="{ 'yw-report__reason--on': reportReason === r.value }"
+          >
+            <input type="radio" :value="r.value" v-model="reportReason" />
+            <span>{{ r.label }}</span>
+          </label>
+        </div>
+        <div class="yw-report__desc">
+          <label>Détails <small>(optionnel)</small></label>
+          <textarea v-model="reportDescription" rows="3" maxlength="1000" placeholder="Décrivez le problème..."></textarea>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="showReportModal = false" :disabled="reportSubmitting" />
+        <Button
+          label="Envoyer le signalement"
+          icon="pi pi-flag"
+          severity="danger"
+          :loading="reportSubmitting"
+          :disabled="!reportReason || reportSubmitting"
+          @click="submitReport"
+        />
       </template>
     </Dialog>
   </div>
@@ -484,6 +821,17 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   background: #e8e8e8; border-radius: 12px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #999; font-size: 14px;
 }
+.yw-player__frame--vid { cursor: pointer; }
+.yw-player__frame--vid .yw-player__img { filter: brightness(0.65); transition: filter 0.2s; }
+.yw-player__frame--vid:hover .yw-player__img { filter: brightness(0.5); }
+.yw-player__play-ov {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  pointer-events: none;
+}
+.yw-player__play-btn { font-size: 48px; color: #fff; filter: drop-shadow(0 2px 8px rgba(0,0,0,.4)); transition: transform 0.2s; }
+.yw-player__frame--vid:hover .yw-player__play-btn { transform: scale(1.1); }
+.yw-player__play-label { color: #fff; font-size: 14px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.5); }
 .yw-player__nav {
   position: absolute; top: 50%; transform: translateY(-50%);
   width: 34px; height: 34px; border-radius: 50%; border: none;
@@ -510,6 +858,39 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 .yw-thumbs__item--on { border-color: #0f0f0f; opacity: 1; }
 .yw-thumbs__item:hover { opacity: 0.8; }
 .yw-thumbs__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* CTA Buttons */
+.yw-cta {
+  display: flex; gap: 10px; margin: 10px 0 6px; flex-wrap: wrap;
+}
+.yw-cta__btn {
+  flex: 1; min-width: 160px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 18px; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; color: #fff;
+}
+.yw-cta__btn small {
+  font-size: 11px; font-weight: 400; opacity: 0.8; margin-left: 2px;
+}
+.yw-cta__btn--virtual {
+  background: linear-gradient(135deg, #2564eb92, #1d4fd8db);
+  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+}
+.yw-cta__btn--virtual:hover {
+  background: linear-gradient(135deg, #1d4fd8ea, #1e40af);
+  box-shadow: 0 4px 14px rgba(37,99,235,.4);
+  transform: translateY(-1px);
+}
+.yw-cta__btn--physical {
+  background: linear-gradient(135deg, #ea580c, #c2410c);
+  box-shadow: 0 2px 8px rgba(234,88,12,.3);
+}
+.yw-cta__btn--physical:hover {
+  background: linear-gradient(135deg, #c2410c, #9a3412);
+  box-shadow: 0 4px 14px rgba(234,88,12,.4);
+  transform: translateY(-1px);
+}
 
 /* Title */
 .yw-title { font-size: 17px; font-weight: 600; color: #0f0f0f; margin: 8px 0 4px; line-height: 1.4; }
@@ -580,6 +961,14 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 }
 .yw-act:hover { background: #e5e5e5; }
 .yw-act i { font-size: 14px; }
+.yw-act--fav { gap: 4px; }
+.yw-act--fav svg { transition: transform 0.2s; }
+.yw-act--fav:hover svg { transform: scale(1.2); }
+.yw-act--fav-on { background: #fef2f2; color: #ef4444; }
+.yw-act--fav-on:hover { background: #fee2e2; }
+.yw-act__count { font-size: 11px; color: #888; margin-left: 2px; }
+.yw-act--report { margin-left: auto; }
+.yw-act--report:hover { background: #fef2f2; color: #dc2626; }
 
 /* Agent */
 .yw-agent { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #e5e5e5; }
@@ -734,7 +1123,61 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 .yw-sg__price { font-weight: 600; color: #1DA53F; }
 .yw-sg-empty { font-size: 13px; color: #999; text-align: center; padding: 20px 0; }
 
-/* ===== PAYWALL ===== */
+/* ===== PAYWALL RICH ===== */
+.yw-pw-rich { text-align: center; padding: 10px 0 4px; }
+
+.yw-pw-rich__key {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(37,99,235,.08), rgba(37,99,235,.02));
+  margin-bottom: 12px;
+  animation: yw-key-float 2.5s ease-in-out infinite;
+}
+.yw-pw-rich__key-img { width: 56px; height: 56px; object-fit: contain; transition: all 0.4s; }
+.yw-pw-rich__badge {
+  position: absolute; top: 2px; right: 2px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #2563eb; color: #fff;
+  font-size: 12px; font-weight: 800; line-height: 26px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(37,99,235,.4);
+}
+
+.yw-pw-rich__key--consuming .yw-pw-rich__key-img {
+  animation: yw-key-consume 0.6s ease-out forwards;
+}
+.yw-pw-rich__key--consuming .yw-pw-rich__badge {
+  animation: yw-badge-pop 0.4s ease-out forwards;
+}
+
+@keyframes yw-key-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes yw-key-consume {
+  0% { transform: scale(1) rotate(0deg); opacity: 1; }
+  50% { transform: scale(1.2) rotate(-10deg); opacity: 0.7; }
+  100% { transform: scale(0.6) rotate(15deg); opacity: 0.3; }
+}
+@keyframes yw-badge-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.5); }
+  100% { transform: scale(1); background: #dc2626; }
+}
+
+.yw-pw-rich__title { font-size: 17px; font-weight: 700; color: #0f0f0f; margin: 0 0 6px; }
+.yw-pw-rich__desc { font-size: 13px; color: #606060; margin: 0 0 14px; line-height: 1.5; }
+.yw-pw-rich__free-hint {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 20px; font-size: 12px; color: #15803d;
+}
+
+/* ===== PAYWALL SIMPLE (no pack, login, etc.) ===== */
 .yw-pw { text-align: center; padding: 8px 0; }
 .yw-pw__icon { font-size: 36px; color: #1DA53F; margin-bottom: 14px; display: block; }
 .yw-pw p { font-size: 14px; color: #272727; margin: 0 0 6px; }
@@ -746,6 +1189,90 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 }
 .yw-pw__pack-price { font-size: 22px; font-weight: 700; color: #1DA53F; }
 .yw-pw__pack-desc { font-size: 12px; color: #606060; }
+
+/* ===== VISIT MODAL ===== */
+.yw-visit-modal__loading,
+.yw-visit-modal__empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 28px 0; color: #606060; text-align: center;
+}
+.yw-visit-modal__empty p { font-size: 14px; margin: 0; }
+
+/* Agent info in modal */
+.yw-visit-agent {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: #f8f9fa; border-radius: 10px; margin-bottom: 12px;
+}
+.yw-visit-agent__avatar {
+  width: 40px; height: 40px; border-radius: 50%; background: #e8e8e8; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.yw-visit-agent__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.yw-visit-agent__avatar .pi-user { font-size: 18px; color: #aaa; }
+.yw-visit-agent__info { display: flex; flex-direction: column; gap: 2px; }
+.yw-visit-agent__name { font-size: 14px; font-weight: 600; color: #0f0f0f; }
+.yw-visit-agent__contact { font-size: 12px; color: #606060; display: flex; align-items: center; gap: 4px; }
+.yw-visit-agent__contact i { font-size: 11px; }
+
+/* Free visit badge */
+.yw-visit-free {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fde68a; border-radius: 10px; margin-bottom: 14px;
+}
+.yw-visit-free__icon { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.yw-visit-free__text { display: flex; flex-direction: column; }
+.yw-visit-free__text strong { font-size: 13px; color: #92400e; }
+.yw-visit-free__text span { font-size: 11px; color: #a16207; }
+
+.yw-visit-modal__hint { font-size: 14px; color: #272727; margin: 0 0 10px; font-weight: 500; }
+.yw-visit-slots { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.yw-visit-slot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border: 2px solid #e5e5e5; border-radius: 10px;
+  cursor: pointer; transition: all 0.15s; background: #fff;
+}
+.yw-visit-slot:hover { border-color: #ea580c; background: #fff7ed; }
+.yw-visit-slot--on { border-color: #ea580c; background: #fff7ed; }
+.yw-visit-slot__radio { display: none; }
+.yw-visit-slot__body { display: flex; flex-direction: column; flex: 1; }
+.yw-visit-slot__day { font-size: 14px; font-weight: 600; color: #0f0f0f; }
+.yw-visit-slot__time { font-size: 12px; color: #606060; }
+.yw-visit-slot__check { color: #ea580c; font-size: 18px; }
+.yw-visit-modal__note { margin-top: 14px; }
+.yw-visit-modal__note label { display: block; font-size: 13px; font-weight: 500; color: #272727; margin-bottom: 4px; }
+.yw-visit-modal__note small { color: #909090; font-weight: 400; }
+.yw-visit-modal__note textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;
+}
+.yw-visit-modal__note textarea:focus { outline: none; border-color: #ea580c; }
+.yw-visit-modal__info {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-top: 12px; padding: 10px 12px; background: #fff7ed; border: 1px solid #fed7aa;
+  border-radius: 8px; font-size: 12px; color: #92400e; line-height: 1.4;
+}
+.yw-visit-modal__info .pi-info-circle { flex-shrink: 0; margin-top: 1px; color: #ea580c; }
+
+/* ===== REPORT MODAL ===== */
+.yw-report__hint { font-size: 14px; color: #272727; margin: 0 0 12px; }
+.yw-report__reasons { display: flex; flex-direction: column; gap: 4px; }
+.yw-report__reason {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 8px;
+  cursor: pointer; transition: all 0.15s; font-size: 13px; color: #272727;
+}
+.yw-report__reason:hover { border-color: #dc2626; background: #fef2f2; }
+.yw-report__reason--on { border-color: #dc2626; background: #fef2f2; font-weight: 500; }
+.yw-report__reason input { accent-color: #dc2626; }
+.yw-report__desc { margin-top: 14px; }
+.yw-report__desc label { display: block; font-size: 13px; font-weight: 500; color: #272727; margin-bottom: 4px; }
+.yw-report__desc small { color: #909090; font-weight: 400; }
+.yw-report__desc textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;
+}
+.yw-report__desc textarea:focus { outline: none; border-color: #dc2626; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
@@ -762,6 +1289,8 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   .yw-price { font-size: 15px; }
   .yw-act span { display: none; }
   .yw-act { padding: 5px 8px; }
+  .yw-cta { flex-direction: column; }
+  .yw-cta__btn { min-width: 0; padding: 10px 14px; font-size: 13px; }
   .yw-vids__grid { grid-template-columns: 1fr; }
   .yw-suggestions { flex-direction: column; }
   .yw-sg { min-width: 0; }

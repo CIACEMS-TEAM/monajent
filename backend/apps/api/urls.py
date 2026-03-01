@@ -64,6 +64,7 @@ from .views.client import (
     ClientDashboardView,
     ClientProfileView,
     ClientFavoriteListView,
+    ClientFavoriteIdsView,
     ClientFavoriteToggleView,
     ClientSavedSearchListCreateView,
     ClientSavedSearchDetailView,
@@ -82,6 +83,7 @@ from .views.dashboard import (
 from .views.payments import (
     InitiatePackPurchaseView,
     PaymentWebhookView,
+    PaymentVerifyView,
     SimulatePaymentConfirmView,
     ClientPaymentHistoryView,
 )
@@ -196,6 +198,7 @@ urlpatterns = [
 
     # ── Client : Favoris ──────────────────────────────────────
     path('client/favorites/', ClientFavoriteListView.as_view(), name='client-favorites'),
+    path('client/favorites/ids/', ClientFavoriteIdsView.as_view(), name='client-favorite-ids'),
     path('client/favorites/<int:listing_id>/', ClientFavoriteToggleView.as_view(), name='client-favorite-toggle'),
 
     # ── Client : Recherches sauvegardées ──────────────────────
@@ -212,5 +215,6 @@ urlpatterns = [
     path('client/packs/buy/', InitiatePackPurchaseView.as_view(), name='client-pack-buy'),
     path('client/payments/', ClientPaymentHistoryView.as_view(), name='client-payment-history'),
     path('payments/webhook/', PaymentWebhookView.as_view(), name='payment-webhook'),
+    path('payments/verify/<str:tx_ref>/', PaymentVerifyView.as_view(), name='payment-verify'),
     path('payments/simulate/<str:tx_ref>/confirm/', SimulatePaymentConfirmView.as_view(), name='payment-simulate-confirm'),
 ]

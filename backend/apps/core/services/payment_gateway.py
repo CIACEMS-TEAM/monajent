@@ -2,12 +2,13 @@
 Payment Gateway — Monajent
 ──────────────────────────
 Interface abstraite pour l'intégration de providers de paiement.
-Chaque provider (CinetPay, Moneroo, Flutterwave…) implémente
+Chaque provider (Paystack, CinetPay, Moneroo, Flutterwave…) implémente
 BasePaymentGateway. Le code métier ne manipule que l'interface.
 
 Architecture :
   BasePaymentGateway (ABC)
       ├── SimulationGateway    — dev / tests (aucun appel externe)
+      ├── PaystackGateway      — Paystack (CI : Orange, MTN, Wave, Card)
       ├── CinetPayGateway      — placeholder prêt à compléter
       ├── MonerooGateway       — placeholder prêt à compléter
       └── FlutterwaveGateway   — placeholder prêt à compléter
@@ -90,11 +91,23 @@ class BasePaymentGateway(ABC):
         *,
         payload: dict,
         headers: dict,
+        raw_body: bytes = b'',
     ) -> WebhookResult:
         """
         Valide et parse le webhook entrant du provider.
         Lève une exception si la signature est invalide.
+        raw_body est nécessaire pour la vérification HMAC (Paystack).
         """
+
+    def verify_transaction(self, *, tx_ref: str) -> WebhookResult:
+        """
+        Vérifie le statut d'une transaction auprès du provider.
+        Utile pour le callback (retour client) sans attendre le webhook.
+        Implémentation par défaut : raise NotImplementedError.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__}.verify_transaction() non implémenté."
+        )
 
     @abstractmethod
     def create_payout(
@@ -160,6 +173,7 @@ class SimulationGateway(BasePaymentGateway):
         *,
         payload: dict,
         headers: dict,
+        raw_body: bytes = b'',
     ) -> WebhookResult:
         return WebhookResult(
             tx_ref=payload.get('tx_ref', ''),
@@ -318,11 +332,211 @@ class FlutterwaveGateway(BasePaymentGateway):
 
 
 # ═══════════════════════════════════════════════════════════════
+# Paystack Gateway (CI : Orange Money, MTN, Wave, Visa, MC)
+# ═══════════════════════════════════════════════════════════════
+
+class PaystackGateway(BasePaymentGateway):
+    """
+    Intégration Paystack — Côte d'Ivoire.
+    Supporte : Orange Money, MTN MoMo, Wave, Visa, Mastercard.
+    Doc : https://docs-v2.paystack.com/api/transaction/
+    """
+
+    BASE_URL = 'https://api.paystack.co'
+
+    def __init__(self) -> None:
+        config = getattr(settings, 'PAYMENT_CONFIG', {}).get('paystack', {})
+        self.secret_key = config.get('secret_key', '')
+        self.public_key = config.get('public_key', '')
+
+        if not self.secret_key:
+            raise RuntimeError(
+                "PaystackGateway requiert PAYSTACK_SECRET_KEY "
+                "dans PAYMENT_CONFIG['paystack']."
+            )
+
+    def _headers(self) -> dict:
+        return {
+            'Authorization': f'Bearer {self.secret_key}',
+            'Content-Type': 'application/json',
+        }
+
+    def create_checkout(
+        self,
+        *,
+        tx_ref: str,
+        amount: Decimal,
+        currency: str,
+        description: str,
+        customer_name: str,
+        customer_phone: str,
+        return_url: str,
+        notify_url: str,
+        metadata: dict | None = None,
+    ) -> CheckoutResult:
+        import requests
+
+        amount_subunit = int(amount * 100)
+
+        customer_email = (metadata or {}).pop('customer_email', None) or \
+            f"{customer_phone.replace('+', '')}@monajent.app"
+
+        payload = {
+            'email': customer_email,
+            'amount': str(amount_subunit),
+            'currency': currency,
+            'reference': tx_ref,
+            'callback_url': return_url,
+            'channels': ['card', 'mobile_money'],
+            'metadata': {
+                'custom_fields': [
+                    {'display_name': 'Client', 'variable_name': 'customer_name', 'value': customer_name},
+                    {'display_name': 'Téléphone', 'variable_name': 'customer_phone', 'value': customer_phone},
+                    {'display_name': 'Description', 'variable_name': 'description', 'value': description},
+                ],
+                **(metadata or {}),
+            },
+        }
+
+        logger.info("[Paystack] Initializing checkout: ref=%s amount=%s %s", tx_ref, amount, currency)
+
+        resp = requests.post(
+            f'{self.BASE_URL}/transaction/initialize',
+            json=payload,
+            headers=self._headers(),
+            timeout=30,
+        )
+
+        body = resp.json()
+
+        if resp.status_code != 200 or not body.get('status'):
+            msg = body.get('message', resp.text)
+            logger.error("[Paystack] Checkout failed: %s", msg)
+            raise RuntimeError(f"Paystack checkout échoué : {msg}")
+
+        data = body['data']
+
+        logger.info(
+            "[Paystack] Checkout créé : ref=%s → %s",
+            tx_ref, data['authorization_url'],
+        )
+
+        return CheckoutResult(
+            checkout_url=data['authorization_url'],
+            provider_tx_id=data.get('access_code', ''),
+            raw=body,
+        )
+
+    def verify_webhook(
+        self,
+        *,
+        payload: dict,
+        headers: dict,
+        raw_body: bytes = b'',
+    ) -> WebhookResult:
+        import hashlib
+        import hmac
+
+        signature = headers.get(
+            'x-paystack-signature',
+            headers.get('X-Paystack-Signature', ''),
+        )
+
+        if raw_body and signature:
+            expected = hmac.HMAC(
+                self.secret_key.encode('utf-8'),
+                raw_body,
+                hashlib.sha512,
+            ).hexdigest()
+
+            if not hmac.compare_digest(expected, signature):
+                raise ValueError("Signature Paystack invalide.")
+
+        event = payload.get('event', '')
+        data = payload.get('data', {})
+
+        if event == 'charge.success' and data.get('status') == 'success':
+            ps_status = 'PAID'
+        else:
+            ps_status = 'FAILED'
+
+        raw_amount = Decimal(str(data.get('amount', 0)))
+        base_amount = raw_amount / 100
+
+        return WebhookResult(
+            tx_ref=data.get('reference', ''),
+            provider_tx_id=str(data.get('id', '')),
+            status=ps_status,
+            amount=base_amount,
+            currency=data.get('currency', 'XOF'),
+            raw=payload,
+        )
+
+    def verify_transaction(self, *, tx_ref: str) -> WebhookResult:
+        """Vérifie le statut d'une transaction via l'API Paystack."""
+        import requests
+
+        logger.info("[Paystack] Verifying transaction: ref=%s", tx_ref)
+
+        resp = requests.get(
+            f'{self.BASE_URL}/transaction/verify/{tx_ref}',
+            headers=self._headers(),
+            timeout=30,
+        )
+
+        body = resp.json()
+
+        if resp.status_code != 200 or not body.get('status'):
+            msg = body.get('message', resp.text)
+            logger.error("[Paystack] Verification failed: %s", msg)
+            raise RuntimeError(f"Paystack vérification échouée : {msg}")
+
+        data = body['data']
+
+        if data.get('status') == 'success':
+            ps_status = 'PAID'
+        elif data.get('status') in ('failed', 'reversed'):
+            ps_status = 'FAILED'
+        else:
+            ps_status = 'PENDING'
+
+        raw_amount = Decimal(str(data.get('amount', 0)))
+
+        return WebhookResult(
+            tx_ref=data.get('reference', tx_ref),
+            provider_tx_id=str(data.get('id', '')),
+            status=ps_status,
+            amount=raw_amount / 100,
+            currency=data.get('currency', 'XOF'),
+            raw=body,
+        )
+
+    def create_payout(
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        phone_number: str,
+        method: str,
+        description: str,
+    ) -> PayoutResult:
+        """
+        Payout via Paystack Transfers.
+        TODO: implémenter avec create_transfer_recipient + initiate_transfer.
+        """
+        raise NotImplementedError(
+            "PaystackGateway.create_payout() : à implémenter avec l'API Paystack Transfers. "
+            "Voir https://docs-v2.paystack.com/api/transfer/"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════
 # Factory
 # ═══════════════════════════════════════════════════════════════
 
 _GATEWAY_MAP: dict[str, type[BasePaymentGateway]] = {
     'simulation': SimulationGateway,
+    'paystack': PaystackGateway,
     'cinetpay': CinetPayGateway,
     'moneroo': MonerooGateway,
     'flutterwave': FlutterwaveGateway,

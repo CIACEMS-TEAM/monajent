@@ -79,16 +79,26 @@ class VirtualKeyUsageSerializer(serializers.ModelSerializer):
     """Historique d'un visionnage."""
     video_thumbnail = serializers.ImageField(source='video.thumbnail', read_only=True)
     video_duration = serializers.IntegerField(source='video.duration_sec', read_only=True)
-    listing_title = serializers.CharField(source='video.listing.title', read_only=True)
-    listing_city = serializers.CharField(source='video.listing.city', read_only=True)
+    listing_id = serializers.IntegerField(source='video.listing_id', read_only=True, default=None)
+    listing_title = serializers.CharField(source='video.listing.title', read_only=True, default='')
+    listing_city = serializers.CharField(source='video.listing.city', read_only=True, default='')
+    listing_status = serializers.CharField(source='video.listing.status', read_only=True, default='')
+    agent_name = serializers.SerializerMethodField()
     agent_phone = serializers.CharField(source='agent.phone', read_only=True)
 
     class Meta:
         model = VirtualKeyUsage
         fields = [
-            'id', 'video_id', 'listing_title', 'listing_city',
-            'video_thumbnail', 'video_duration',
-            'agent_phone', 'amount_agent', 'amount_platform',
+            'id', 'video_id', 'listing_id', 'listing_title', 'listing_city',
+            'listing_status', 'video_thumbnail', 'video_duration',
+            'agent_name', 'agent_phone', 'amount_agent', 'amount_platform',
             'created_at',
         ]
         read_only_fields = fields
+
+    def get_agent_name(self, obj) -> str:
+        agent = obj.agent
+        if hasattr(agent, 'agent_profile') and agent.agent_profile:
+            p = agent.agent_profile
+            return p.agency_name or p.contact_phone or agent.phone
+        return agent.username or agent.phone

@@ -34,7 +34,10 @@ class InitiatePaymentResponseSerializer(serializers.Serializer):
     """Réponse après initiation du paiement."""
     payment_id = serializers.IntegerField(help_text="ID du paiement créé.")
     tx_ref = serializers.CharField(help_text="Référence de transaction unique.")
-    checkout_url = serializers.URLField(help_text="URL de la page de paiement.")
+    checkout_url = serializers.URLField(help_text="URL de la page de paiement (mode redirect).")
+    access_code = serializers.CharField(
+        help_text="Code d'accès Paystack pour le mode Popup.", allow_blank=True, default='',
+    )
     status = serializers.CharField(help_text="Statut initial : PENDING.")
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     currency = serializers.CharField()

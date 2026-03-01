@@ -12,10 +12,13 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', name: 'home', component: () => import('@/views/HomeListings.vue') },
       { path: 'annonce/:id', name: 'public-listing', component: () => import('@/views/public/PublicListingView.vue'), meta: { requiresAuth: true }, props: true },
+      { path: 'dashboard', name: 'client-dashboard', component: () => import('@/views/client/ClientDashboard.vue'), meta: { requiresClient: true } },
       { path: 'favorites', name: 'client-favorites', component: () => import('@/views/client/ClientFavorites.vue'), meta: { requiresClient: true } },
       { path: 'history', name: 'client-history', component: () => import('@/views/client/ClientHistory.vue'), meta: { requiresClient: true } },
       { path: 'packs', name: 'client-packs', component: () => import('@/views/client/ClientPacks.vue'), meta: { requiresClient: true } },
+      { path: 'payments', name: 'client-payments', component: () => import('@/views/client/ClientPayments.vue'), meta: { requiresClient: true } },
       { path: 'visits', name: 'client-visits', component: () => import('@/views/client/ClientVisits.vue'), meta: { requiresClient: true } },
+      { path: 'reports', name: 'client-reports', component: () => import('@/views/client/ClientReports.vue'), meta: { requiresClient: true } },
       { path: 'profile', name: 'client-profile', component: () => import('@/views/client/ClientProfile.vue'), meta: { requiresClient: true } },
     ],
   },

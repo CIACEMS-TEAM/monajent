@@ -305,11 +305,15 @@ if USE_R2:
 D7_ORIGINATOR = env('D7_ORIGINATOR', default='SignOTP')
 
 # ── Payment Gateway ──────────────────────────────────────────
-# Provider actif : 'simulation' (dev), 'cinetpay', 'moneroo', 'flutterwave'
+# Provider actif : 'simulation' (dev), 'paystack', 'cinetpay', 'moneroo', 'flutterwave'
 PAYMENT_GATEWAY = env('PAYMENT_GATEWAY', default='simulation')
 
 PAYMENT_CONFIG = {
     'simulation': {},
+    'paystack': {
+        'secret_key': env('PAYSTACK_SECRET_KEY', default=''),
+        'public_key': env('PAYSTACK_PUBLIC_KEY', default=''),
+    },
     'cinetpay': {
         'api_key': env('CINETPAY_API_KEY', default=''),
         'site_id': env('CINETPAY_SITE_ID', default=''),

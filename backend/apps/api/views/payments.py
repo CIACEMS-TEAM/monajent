@@ -27,6 +27,7 @@ from apps.payments.models import Payment
 from apps.core.services.payment import (
     initiate_pack_purchase,
     process_webhook,
+    verify_and_process,
     PaymentError,
     PaymentAlreadyProcessedError,
     PaymentNotFoundError,
@@ -74,6 +75,7 @@ class InitiatePackPurchaseView(APIView):
             'payment_id': payment.pk,
             'tx_ref': payment.tx_ref,
             'checkout_url': result['checkout_url'],
+            'access_code': payment.provider_tx_id,
             'status': payment.status,
             'amount': payment.amount,
             'currency': payment.currency,
@@ -103,21 +105,23 @@ class PaymentWebhookView(APIView):
     def post(self, request):
         payload = request.data if isinstance(request.data, dict) else {}
         headers = dict(request.headers)
+        raw_body = request.body if hasattr(request, 'body') else b''
 
         try:
-            payment = process_webhook(payload=payload, headers=headers)
+            payment = process_webhook(payload=payload, headers=headers, raw_body=raw_body)
         except PaymentAlreadyProcessedError:
             return Response(
                 {'detail': 'Paiement déjà traité.'},
                 status=status.HTTP_200_OK,
             )
         except PaymentNotFoundError:
-            logger.warning("Webhook reçu pour tx_ref inconnu : %s", payload.get('tx_ref'))
+            ref = payload.get('tx_ref') or payload.get('data', {}).get('reference', '?')
+            logger.warning("Webhook reçu pour tx_ref inconnu : %s", ref)
             return Response(
                 {'detail': 'Transaction inconnue.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except PaymentError as e:
+        except (PaymentError, ValueError) as e:
             logger.error("Erreur webhook : %s", e)
             return Response(
                 {'detail': str(e)},
@@ -204,7 +208,73 @@ class SimulatePaymentConfirmView(APIView):
 
 
 # ═══════════════════════════════════════════════════════════════
-# 4. Historique des paiements (Client)
+# 4. Vérification de paiement (callback retour client)
+# ═══════════════════════════════════════════════════════════════
+
+
+class PaymentVerifyView(APIView):
+    """
+    POST /api/payments/verify/{tx_ref}/
+
+    Vérifie le statut d'un paiement directement auprès du provider.
+    Utilisé quand le client revient du checkout Paystack.
+    """
+    permission_classes = [IsAuthenticated, IsClient]
+
+    def post(self, request, tx_ref):
+        try:
+            payment = Payment.objects.get(tx_ref=tx_ref, user=request.user)
+        except Payment.DoesNotExist:
+            return Response(
+                {'detail': 'Paiement introuvable.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if payment.status != Payment.Status.PENDING:
+            pack_info = None
+            if payment.pack:
+                pack_info = {
+                    'pack_id': payment.pack.pk,
+                    'virtual_total': payment.pack.virtual_total,
+                    'has_physical_key': payment.pack.has_physical_key,
+                }
+            return Response({
+                'tx_ref': payment.tx_ref,
+                'status': payment.status,
+                'pack': pack_info,
+            })
+
+        try:
+            payment = verify_and_process(tx_ref=tx_ref)
+        except PaymentError as e:
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except NotImplementedError:
+            return Response({
+                'tx_ref': payment.tx_ref,
+                'status': payment.status,
+                'detail': 'Vérification en temps réel non disponible pour ce provider.',
+            })
+
+        pack_info = None
+        if payment.pack:
+            pack_info = {
+                'pack_id': payment.pack.pk,
+                'virtual_total': payment.pack.virtual_total,
+                'has_physical_key': payment.pack.has_physical_key,
+            }
+
+        return Response({
+            'tx_ref': payment.tx_ref,
+            'status': payment.status,
+            'pack': pack_info,
+        })
+
+
+# ═══════════════════════════════════════════════════════════════
+# 5. Historique des paiements (Client)
 # ═══════════════════════════════════════════════════════════════
 
 

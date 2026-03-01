@@ -58,6 +58,17 @@
           >
             {{ listing.type === 'LOCATION' ? 'Location' : 'Vente' }}
           </span>
+          <button
+            v-if="auth.me?.role === 'CLIENT'"
+            class="yt-card__fav"
+            :class="{ 'yt-card__fav--active': pub.isFavorite(listing.id) }"
+            @click="toggleFavorite($event, listing.id)"
+            :title="pub.isFavorite(listing.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path :fill="pub.isFavorite(listing.id) ? '#ef4444' : 'none'" :stroke="pub.isFavorite(listing.id) ? '#ef4444' : '#fff'" stroke-width="2" d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"/>
+            </svg>
+          </button>
         </div>
 
         <div class="yt-card__body">
@@ -93,11 +104,24 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore, type ListingListItem, type PublicListingAgent } from '@/Stores/public'
+import { useToast } from 'vue-toastification'
 import { API_BASE } from '@/services/http'
 
 const auth = useAuthStore()
 const pub = usePublicStore()
 const router = useRouter()
+const toast = useToast()
+
+async function toggleFavorite(e: Event, listingId: number) {
+  e.stopPropagation()
+  if (!auth.me) {
+    router.push({ name: 'login', query: { redirect: '/home' } })
+    return
+  }
+  if (auth.me.role !== 'CLIENT') return
+  const isFav = await pub.toggleFavorite(listingId)
+  toast.success(isFav ? 'Ajouté aux favoris' : 'Retiré des favoris')
+}
 
 const activeChip = ref('all')
 
@@ -350,6 +374,20 @@ watch(() => auth.me, (me) => {
 }
 .type-location { background: #2563eb; color: #fff; }
 .type-vente { background: #1da53f; color: #fff; }
+
+.yt-card__fav {
+  position: absolute; top: 8px; right: 8px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.2s, background 0.2s;
+  z-index: 2;
+}
+.yt-card__fav:hover { background: rgba(0, 0, 0, 0.55); transform: scale(1.15); }
+.yt-card__fav--active { background: rgba(255, 255, 255, 0.9); }
+.yt-card__fav--active:hover { background: rgba(255, 255, 255, 1); }
+.yt-card__fav svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
 
 .yt-card__body { display: flex; gap: 12px; padding: 12px 4px 8px; }
 .yt-card__avatar-wrap {

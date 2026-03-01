@@ -127,12 +127,29 @@ class ListingListSerializer(serializers.ModelSerializer):
         return obj.days_remaining
 
 
+class AgentDetailSerializer(serializers.ModelSerializer):
+    """Info agent enrichie pour la page détail (inclut coordonnées de contact)."""
+    agency_name = serializers.CharField(source='agent_profile.agency_name', default='')
+    profile_photo = serializers.ImageField(source='agent_profile.profile_photo', default=None)
+    verified = serializers.BooleanField(source='agent_profile.verified', default=False)
+    contact_phone = serializers.CharField(source='agent_profile.contact_phone', default='')
+    contact_email = serializers.EmailField(source='agent_profile.contact_email', default='')
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'phone', 'username', 'agency_name', 'profile_photo', 'verified',
+            'contact_phone', 'contact_email',
+        ]
+        read_only_fields = fields
+
+
 class ListingDetailSerializer(serializers.ModelSerializer):
     """
     Serializer détaillé pour la page d'une annonce (public).
     Inclut toutes les images + vidéos (thumbnails uniquement, pas le fichier).
     """
-    agent = AgentMiniSerializer(read_only=True)
+    agent = AgentDetailSerializer(read_only=True)
     images = ListingImageSerializer(many=True, read_only=True)
     videos = VideoReadSerializer(many=True, read_only=True)
 
@@ -155,11 +172,14 @@ class ListingDetailSerializer(serializers.ModelSerializer):
 class AgentListingDetailSerializer(serializers.ModelSerializer):
     """
     Serializer détaillé pour l'agent propriétaire.
-    Inclut les vidéos complètes (avec fichier) et toutes les stats.
+    Inclut les vidéos complètes (avec fichier), toutes les stats,
+    les signalements détaillés et les utilisateurs qui ont mis en favori.
     """
     images = ListingImageSerializer(many=True, read_only=True)
     videos = VideoAgentSerializer(many=True, read_only=True)
     days_remaining = serializers.SerializerMethodField()
+    reports_detail = serializers.SerializerMethodField()
+    favorites_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -173,6 +193,7 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
             'views_count', 'favorites_count', 'reports_count',
             'published_at', 'expires_at', 'days_remaining',
             'images', 'videos',
+            'reports_detail', 'favorites_detail',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
@@ -182,6 +203,47 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
 
     def get_days_remaining(self, obj) -> int:
         return obj.days_remaining
+
+    def get_reports_detail(self, obj) -> list:
+        from apps.listings.models import ListingReport
+        reports = (
+            ListingReport.objects
+            .filter(listing=obj)
+            .select_related('user')
+            .order_by('-created_at')
+        )
+        return [
+            {
+                'id': r.id,
+                'reason': r.reason,
+                'reason_label': r.get_reason_display(),
+                'description': r.description,
+                'status': r.status,
+                'status_label': r.get_status_display(),
+                'user_phone': r.user.phone,
+                'user_name': r.user.username or r.user.phone,
+                'created_at': r.created_at.isoformat(),
+            }
+            for r in reports
+        ]
+
+    def get_favorites_detail(self, obj) -> list:
+        from apps.favorites.models import FavoriteListing
+        favs = (
+            FavoriteListing.objects
+            .filter(listing=obj)
+            .select_related('user')
+            .order_by('-created_at')
+        )
+        return [
+            {
+                'id': f.id,
+                'user_phone': f.user.phone,
+                'user_name': f.user.username or f.user.phone,
+                'created_at': f.created_at.isoformat(),
+            }
+            for f in favs
+        ]
 
 
 class ListingCreateSerializer(serializers.ModelSerializer):

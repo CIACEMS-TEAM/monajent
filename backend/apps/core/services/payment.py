@@ -90,9 +90,10 @@ def initiate_pack_purchase(
 
     customer_name = user.username or user.phone
     customer_phone = user.phone
+    customer_email = user.email or f"{user.phone.replace('+', '')}@monajent.app"
 
     if not return_url:
-        return_url = getattr(settings, 'PAYMENT_DEFAULT_RETURN_URL', 'http://localhost:5173/packs')
+        return_url = getattr(settings, 'PAYMENT_DEFAULT_RETURN_URL', 'http://localhost:5173/home/packs')
 
     notify_url = _build_notify_url()
 
@@ -105,6 +106,7 @@ def initiate_pack_purchase(
         customer_phone=customer_phone,
         return_url=return_url,
         notify_url=notify_url,
+        metadata={'customer_email': customer_email},
     )
 
     payment = Payment.objects.create(
@@ -134,7 +136,7 @@ def initiate_pack_purchase(
 # 2. Traitement du webhook (Provider → Backend)
 # ═══════════════════════════════════════════════════════════════
 
-def process_webhook(payload: dict, headers: dict) -> Payment:
+def process_webhook(payload: dict, headers: dict, raw_body: bytes = b'') -> Payment:
     """
     Traite la notification du provider après paiement.
 
@@ -148,6 +150,7 @@ def process_webhook(payload: dict, headers: dict) -> Payment:
     webhook_result = gateway.verify_webhook(
         payload=payload,
         headers=headers,
+        raw_body=raw_body,
     )
 
     tx_ref = webhook_result.tx_ref
@@ -209,7 +212,66 @@ def process_webhook(payload: dict, headers: dict) -> Payment:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 3. Payout (retrait agent → mobile money)
+# 3. Vérification directe (callback retour client)
+# ═══════════════════════════════════════════════════════════════
+
+def verify_and_process(tx_ref: str) -> Payment:
+    """
+    Vérifie le statut d'une transaction auprès du provider et traite le résultat.
+    Utilisé quand le client revient du checkout (callback_url).
+    Complément au webhook pour garantir le traitement.
+    """
+    gateway = get_payment_gateway()
+
+    result = gateway.verify_transaction(tx_ref=tx_ref)
+
+    try:
+        payment = Payment.objects.get(tx_ref=tx_ref)
+    except Payment.DoesNotExist:
+        raise PaymentNotFoundError(f"Aucun paiement trouvé pour tx_ref={tx_ref}")
+
+    if payment.status != Payment.Status.PENDING:
+        return payment
+
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().get(pk=payment.pk)
+
+        if payment.status != Payment.Status.PENDING:
+            return payment
+
+        payment.provider_tx_id = result.provider_tx_id or payment.provider_tx_id
+        payment.provider_metadata = result.raw
+
+        if result.status == 'PAID':
+            pack = PackPurchase.objects.create(user=payment.user)
+            payment.pack = pack
+            payment.status = Payment.Status.PAID
+            payment.save(update_fields=[
+                'pack', 'status', 'provider_tx_id',
+                'provider_metadata', 'updated_at',
+            ])
+            logger.info(
+                "Payment vérifié PAID : id=%s tx_ref=%s → PackPurchase id=%s",
+                payment.pk, tx_ref, pack.pk,
+            )
+        elif result.status == 'FAILED':
+            payment.status = Payment.Status.FAILED
+            payment.save(update_fields=[
+                'status', 'provider_tx_id',
+                'provider_metadata', 'updated_at',
+            ])
+            logger.info("Payment vérifié FAILED : id=%s tx_ref=%s", payment.pk, tx_ref)
+        else:
+            logger.info(
+                "Payment toujours PENDING : id=%s tx_ref=%s (provider status=%s)",
+                payment.pk, tx_ref, result.status,
+            )
+
+    return payment
+
+
+# ═══════════════════════════════════════════════════════════════
+# 4. Payout (retrait agent → mobile money)
 # ═══════════════════════════════════════════════════════════════
 
 def execute_payout(
