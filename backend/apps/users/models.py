@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import RegexValidator
 from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
@@ -40,7 +41,16 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = 'ADMIN', 'Admin'
 
     # Identifiants
-    phone = models.CharField(max_length=32, unique=True)
+    phone = models.CharField(
+        max_length=32,
+        unique=True,
+        validators=[
+            RegexValidator(
+                regex=r'^\+[1-9]\d{5,14}$',
+                message='Le numéro doit être au format E.164 (ex: +2250123456789)',
+            )
+        ],
+    )
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.CLIENT)
@@ -98,13 +108,21 @@ class ClientProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f"ClientProfile<{self.user.email}>"
+        return f"ClientProfile<{self.user.phone}>"
 
 
 class AgentProfile(models.Model):
+    class KycStatus(models.TextChoices):
+        NOT_SUBMITTED = 'NOT_SUBMITTED', 'Non soumis'
+        PENDING = 'PENDING', 'En attente de vérification'
+        APPROVED = 'APPROVED', 'Approuvé'
+        REJECTED = 'REJECTED', 'Rejeté'
+
     user = models.OneToOneField('users.User', on_delete=models.CASCADE, related_name='agent_profile')
     agency_name = models.CharField(max_length=255, blank=True)
     verified = models.BooleanField(default=False)
+    kyc_status = models.CharField(max_length=16, choices=KycStatus.choices, default=KycStatus.NOT_SUBMITTED)
+    kyc_rejection_reason = models.TextField(blank=True)
     bio = models.TextField(blank=True)
 
     contact_phone = models.CharField(max_length=32, blank=True)
@@ -125,12 +143,54 @@ class AgentProfile(models.Model):
 
 
 class AgentDocument(models.Model):
+    class DocType(models.TextChoices):
+        CNI = 'CNI', 'Carte Nationale d\'Identité'
+        PASSPORT = 'PASSPORT', 'Passeport'
+        PERMIT = 'PERMIT', 'Permis de conduire'
+        OTHER = 'OTHER', 'Autre'
+
+    class Side(models.TextChoices):
+        RECTO = 'RECTO', 'Recto'
+        VERSO = 'VERSO', 'Verso'
+        SINGLE = 'SINGLE', 'Document unique'
+
     agent_profile = models.ForeignKey(AgentProfile, on_delete=models.CASCADE, related_name='documents')
     file = models.FileField(upload_to='agents/documents/')
+    doc_type = models.CharField(max_length=16, choices=DocType.choices, default=DocType.CNI)
+    side = models.CharField(max_length=8, choices=Side.choices, default=Side.SINGLE)
     label = models.CharField(max_length=255, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('agent_profile', 'doc_type', 'side')]
 
     def __str__(self) -> str:
-        return f"AgentDocument<{self.agent_profile.user.phone}:{self.label}>"
+        return f"AgentDocument<{self.agent_profile.user.phone}:{self.doc_type}/{self.side}>"
+
+
+class Notification(models.Model):
+    class Category(models.TextChoices):
+        KYC = 'KYC', 'Vérification KYC'
+        SYSTEM = 'SYSTEM', 'Système'
+        VISIT = 'VISIT', 'Visite'
+        WALLET = 'WALLET', 'Wallet'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    category = models.CharField(max_length=16, choices=Category.choices, default=Category.SYSTEM)
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    link = models.CharField(
+        'Lien de navigation', max_length=255, blank=True,
+        help_text='Route frontend (ex: /agent/visits, /agent/settings#kyc)',
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"Notification<{self.user.phone}:{self.title[:30]}>"
 
 

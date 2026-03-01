@@ -1,9 +1,10 @@
 import axios from 'axios'
-import type { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios'
+import type { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/Stores/auth'
 
 // Crée une instance Axios configurée pour l'API
-const API_BASE = (globalThis as any).VITE_API_BASE_URL || 'http://localhost:8000'
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL
+  || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000')
 
 const http: AxiosInstance = axios.create({
   baseURL: API_BASE,
@@ -14,7 +15,7 @@ const http: AxiosInstance = axios.create({
 })
 
 let isRefreshing = false
-let pendingQueue: Array<() => void> = []
+let pendingQueue: Array<{ resolve: () => void; reject: (err: any) => void }> = []
 
 // Ajoute l'Authorization si un accessToken est présent en RAM
 http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -26,33 +27,60 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
-// Gestion 401 -> tente un refresh une seule fois puis rejoue la requête
+let refreshFailed = false
+
 http.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
     const status = error.response?.status
+    const url = (originalRequest?.url || '')
+
+    if (status === 401 && url.includes('/api/auth/refresh')) {
+      refreshFailed = true
+      return Promise.reject(error)
+    }
 
     if (status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
       const store = useAuthStore()
 
-      if (isRefreshing) {
-        // file d'attente pendant un refresh déjà en cours
-        await new Promise<void>((resolve) => pendingQueue.push(resolve))
-      } else {
-        try {
-          isRefreshing = true
-          await store.refresh()
-        } finally {
-          isRefreshing = false
-          // réveille les requêtes en attente
-          pendingQueue.forEach((resolve) => resolve())
-          pendingQueue = []
-        }
+      if (refreshFailed) {
+        forceLogout(store)
+        return Promise.reject(error)
       }
 
-      // Rejoue la requête avec le nouvel access token
+      if (isRefreshing) {
+        return new Promise<void>((resolve, reject) => {
+          pendingQueue.push({ resolve, reject })
+        }).then(() => {
+          if (refreshFailed) return Promise.reject(error)
+          originalRequest.headers = originalRequest.headers || ({} as any)
+          if (store.accessToken) {
+            ;(originalRequest.headers as any)['Authorization'] = `Bearer ${store.accessToken}`
+          }
+          return http(originalRequest)
+        })
+      }
+
+      try {
+        isRefreshing = true
+        refreshFailed = false
+        await store.refresh()
+      } catch (_) {
+        refreshFailed = true
+        forceLogout(store)
+        pendingQueue.forEach((p) => p.reject(error))
+        pendingQueue = []
+        return Promise.reject(error)
+      } finally {
+        isRefreshing = false
+        if (!refreshFailed) {
+          pendingQueue.forEach((p) => p.resolve())
+        }
+        pendingQueue = []
+      }
+
       originalRequest.headers = originalRequest.headers || ({} as any)
       if (store.accessToken) {
         ;(originalRequest.headers as any)['Authorization'] = `Bearer ${store.accessToken}`
@@ -64,6 +92,21 @@ http.interceptors.response.use(
   },
 )
 
+function forceLogout(store: ReturnType<typeof useAuthStore>) {
+  store.accessToken = ''
+  store.me = null
+  refreshFailed = false
+  if (window.location.pathname !== '/auth/login') {
+    window.location.href = '/auth/login'
+  }
+}
+
+export { API_BASE }
+
+export function mediaUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  return `${API_BASE}${url}`
+}
+
 export default http
-
-

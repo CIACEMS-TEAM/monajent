@@ -1,13 +1,43 @@
 <!DOCTYPE html>
 <html lang="">
-  <head>
-    <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.ico">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vite App</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="/logo_icone_cropped.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/primeicons/primeicons.css">
+  <script src="https://js.paystack.co/v2/inline.js"></script>
+  <title>MonaJent</title>
+  <style>
+    /* Agrandir et centrer le popup Paystack (iframe) */
+    div[style*="z-index"] iframe[src*="paystack"],
+    iframe[src*="checkout.paystack"] {
+      width: 520px !important;
+      min-width: 520px !important;
+      height: 680px !important;
+      min-height: 680px !important;
+      max-width: 96vw !important;
+      max-height: 94vh !important;
+      border-radius: 12px !important;
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      transform: translate(-50%, -50%) !important;
+    }
+    @media (max-width: 560px) {
+      div[style*="z-index"] iframe[src*="paystack"],
+      iframe[src*="checkout.paystack"] {
+        width: 96vw !important;
+        min-width: unset !important;
+        height: 90vh !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

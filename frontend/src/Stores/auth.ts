@@ -26,6 +26,7 @@ export const useAuthStore = defineStore('auth', {
     accessToken: '' as string,
     me: null as MeResponse | null,
     bootstrapped: false,
+    pendingToken: '' as string,
   }),
   actions: {
     async login(payload: LoginPayload) {
@@ -51,10 +52,32 @@ export const useAuthStore = defineStore('auth', {
       this.me = data
     },
     async registerClient(payload: RegisterClientPayload) {
-      return http.post('/api/auth/register/client', payload)
+      const { data } = await http.post<any>('/api/auth/register/client', payload)
+      if (data?.pending_token) this.pendingToken = data.pending_token
+      return data
     },
     async registerAgent(payload: RegisterAgentPayload) {
-      return http.post('/api/auth/register/agent', payload)
+      const { data } = await http.post<any>('/api/auth/register/agent', payload)
+      if (data?.pending_token) this.pendingToken = data.pending_token
+      return data
+    },
+    async otpRequest() {
+      if (!this.pendingToken) return
+      const { data } = await http.post<any>('/api/auth/otp/request', { pending_token: this.pendingToken })
+      if (data?.pending_token) this.pendingToken = data.pending_token
+      return data
+    },
+    async otpVerify(code: string) {
+      if (!this.pendingToken) throw new Error('OTP non initialisé')
+      const { data } = await http.post<{ access: string }>('/api/auth/otp/verify', {
+        pending_token: this.pendingToken,
+        code,
+      })
+      // À la réussite, on reçoit un access token et un cookie refresh HttpOnly
+      this.accessToken = data.access
+      this.pendingToken = ''
+      await this.fetchMe()
+      return data
     },
     async bootstrap() {
       try {

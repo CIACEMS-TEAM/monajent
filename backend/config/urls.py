@@ -14,8 +14,12 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import path, include
+from django.http import HttpResponseForbidden
+from django.urls import path, include, re_path
+from django.views.static import serve as static_serve
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
@@ -24,3 +28,22 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/', include('apps.api.urls')),
 ]
+
+
+def protected_media_serve(request, path, document_root=None):
+    """Sert les fichiers media sauf les vidéos (protégées par token signé)."""
+    if path.startswith('listings/videos/'):
+        return HttpResponseForbidden(
+            'Accès direct interdit. Utilisez le lecteur sécurisé.'
+        )
+    return static_serve(request, path, document_root=document_root)
+
+
+if settings.DEBUG:
+    urlpatterns += [
+        re_path(
+            r'^media/(?P<path>.*)$',
+            protected_media_serve,
+            {'document_root': settings.MEDIA_ROOT},
+        ),
+    ]

@@ -1,313 +1,396 @@
-MONAJENT – Réinventez votre métier d’agent
-immobilier
-Fini le travail gratuit, place à la valorisation et aux revenus permanents.
-1. Pourquoi Monajent ?
-Vous passez des heures à chercher des biens, à répondre aux clients, à faire visiter… sans
-garantie de revenu. Vos clients se plaignent des frais de visite et du mois de loyer en plus.
-■ Monajent transforme votre travail en source de revenus immédiats et réguliers grâce à un
-modèle simple :
-Chaque visionnage de vos vidéos est rémunéré. Chaque visite physique est gratuite pour
-le client, mais pré■qualifiée pour vous.
-2. Le Modèle Monajent
-Rôle Ce que vous faites Ce que vous gagnez
-Client Paie 500 F CFA pour un pack de 33
-vidéos + 1 clé de visite physique unique.
-Accès à plusieurs biens en
-vidéo et une visite physique
-gratuite pour le bien choisi.
-Agent Publie les vidéos et photos de ses biens
-sur la plateforme Monajent, puis partage
-les liens sur ses réseaux (WhatsApp,
-Facebook…).
-Reçoit 10 F CFA par
-visionnage + honoraires
-standards en cas de conclusion
-(sans frais supplémentaires
-pour le client).
-3. Ce que vous y gagnez
-■ Des revenus constants : même sans vente, chaque vue de votre contenu vous rapporte.
-Exemple : 10 000 vues = 100 000 F CFA | 100 000 vues = 1 000 000 F CFA
-■■ Du temps gagné : seules les visites qualifiées comptent, moins de déplacements inutiles.
-■ Des clients plus satisfaits : transparence, économie, confiance renforcée.
+MONAJENT – Contexte complet pour LLM
+=====================================
+Dernière mise à jour : 2026-02-18
 
+# 1. Vision produit
 
-Analyse du Modèle Économique et Opportunité d’Investissement MONAJENT
-© Monajent 2025 – Document confidentiel pour investisseurs
-1. Contexte et Problématique du Marché
-Le marché immobilier ivoirien reste marqué par une opacité des coûts, une absence de
-transparence et une forte dépendance aux canaux informels (groupes WhatsApp,
-bouche-à-oreille). Les frais de visite élevés (5 000 F CFA/visite) et les commissions d’agence
-disproportionnées créent un déséquilibre entre clients et agents.
-Les clients cherchent plus de visibilité et de sécurité, tandis que les agents peinent à stabiliser
-leurs revenus dans un environnement concurrentiel et informel.
-2. Le Concept Monajent
-“Monajent introduit le modèle Pay■Per■View immobilier : un système équitable où
-l’information a une valeur, et où chaque acteur est rémunéré pour sa contribution réelle.”
-Le modèle repose sur l’achat de crédits (“Clés”) permettant aux clients de visionner des vidéos
-détaillées de logements et d’obtenir une clé unique pour une visite physique gratuite. Les
-agents, eux, sont rémunérés dès que leurs vidéos sont visionnées.
-Contrairement aux modèles traditionnels (Bakkrô, KÔKÔ, ImmoLink), Monajent supprime les
-frais de visite et propose un modèle transparent et équitable.
-3. Analyse de l’Existence du Modèle
-En Côte d’Ivoire : aucune plateforme ne propose le paiement au visionnage. Les modèles
-existants reposent sur les annonces gratuites, les abonnements ou les commissions finales.
-À l’international : le modèle Pay■Per■View est rare dans l’immobilier résidentiel. Seules
-certaines plateformes de luxe monétisent les vidéos via abonnement, sans micro■paiement
-direct. La combinaison micro■paiement client + rémunération immédiate agent est inédite.
-4. Analyse de Viabilité et Potentiel de Succès
-■ Avantages stratégiques :
-• Réponse directe à une frustration majeure : les frais de visite opaques.
-• Incitation forte pour les agents : revenus immédiats et passifs.
-• Alignement avec les usages numériques (WhatsApp, paiements mobiles, vidéos).
-■■ Défis à maîtriser :
-• Adoption et formation des agents.
-• Contrôle qualité des vidéos et fiabilité des annonces.
-• Protection du modèle contre la duplication concurrentielle.
-5. Facteurs Clés de Succès (FCS)
-Facteur Description Impact
-Masse critique d’agents Recruter suffisamment d’agents actifs pour garantir la diversité de l’offre ■ Haute
-Qualité du contenu Standardisation et vérification des vidéos et descriptions ■ Élevée
-Éducation du marché Campagnes de communication sur la transparence et la réduction des coûts ■ Élevée
-Intégration mobile & paiement Paiement fluide via Orange Money, MTN, Wave ■ Moyenne
-Soutien institutionnel Alignement avec les règles du ministère de la Construction ■ Moyenne
-6. Potentiel Économique
-Exemple de modèle de revenus :
-• 100 000 utilisateurs actifs payant chacun 500 F CFA → 50 M F CFA de chiffre d’affaires brut.
-• 60 % redistribués aux agents → 30 M F CFA restants pour la plateforme (marge brute 40 %).
-Année Utilisateurs Revenus Estimés (F■CFA) Croissance
-2025 10■000 5■000■000 –
-2026 100■000 50■000■000 +900■%
-2027 500■000 250■000■000 +400■%
-7. Avantages Concurrentiels
-Critère Modèle Traditionnel Monajent
-Frais de visite Élevés (5■000■F■CFA / visite) Micro■paiement (15■F la vue)
-Transparence Faible Totale
-Revenus agent Incertains Stables et prévisibles
-Expérience client Fragmentée Fluide et digitale
-Coût global Élevé Réduit de 70■%
-8. Risques et Stratégies d’Atténuation
-Risque Impact Solution
-Adoption lente des agents Élevé Formation, tutoriels, incitations financières
-Contrefaçon / duplication du modèle Moyen Protection juridique, dépôt de marque, présence précoce
-Manque de confiance client Élevé Transparence, accompagnement et service client réactif
-Problèmes de paiement mobile Moyen Intégration multi■canal (OM, MTN, Wave, carte bancaire)
-9. Conclusion : Opportunité d’Investissement
-Monajent s’impose comme le premier modèle africain de micro■économie immobilière, aligné
-sur la transformation numérique du continent. Ce modèle combine impact social, transparence
-économique et scalabilité numérique, avec une rentabilité claire et une adoption naturelle du
-marché.
-■ Objectif 2025■2027 : Devenir la plateforme de référence pour les transactions locatives et la
-visibilité immobilière en Afrique francophone.
-© Monajent 2025 – Document confidentiel pour investisseurs
-
-
-
-#############Modelisation#########
-
-Parfait. Voici la **liste claire et détaillée des modèles / tables** décidés, avec leurs **relations, cardinalités, contraintes** et règles métier clés (MCD → tables).
-
-# Acteurs / Comptes
-
-## 1) User (CustomUser)
-
-* **Champs clés**: `id`, `email`, `phone`, `password/otp`, `role ∈ {CLIENT, AGENT, ADMIN}`, `is_active`, `created_at`.
-* **Cardinalités**:
-
-  * 1–0..1 avec **ClientProfile**
-  * 1–0..1 avec **AgentProfile**
-  * 1–N avec **Listing** (si role=AGENT)
-  * 1–1 avec **Wallet** (si role=AGENT)
-  * 1–N avec **PackPurchase** (si role=CLIENT)
-
-## 2) ClientProfile
-
-* **FK**: `user_id (unique)` → User.
-* **Champs**: `whatsapp_phone`, `is_phone_verified`, préférences (ex: `intent ∈ {RENT, BUY}`, `budget_min`, `budget_max`, `bedrooms_min`, `furnishing ∈ {ANY,FURNISHED,UNFURNISHED}`, `cities[]/areas[]/amenities[]` via JSON), notifications, `language`, `device_tokens[]`, referral (optionnel), `kyc_status`, `id_number`.
-* **Cardinalité**: User 1–1 ClientProfile (optionnelle selon rôle).
-
-## 3) AgentProfile
-
-* **FK**: `user_id (unique)` → User.
-* **Champs**: `agency_name`, `verified`, `bio`, infos contact pro.
-* **Cardinalité**: User 1–1 AgentProfile (optionnelle selon rôle).
+Monajent = premier modèle africain de **Pay-Per-View immobilier**.
+- Un **client** paie 500 XOF pour un pack de **33 clés virtuelles + 1 clé physique**.
+- Chaque visionnage d'une vidéo d'un bien consomme 1 clé virtuelle.
+- L'**agent** reçoit **10 XOF** par visionnage, la **plateforme** retient **5 XOF**.
+- La clé physique permet une visite gratuite chez l'agent.
+- Marché cible : Côte d'Ivoire (Orange Money, Wave, MTN).
 
 ---
 
-# Biens & Médias
+# 2. Stack technique
 
-## 4) Listing
-
-* **FK**: `agent_id` → User(AGENT).
-* **Champs**: `titre`, `type ∈ {LOCATION, VENTE}`, `prix_affiché`, `ville`, `quartier`, `coords (lat/lng)`, `statut ∈ {ACTIF, INACTIF}`, `created_at`.
-* **Cardinalités**:
-
-  * Agent(User) 1–N Listing
-  * Listing 1–N **Video**
-  * Listing 1–N **VisitRequest**
-  * Listing 1–N **FavoriteListing**
-
-## 5) Video
-
-* **FK**: `listing_id` → Listing.
-* **Champs**: `file_url`, `thumbnail_url`, `duration_sec`, `is_public`, `created_at`.
-* **Cardinalités**:
-
-  * Listing 1–N Video
-  * Video 1–N **VirtualKeyUsage**
+| Couche | Technologie |
+|--------|-------------|
+| Backend | Django 5.2 + Django REST Framework + SimpleJWT |
+| BDD | SQLite (dev), PostgreSQL-ready |
+| Auth | JWT access (RAM) + refresh HttpOnly cookie + OTP via D7 Verify |
+| Stockage médias | Local (dev), Cloudflare R2 (prod) via django-storages |
+| Paiement | Architecture provider-agnostic (SimulationGateway en dev) |
+| Frontend | **Non commencé** — prévu Vue.js + Pinia |
 
 ---
 
-# Packs, Clés, Vues, Revenus
+# 3. Arborescence backendbackend
 
-## 6) PackPurchase
-
-* **FK**: `user_id` → User(CLIENT).
-* **Champs**: `amount=500.00 XOF`, `currency=XOF`, `virtual_total=33`, `virtual_used`, `has_physical_key=bool`, `is_locked_by_visit=bool`, `created_at`.
-* **Règles**:
-
-  * 1 pack = **33 clés virtuelles + 1 clé physique**.
-  * **Visite physique** : consomme la clé physique et **verrouille** le pack (virtuel restant = 0).
-* **Cardinalités**:
-
-  * Client(User) 1–N PackPurchase
-  * PackPurchase 1–N **VirtualKeyUsage**
-  * PackPurchase 1–0..1 **VisitRequest** (sur le pack entamé)
-  * PackPurchase 1–1 **Payment**
-
-## 7) VirtualKeyUsage
-
-* **FKs**:
-
-  * `pack_id` → PackPurchase
-  * `video_id` → Video
-  * `user_id` → User(CLIENT) (consommateur)
-  * `agent_id` → User(AGENT) (bénéficiaire)
-* **Champs**: `amount_agent=10.00`, `amount_platform=5.00`, `created_at`.
-* **Contraintes**:
-
-  * **UNIQUE** `(pack_id, video_id, user_id)` (anti double-crédit)
-  * Chaque enregistrement représente **1 visionnage = 1 clé virtuelle consommée**.
-* **Cardinalités**:
-
-  * 1–1 avec **WalletEntry** (crédit agent 10 XOF)
-  * 1–1 avec **PlatformRevenue** (revenu plateforme 5 XOF)
-
-## 8) Wallet (portefeuille agent)
-
-* **FK**: `agent_id (unique)` → User(AGENT).
-* **Champs**: `balance`.
-* **Cardinalité**: Agent 1–1 Wallet ; Wallet 1–N **WalletEntry**.
-
-## 9) WalletEntry
-
-* **FKs**:
-
-  * `wallet_id` → Wallet
-  * `ref_usage_id (nullable)` → VirtualKeyUsage
-* **Champs**: `type ∈ {CREDIT, DEBIT}`, `amount`, `label`, `created_at`.
-* **Règles**:
-
-  * Chaque **VirtualKeyUsage** génère **exactement 1** `WalletEntry(CREDIT, 10 XOF)` pour l’agent bénéficiaire.
-
-## 10) PlatformRevenue
-
-* **FK**: `usage_id (unique)` → VirtualKeyUsage.
-* **Champs**: `amount=5.00`, `created_at`.
-* **Règles**:
-
-  * Chaque **VirtualKeyUsage** génère **exactement 1** `PlatformRevenue(5 XOF)`.
+```
+monajent/backend/
+├── config/               settings.py, urls.py
+├── apps/
+│   ├── api/              Point d'entrée REST
+│   │   ├── urls.py       47 routes
+│   │   ├── throttles.py  8 throttles
+│   │   ├── serializers/  auth, listings, packs, payments, visits, wallet, client
+│   │   └── views/        auth, listings, packs, payments, visits, wallet, client
+│   ├── core/             Logique transversale
+│   │   ├── permissions.py   11 permissions (IsAgent, IsClient, IsAdmin…)
+│   │   ├── validators.py    StrongPasswordValidator
+│   │   ├── services/        8 modules de services métier
+│   │   └── management/commands/  expire_listings, auto_cancel_visits, cleanup_media
+│   ├── users/            User, ClientProfile, AgentProfile, AgentDocument
+│   ├── listings/         Listing, ListingImage, Video, ListingReport
+│   ├── packs/            PackPurchase, VirtualKeyUsage
+│   ├── wallet/           Wallet, WalletEntry, PlatformRevenue, WithdrawalRequest
+│   ├── visits/           AgentAvailabilitySlot, VisitRequest
+│   ├── payments/         Payment
+│   └── favorites/        FavoriteListing, SavedSearch
+```
 
 ---
 
-# Visites & Paiements
+# 4. Modèles (14 tables principales)
 
-## 11) VisitRequest
+## Acteurs
+- **User** : login par téléphone, role ∈ {CLIENT, AGENT, ADMIN}
+- **ClientProfile** : préférences (JSON), whatsapp, intent, budget, villes
+- **AgentProfile** : agency_name, verified, bio, KYC
+- **AgentDocument** : fichiers CNI/photos rattachés à un agent
 
-* **FKs**:
+## Biens & Médias
+- **Listing** : titre, type (LOCATION/VENTE), prix, ville, quartier, coords, statut, expires_at, video_hash
+- **ListingImage** : FK listing, fichier image
+- **Video** : FK listing, fichier, thumbnail, duration_sec, access_key (UUID), file_hash (SHA-256 anti-fraude)
+- **ListingReport** : signalement client (ALREADY_TAKEN, FRAUD, INAPPROPRIATE…)
 
-  * `user_id` → User(CLIENT)
-  * `listing_id` → Listing
-  * `pack_id` → PackPurchase (celui entamé)
-* **Champs**: `status ∈ {REQUESTED, CONFIRMED, DONE, NO_SHOW, CANCELED}`, `scheduled_at`, `consumed_physical_key_at`.
-* **Règles**:
+## Packs & Revenus
+- **PackPurchase** : user(CLIENT), 500 XOF, 33 virtual_keys + 1 physical_key, is_locked_by_visit
+- **VirtualKeyUsage** : 1 vue = 1 clé consommée, UNIQUE(pack, video, user), amounts tracés
+- **Wallet** : agent, balance, total_earned, total_withdrawn, withdrawal_pin_hash
+- **WalletEntry** : CREDIT/DEBIT, source (VIDEO_VIEW, PHYSICAL_VISIT, WITHDRAWAL, ADJUSTMENT)
+- **PlatformRevenue** : 5 XOF par vue/visite, source (VIDEO_VIEW, PHYSICAL_VISIT)
+- **WithdrawalRequest** : PENDING/COMPLETED/REJECTED, method (ORANGE_MONEY/WAVE/MTN), phone
 
-  * **Consomme** la clé physique du pack **entamé** et **lock** le pack (`is_locked_by_visit=True`).
+## Visites
+- **AgentAvailabilitySlot** : créneaux récurrents (jour, heure début/fin)
+- **VisitRequest** : statut, code de vérification (5 chars alphanumériques), slot, virtual_key_consumed
 
-## 12) Payment
+## Paiements
+- **Payment** : pack (nullable → créé après webhook), provider, tx_ref, provider_tx_id, checkout_url, status
 
-* **FKs**:
-
-  * `user_id` → User(CLIENT)
-  * `pack_id (unique)` → PackPurchase
-* **Champs**: `provider`, `tx_ref`, `status ∈ {PENDING, PAID, FAILED}`, `amount`, `created_at`.
-* **Règle**: 1 **PackPurchase** ↔ 1 **Payment** payé.
-
----
-
-# Favoris & Recherches enregistrées (confort client)
-
-## 13) FavoriteListing
-
-* **FKs**: `user_id` → User(CLIENT), `listing_id` → Listing.
-* **Champs**: `created_at`.
-* **Contrainte**: **UNIQUE** `(user_id, listing_id)`.
-
-## 14) SavedSearch
-
-* **FK**: `user_id` → User(CLIENT).
-* **Champs**: `label`, `filters_json (JSON)`, `created_at`.
+## Favoris
+- **FavoriteListing** : UNIQUE(user, listing)
+- **SavedSearch** : label + filters (JSON)
 
 ---
 
-# Récap relations (cardinalités)
+# 5. Services métier (apps/core/services/)
 
-* **User** 1–0..1 **ClientProfile**
-* **User** 1–0..1 **AgentProfile**
-* **User(AGENT)** 1–N **Listing**
-* **Listing** 1–N **Video**
-* **User(CLIENT)** 1–N **PackPurchase**
-* **PackPurchase** 1–N **VirtualKeyUsage**
-* **Video** 1–N **VirtualKeyUsage**
-* **User(CLIENT)** 1–N **VirtualKeyUsage** (consommateur)
-* **User(AGENT)** 1–N **VirtualKeyUsage** (bénéficiaire)
-* **User(AGENT)** 1–1 **Wallet**
-* **Wallet** 1–N **WalletEntry**
-* **VirtualKeyUsage** 1–1 **WalletEntry**
-* **VirtualKeyUsage** 1–1 **PlatformRevenue**
-* **PackPurchase** 1–0..1 **VisitRequest**
-* **PackPurchase** 1–1 **Payment**
-* **User(CLIENT)** 1–N **FavoriteListing**
-* **Listing** 1–N **FavoriteListing**
-* **User(CLIENT)** 1–N **SavedSearch**
+| Service | Rôle |
+|---------|------|
+| `viewing.py` | consume_virtual_key() — transaction atomique : -1 clé, +10 agent, +5 plateforme |
+| `visits.py` | request_visit(), confirm_visit(), validate_visit_code(), cancel_visit(), expire_unresponded_visits() |
+| `withdrawal.py` | set/change_withdrawal_pin(), request_withdrawal() (PIN + seuil 2000 XOF), approve/reject |
+| `payment.py` | initiate_pack_purchase(), process_webhook(), execute_payout() |
+| `payment_gateway.py` | BasePaymentGateway (ABC), SimulationGateway, placeholders CinetPay/Moneroo/Flutterwave |
+| `video_dedup.py` | SHA-256 hash anti-fraude : bloque le re-upload de la même vidéo par le même agent (si listing actif) |
+| `listing_lifecycle.py` | Expiration listings (7 jours), traitement signalements, cleanup médias |
+| `d7_verify.py` | D7VerifyClient — envoi/vérification OTP SMS |
 
 ---
 
-# Règles métier “non négociables”
+# 6. Règles métier clés
 
-1. **Pack standard** = 500 XOF → 33 **clés virtuelles** + 1 **clé physique**.
-2. **Visionnage** = consommation de **1** clé virtuelle → **VirtualKeyUsage** crée :
+## Visionnage (pay-per-view)
+- 1 pack = 500 XOF = 33 clés virtuelles + 1 clé physique
+- 1 vue = 1 clé virtuelle → 10 XOF agent + 5 XOF plateforme (atomique)
+- UNIQUE(pack, video, user) = anti-double-crédit (revoir une vidéo = gratuit)
 
-   * **WalletEntry(CREDIT, 10 XOF)** pour l’agent,
-   * **PlatformRevenue(5 XOF)** pour la plateforme.
-     (Transaction atomique + `select_for_update` sur le pack)
-3. **Visite physique** = consommation de la **clé physique** du **pack entamé** ET **verrouillage** du pack (`is_locked_by_visit=True`) → le **virtuel restant** de ce pack devient **indisponible**.
-4. **Anti-fraude vues** : contrainte **UNIQUE(pack, video, user)** + throttling côté API.
-5. **Traçabilité** : chaque `VirtualKeyUsage` doit avoir **exactement 1** `WalletEntry` et **exactement 1** `PlatformRevenue`.
+## Visite physique
+- L'agent gagne 10 XOF **une seule fois par client par listing**
+- Si le client n'a jamais vu de vidéo du listing → la visite consomme 1 clé virtuelle + 1 clé physique (10 XOF agent, 5 XOF plateforme)
+- Si le client a déjà vu une vidéo du listing → la visite consomme uniquement la clé physique (0 XOF supplémentaire)
+- Code de vérification : 5 caractères alphanumériques majuscules (ex: A3K7F)
+- Annulation/expiration → clé physique restaurée, clé virtuelle jamais restaurée
+
+## Anti-fraude vidéo
+- Hash SHA-256 du fichier vidéo, comparé aux vidéos des listings **actifs** du même agent
+- Un agent peut re-uploader une vidéo si son ancien listing est expiré/inactif
+
+## Expiration des listings
+- 7 jours après publication, le listing expire automatiquement (management command)
+- L'agent peut renouveler avant expiration
+
+## Wallet agent
+- PIN de retrait hashé (make_password), 4 chiffres
+- Seuil minimum de retrait : 2 000 XOF
+- 1 seule demande PENDING à la fois
+- Solde déduit immédiatement (anti-double-retrait)
+- Approbation admin → payout via payment gateway
 
 ---
 
-# Notes d’implémentation
+# 7. API — 47 endpoints
 
-* **Monnaie** : `Decimal(10,2)`, constantes XOF.
-* **Prefs client** : utiliser `JSONField` (SQLite ok) ; si tu passes à Postgres, tu peux garder JSONB (ou `ArrayField` si tu préfères, mais JSON est plus portable).
-* **Index conseillés** :
+## Auth (11 endpoints)
+```
+POST /api/auth/register/client      Inscription client (→ OTP D7)
+POST /api/auth/register/agent       Inscription agent (→ OTP D7)
+POST /api/auth/login                Login → { access } + cookie refresh
+POST /api/auth/refresh              Renouveler access (cookie)
+POST /api/auth/logout               Logout + blacklist refresh
+GET  /api/auth/me                   Profil courant
+POST /api/auth/otp/request          Demander/relancer OTP
+POST /api/auth/otp/verify           Vérifier OTP → créer compte
+POST /api/auth/password/reset/request    Demander reset
+POST /api/auth/password/reset/verify     Vérifier code reset
+POST /api/auth/password/reset/finalize   Nouveau mot de passe
+```
 
-  * `Video(listing_id)`
-  * `VirtualKeyUsage(video_id)`, `VirtualKeyUsage(agent_id)`, `VirtualKeyUsage(user_id)`, **unique** `(pack_id, video_id, user_id)`
-  * `Wallet(agent_id unique)`
-  * `WalletEntry(wallet_id, created_at)`
-  * `PackPurchase(user_id, is_locked_by_visit, created_at)` (pour trouver vite le pack entamé)
+## Listings (11 endpoints)
+```
+GET  /api/listings/                         Recherche publique (filtres, pagination)
+GET  /api/listings/{id}/                    Détail annonce
+GET  /api/agent/listings/                   Mes annonces (agent)
+POST /api/agent/listings/                   Créer annonce
+GET/PUT/PATCH/DELETE /api/agent/listings/{id}/   CRUD annonce
+POST /api/agent/listings/{id}/renew/        Renouveler (anti-expiration)
+POST /api/agent/listings/{id}/images/       Upload image
+DELETE /api/agent/listings/{id}/images/{pk}/ Supprimer image
+POST /api/agent/listings/{id}/videos/       Upload vidéo (+ hash anti-fraude)
+DELETE /api/agent/listings/{id}/videos/{pk}/ Supprimer vidéo
+```
+
+## Packs & Visionnage (5 endpoints)
+```
+GET  /api/client/packs/                     Mes packs
+POST /api/client/packs/                     Acheter pack (dev simplifié, sans paiement)
+GET  /api/client/packs/{id}/                Détail pack
+POST /api/videos/{access_key}/watch/        Visionner vidéo (consomme 1 clé)
+GET  /api/client/views/                     Historique visionnages
+GET  /api/agent/views/                      Vues reçues (stats agent)
+```
+
+## Visites (8 endpoints)
+```
+GET/POST /api/client/visits/                Mes visites / Demander visite
+POST     /api/client/visits/{id}/cancel/    Annuler visite
+GET      /api/agent/visits/                 Visites reçues
+POST     /api/agent/visits/{id}/confirm/    Confirmer visite
+POST     /api/agent/visits/{id}/validate-code/  Valider code vérification
+GET/POST /api/agent/availability/           Créneaux agent
+GET/PUT/DELETE /api/agent/availability/{id}/  CRUD créneau
+GET      /api/listings/{id}/availability/   Créneaux publics d'un listing
+```
+
+## Signalements (2 endpoints)
+```
+POST /api/listings/{id}/report/             Signaler un listing
+GET  /api/client/reports/                   Mes signalements
+```
+
+## Wallet (6 endpoints)
+```
+GET  /api/agent/wallet/                     Solde + totaux
+GET  /api/agent/wallet/entries/             Historique mouvements
+POST /api/agent/wallet/set-pin/             Configurer PIN (1re fois)
+POST /api/agent/wallet/change-pin/          Changer PIN
+POST /api/agent/wallet/withdraw/            Demander retrait (PIN requis)
+GET  /api/agent/wallet/withdrawals/         Historique retraits
+```
+
+## Client (8 endpoints)
+```
+GET       /api/client/dashboard/            Dashboard consolidé
+GET/PATCH /api/client/profile/              Profil client
+GET       /api/client/favorites/            Favoris
+POST/DELETE /api/client/favorites/{id}/     Toggle favori
+GET/POST  /api/client/saved-searches/       Recherches sauvegardées
+GET/PUT/DELETE /api/client/saved-searches/{id}/  CRUD recherche
+```
+
+## Payments (4 endpoints) — NOUVEAU
+```
+POST /api/client/packs/buy/                 Initier achat (→ checkout_url provider)
+POST /api/payments/webhook/                 Webhook provider (non auth)
+POST /api/payments/simulate/{tx_ref}/confirm/  Simuler paiement (dev only)
+GET  /api/client/payments/                  Historique paiements
+```
 
 ---
 
-Si tu veux, je te fournis juste après la **version Mermaid ER** finalisée (copiable-collable dans ton repo) et/ou la **traduction MLD (tables SQL)** prête pour Django migrations.
+# 8. Architecture Paiement (provider-agnostic)
+
+## Flux Pay-in (Client → Plateforme)
+1. Client `POST /api/client/packs/buy/` avec provider choisi
+2. Backend crée `Payment(PENDING)` + appelle `gateway.create_checkout()`
+3. Client redirigé vers page paiement du provider
+4. Provider notifie `POST /api/payments/webhook/`
+5. Backend vérifie via `gateway.verify_webhook()`, crée `PackPurchase`, `Payment(PAID)`
+
+## Flux Payout (Plateforme → Agent)
+1. Agent demande retrait (`POST /api/agent/wallet/withdraw/` + PIN)
+2. `WithdrawalRequest(PENDING)` créé, solde déduit
+3. Admin approuve → `approve_withdrawal()` appelle `gateway.create_payout()`
+4. Mobile money transféré, `WithdrawalRequest(COMPLETED)`
+
+## Gateways disponibles
+- **SimulationGateway** (dev) : checkout_url local, confirmation manuelle, payout loggé
+- **CinetPayGateway** : placeholder prêt (structure + __init__ avec clés)
+- **MonerooGateway** : placeholder prêt
+- **FlutterwaveGateway** : placeholder prêt
+
+Config via `settings.py` :
+```
+PAYMENT_GATEWAY = env('PAYMENT_GATEWAY', default='simulation')
+PAYMENT_CONFIG = { 'cinetpay': {...}, 'moneroo': {...}, 'flutterwave': {...} }
+```
+
+---
+
+# 9. Sécurité
+
+- JWT access court (10 min) en RAM, refresh long (14 jours) HttpOnly cookie
+- OTP stateless via D7 Verify (pending_token signé)
+- CORS avec credentials + origines explicites
+- Origin/Referer check sur /auth/refresh et /auth/logout
+- Passwords : make_password/check_password, StrongPasswordValidator
+- PIN de retrait : hashé séparément du mot de passe
+- Anti-fraude : UNIQUE(pack, video, user), video hash SHA-256, throttling
+- select_for_update sur toutes les transactions financières
+- CSP, HSTS, SSL configurables via .env
+
+---
+
+# 10. Management commands (tâches planifiées)
+
+| Commande | Rôle |
+|----------|------|
+| `python manage.py expire_listings` | Expire les listings > 7 jours |
+| `python manage.py auto_cancel_visits` | Annule les visites non confirmées (restore clé physique) |
+| `python manage.py cleanup_media` | Supprime les fichiers médias des listings expirés |
+
+Note : pas de Celery pour l'instant. Ces commandes peuvent être exécutées via cron ou Celery Beat en production.
+
+---
+
+# 11. Variables d'environnement (.env)
+
+```
+SECRET_KEY=...
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# D7 Verify (OTP SMS)
+D7_API_BASE_URL=https://api.d7networks.com
+D7_API_TOKEN=...
+D7_ORIGINATOR=SignOTP
+
+# Payment Gateway
+PAYMENT_GATEWAY=simulation
+# CINETPAY_API_KEY=...
+# CINETPAY_SITE_ID=...
+# CINETPAY_SECRET_KEY=...
+# FLW_SECRET_KEY=...
+# FLW_PUBLIC_KEY=...
+# MONEROO_SECRET_KEY=...
+
+# Cloudflare R2 (prod)
+USE_R2=False
+# R2_ACCESS_KEY_ID=...
+# R2_SECRET_ACCESS_KEY=...
+# R2_BUCKET_NAME=monajent-media
+# R2_ENDPOINT_URL=...
+```
+
+---
+
+# 12. État d'avancement — Backend
+
+| Étape | Statut | Détail |
+|-------|--------|--------|
+| 1. Modèles + migrations | FAIT | 14 tables, 22 migrations, tous les index/contraintes |
+| 2. Auth (inscription, login, OTP, reset) | FAIT | 11 endpoints, D7 Verify, JWT, stateless OTP |
+| 3.1 Serializers + Vues Listings | FAIT | CRUD agent (9 endpoints), upload images/vidéos, hash anti-fraude |
+| 3.2 Vues publiques Listings | FAIT | Recherche/filtrage, détail, pagination |
+| 3.3 Serializers + Vues Packs | FAIT | Achat pack (dev), consommation clé, historique |
+| 3.4 Service de visionnage | FAIT | Transaction atomique, 10 XOF agent + 5 XOF plateforme |
+| 3.5 Vues Wallet | FAIT | Solde, historique, PIN, retrait, admin approbation |
+| 3.6 Vues Visits | FAIT | Demande visite, créneaux, code vérif, confirm/cancel |
+| 3.7 Client Profile + Favorites + SavedSearch | FAIT | Dashboard, profil, favoris, recherches sauvegardées |
+| 3.8 Payments | FAIT | Architecture provider-agnostic, simulation, webhook, payout |
+| **3.9 Frontend Dashboard Agent** | **A FAIRE** | Pages Vue.js : mes annonces, stats, wallet, visites |
+| **3.10 Frontend Client** | **A FAIRE** | Pages Vue.js : recherche, visionnage, favoris, packs |
+
+---
+
+# 13. Ce qui reste à faire
+
+## Backend (améliorations / prod-readiness)
+
+1. **Implémenter un vrai gateway** : compléter CinetPayGateway ou MonerooGateway avec les clés API réelles (create_checkout, verify_webhook, create_payout)
+2. **Celery / tâches async** : remplacer les management commands par des tâches Celery Beat pour expire_listings, auto_cancel_visits, cleanup_media
+3. **Notifications** : push/SMS quand un paiement est confirmé, une visite est demandée/confirmée, un retrait est traité
+4. **Tests unitaires** : aucun test écrit pour l'instant (tous les tests.py sont vides)
+5. **Pagination globale** : configurer DEFAULT_PAGINATION_CLASS dans DRF
+6. **Swagger/OpenAPI** : drf-spectacular est installé mais pas d'endpoint /api/docs/ configuré
+7. **Admin avancé** : actions bulk, filtres avancés, tableaux de bord statistiques
+8. **Logs/audit** : centraliser les logs de paiement, visionnage, retrait
+9. **PostgreSQL** : migration vers Postgres pour la production
+10. **Rate limiting avancé** : ajuster les throttles selon les retours d'usage
+
+## Frontend (gros chantier — non commencé)
+
+### 3.9 — Dashboard Agent (Vue.js)
+- Mes annonces (CRUD, status, renouvellement)
+- Stats (vues reçues, revenus par période, graphiques)
+- Wallet (solde, historique, demande de retrait, gestion PIN)
+- Visites (demandes reçues, créneaux, validation code)
+- Profil agent (infos, KYC)
+
+### 3.10 — Frontend Client (Vue.js)
+- Recherche / exploration listings (filtres, carte)
+- Visionnage vidéo (lecteur, consommation clé)
+- Gestion packs (achat via paiement mobile, historique)
+- Visites physiques (demande, suivi, code vérification)
+- Favoris + recherches sauvegardées
+- Dashboard / profil client
+
+---
+
+# 14. Fichiers clés (pour navigation rapide)
+
+## Config
+- `config/settings.py` — toute la configuration Django + JWT + CORS + Payment
+- `apps/api/urls.py` — 47 routes REST
+
+## Modèles
+- `apps/users/models.py` — User, ClientProfile, AgentProfile
+- `apps/listings/models.py` — Listing, Video, ListingImage, ListingReport
+- `apps/packs/models.py` — PackPurchase, VirtualKeyUsage
+- `apps/wallet/models.py` — Wallet, WalletEntry, PlatformRevenue, WithdrawalRequest
+- `apps/visits/models.py` — AgentAvailabilitySlot, VisitRequest
+- `apps/payments/models.py` — Payment
+- `apps/favorites/models.py` — FavoriteListing, SavedSearch
+
+## Services métier
+- `apps/core/services/viewing.py` — consommation clé virtuelle (coeur business)
+- `apps/core/services/visits.py` — visite physique (logique conditionnelle clé virtuelle)
+- `apps/core/services/withdrawal.py` — retrait agent (PIN + payout gateway)
+- `apps/core/services/payment.py` — initiation paiement + webhook
+- `apps/core/services/payment_gateway.py` — interface abstraite + SimulationGateway
+- `apps/core/services/video_dedup.py` — déduplication vidéo (SHA-256)
+- `apps/core/services/listing_lifecycle.py` — expiration + signalements
+
+## Auth
+- `apps/api/views/auth.py` — toutes les vues auth
+- `apps/api/serializers/auth.py` — serializers auth
+- `apps/core/services/d7_verify.py` — intégration OTP D7
+
+## Permissions & Throttles
+- `apps/core/permissions.py` — 11 permissions métier
+- `apps/api/throttles.py` — 8 throttles métier

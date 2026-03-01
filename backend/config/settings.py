@@ -25,12 +25,13 @@ env.read_env(str(BASE_DIR.parent / '.env'))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m@m_jn3i_u8_j78g5qh%@g5-rwc81!vk6u=2ee$uvbx2z5jo@#'
+# Utilise l'env en priorité (ex: SECRET_KEY=... dans .env)
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-m@m_jn3i_u8_j78g5qh%@g5-rwc81!vk6u=2ee$uvbx2z5jo@#')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG', default=True)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
 
 # Application definition
@@ -57,6 +58,7 @@ INSTALLED_APPS = [
     'apps.packs',
     'apps.wallet',
     'apps.visits',
+
     'apps.payments',
     'apps.favorites',
 ]
@@ -112,12 +114,16 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'apps.core.validators.StrongPasswordValidator',
     },
 ]
 
@@ -164,6 +170,36 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        # ── Auth core ────────────────────────────
+        'auth_login': '5/min',
+        'auth_refresh': '30/min',
+        'auth_logout': '60/min',
+        # ── OTP flows ────────────────────────────
+        'otp_request': '3/min',
+        'otp_verify': '6/min',
+        # ── Password reset flows ─────────────────
+        'password_reset_request': '3/min',
+        'password_reset_verify': '6/min',
+        'password_reset_finalize': '6/min',
+        # ── Listings ─────────────────────────────
+        'listing_create': '30/hour',
+        'listing_search': '60/min',
+        # ── Vidéos ───────────────────────────────
+        'video_view': '120/hour',       # consommation de clés virtuelles
+        'video_upload': '20/hour',
+        # ── Packs ────────────────────────────────
+        'pack_purchase': '10/hour',
+        # ── Visites ──────────────────────────────
+        'visit_request': '10/hour',
+        # ── Wallet ───────────────────────────────
+        'wallet_withdraw': '5/hour',
+        # ── Favoris ──────────────────────────────
+        'favorite_toggle': '120/hour',
+    },
 }
 
 # drf-spectacular
@@ -173,15 +209,43 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
 }
 
-# CORS / CSRF (dev par défaut)
+# CORS / CSRF (pilotés par env)
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-]
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173'])
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173'])
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:5173',
-]
+# Cookies sécurité
+AUTH_COOKIE_SAMESITE = env('AUTH_COOKIE_SAMESITE', default='Lax')  # 'Lax' (même-site) ou 'None' (cross-site, Secure requis)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = env('CSRF_COOKIE_SAMESITE', default='Lax')  # 'None' si front cross-site en HTTPS
+
+# Redirections et HSTS
+SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_HSTS_SECONDS = env.int('SECURE_HSTS_SECONDS', default=(0 if DEBUG else 31536000))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=not DEBUG)
+SECURE_HSTS_PRELOAD = env.bool('SECURE_HSTS_PRELOAD', default=not DEBUG)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+
+# CSP (django-csp) - désactivé par défaut, activer en prod via ENABLE_CSP=True
+ENABLE_CSP = env.bool('ENABLE_CSP', default=False)
+CSP_REPORT_ONLY = env.bool('CSP_REPORT_ONLY', default=False)
+CSP_DEFAULT_SRC = tuple(env.list('CSP_DEFAULT_SRC', default=["'none'"]))
+CSP_IMG_SRC = tuple(env.list('CSP_IMG_SRC', default=["'self'", "data:"]))
+CSP_STYLE_SRC = tuple(env.list('CSP_STYLE_SRC', default=["'self'"]))
+CSP_FONT_SRC = tuple(env.list('CSP_FONT_SRC', default=["'self'", "data:"]))
+CSP_CONNECT_SRC = tuple(env.list('CSP_CONNECT_SRC', default=['https://monajent.com', 'https://api.monajent.com']))
+CSP_FRAME_ANCESTORS = tuple(env.list('CSP_FRAME_ANCESTORS', default=["'none'"]))
+
+if ENABLE_CSP:
+    # Insérer le middleware CSP juste après SecurityMiddleware
+    try:
+        security_index = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware')
+        MIDDLEWARE.insert(security_index + 1, 'csp.middleware.CSPMiddleware')
+    except ValueError:
+        MIDDLEWARE.append('csp.middleware.CSPMiddleware')
 
 from datetime import timedelta
 
@@ -212,5 +276,58 @@ ORANGE_DLR_NOTIFY_URL = env('ORANGE_DLR_NOTIFY_URL', default='')
 
 # D7 Verify
 D7_API_BASE_URL = env('D7_API_BASE_URL', default='https://api.d7networks.com')
-D7_API_TOKEN = env('D7_API_TOKEN', default='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhdXRoLWJhY2tlbmQ6YXBwIiwic3ViIjoiNWU1MmVlNDAtY2VmZC00NDk4LWIyOTMtZDc4Y2E4YjZhMzNlIn0.SAGhkEILM1res66Um202JGg9YmmUBddJ0AgEDeib-Es')
+D7_API_TOKEN = env('D7_API_TOKEN', default='')
+
+# ── Cloudflare R2 (stockage médias) ──────────────────────────
+# Activer en prod : USE_R2=True dans .env
+# En dev : fichiers stockés localement dans MEDIA_ROOT
+USE_R2 = env.bool('USE_R2', default=False)
+
+if USE_R2:
+    STORAGES = {
+        'default': {
+            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+        },
+        'staticfiles': {
+            'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+        },
+    }
+    AWS_ACCESS_KEY_ID = env('R2_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = env('R2_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = env('R2_BUCKET_NAME', default='monajent-media')
+    AWS_S3_ENDPOINT_URL = env('R2_ENDPOINT_URL')
+    AWS_S3_REGION_NAME = 'auto'
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = True           # URLs signées (vidéos protégées)
+    AWS_QUERYSTRING_EXPIRE = 3600         # Expiration URL signée : 1h
+    AWS_S3_FILE_OVERWRITE = False         # Ne pas écraser les fichiers existants
+    AWS_S3_SIGNATURE_VERSION = 's3v4'     # Requis par R2
 D7_ORIGINATOR = env('D7_ORIGINATOR', default='SignOTP')
+
+# ── Payment Gateway ──────────────────────────────────────────
+# Provider actif : 'simulation' (dev), 'paystack', 'cinetpay', 'moneroo', 'flutterwave'
+PAYMENT_GATEWAY = env('PAYMENT_GATEWAY', default='simulation')
+
+PAYMENT_CONFIG = {
+    'simulation': {},
+    'paystack': {
+        'secret_key': env('PAYSTACK_SECRET_KEY', default=''),
+        'public_key': env('PAYSTACK_PUBLIC_KEY', default=''),
+    },
+    'cinetpay': {
+        'api_key': env('CINETPAY_API_KEY', default=''),
+        'site_id': env('CINETPAY_SITE_ID', default=''),
+        'secret_key': env('CINETPAY_SECRET_KEY', default=''),
+    },
+    'flutterwave': {
+        'secret_key': env('FLW_SECRET_KEY', default=''),
+        'public_key': env('FLW_PUBLIC_KEY', default=''),
+    },
+    'moneroo': {
+        'secret_key': env('MONEROO_SECRET_KEY', default=''),
+    },
+}
+
+PAYMENT_SIMULATION_BASE_URL = env('PAYMENT_SIMULATION_BASE_URL', default='http://localhost:8000')
+PAYMENT_WEBHOOK_BASE_URL = env('PAYMENT_WEBHOOK_BASE_URL', default='http://localhost:8000')
+PAYMENT_DEFAULT_RETURN_URL = env('PAYMENT_DEFAULT_RETURN_URL', default='http://localhost:5173/packs')
