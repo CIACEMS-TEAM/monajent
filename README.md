@@ -2,11 +2,11 @@
 Mon Ajent MVP
 
 # ### JETON CLOUDFLARE ####
-## Utilisez ce jeton pour vous authentifier auprès de l’API Cloudflare :
+## Pour vous authentifier auprès de l’API Cloudflare Utilisez votre jeton :
 
 Valeur du jeton:
 ```
-rjEPTZafprJmLhaoCW1ROiUKjp-DPPHNoLndenGs
+rjEPTZa********
 ```
 
 
