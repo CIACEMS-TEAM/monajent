@@ -91,18 +91,42 @@ class InitiatePackPurchaseView(APIView):
 # ═══════════════════════════════════════════════════════════════
 
 
+PAYSTACK_WEBHOOK_IPS = frozenset({
+    '52.31.139.75',
+    '52.49.173.169',
+    '52.214.14.220',
+})
+
+
+def _get_client_ip(request) -> str:
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '')
+
+
 class PaymentWebhookView(APIView):
     """
     POST /api/payments/webhook/
 
-    Endpoint appelé par le provider de paiement (CinetPay, Moneroo, etc.)
-    après confirmation ou échec du paiement.
-    Non authentifié — la validation se fait via le gateway (signature, etc.).
+    Endpoint appelé par le provider de paiement après confirmation ou échec.
+    Non authentifié — validation via signature HMAC + IP whitelisting (prod).
     """
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request):
+        if not settings.DEBUG:
+            client_ip = _get_client_ip(request)
+            if client_ip not in PAYSTACK_WEBHOOK_IPS:
+                logger.warning(
+                    "Webhook rejeté : IP %s non autorisée", client_ip,
+                )
+                return Response(
+                    {'detail': 'IP non autorisée.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         payload = request.data if isinstance(request.data, dict) else {}
         headers = dict(request.headers)
         raw_body = request.body if hasattr(request, 'body') else b''
@@ -172,18 +196,27 @@ class SimulatePaymentConfirmView(APIView):
                 'status': payment.status,
             })
 
+        import hashlib, hmac as hmac_mod, json
+
         simulated_payload = {
-            'tx_ref': payment.tx_ref,
-            'provider_tx_id': payment.provider_tx_id,
-            'amount': str(payment.amount),
-            'currency': payment.currency,
-            'status': 'PAID',
+            'event': 'charge.success',
+            'data': {
+                'reference': payment.tx_ref,
+                'id': payment.provider_tx_id,
+                'status': 'success',
+                'amount': int(payment.amount * 100),
+                'currency': payment.currency,
+            },
         }
+        raw_body = json.dumps(simulated_payload).encode()
+        secret = settings.PAYMENT_CONFIG.get('paystack', {}).get('secret_key', '')
+        sig = hmac_mod.HMAC(secret.encode(), raw_body, hashlib.sha512).hexdigest()
 
         try:
             payment = process_webhook(
                 payload=simulated_payload,
-                headers={'X-Simulation': 'true'},
+                headers={'X-Paystack-Signature': sig},
+                raw_body=raw_body,
             )
         except PaymentError as e:
             return Response(

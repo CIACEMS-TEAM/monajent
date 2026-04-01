@@ -33,6 +33,7 @@ from .views.packs import (
     ClientPackListCreateView,
     ClientPackDetailView,
     WatchVideoView,
+    VideoTeaserView,
     VideoStreamView,
     ClientViewHistoryListView,
     AgentViewsReceivedListView,
@@ -93,6 +94,13 @@ from .views.notifications import (
     NotificationReadAllView,
     NotificationUnreadCountView,
 )
+from .views.legal import LegalConsentView
+from .views.support import (
+    SupportTicketListCreateView,
+    SupportTicketDetailView,
+    SupportTicketMessageCreateView,
+    SupportTicketCloseView,
+)
 
 urlpatterns = [
     # ── Auth ──────────────────────────────────────────────────
@@ -139,6 +147,7 @@ urlpatterns = [
     path('client/packs/<int:pk>/', ClientPackDetailView.as_view(), name='client-pack-detail'),
 
     # ── Visionnage (pay-per-view) ────────────────────────────
+    path('videos/<uuid:access_key>/teaser/', VideoTeaserView.as_view(), name='video-teaser'),
     path('videos/<uuid:access_key>/watch/', WatchVideoView.as_view(), name='video-watch'),
     path('videos/stream/<str:token>/', VideoStreamView.as_view(), name='video-stream'),
 
@@ -210,6 +219,15 @@ urlpatterns = [
     path('notifications/read/', NotificationReadView.as_view(), name='notification-read'),
     path('notifications/read-all/', NotificationReadAllView.as_view(), name='notification-read-all'),
     path('notifications/unread-count/', NotificationUnreadCountView.as_view(), name='notification-unread-count'),
+
+    # ── Legal (consentement) ──────────────────────────────────────
+    path('legal/consent/', LegalConsentView.as_view(), name='legal-consent'),
+
+    # ── Support (tickets) ────────────────────────────────────────
+    path('support/tickets/', SupportTicketListCreateView.as_view(), name='support-ticket-list'),
+    path('support/tickets/<int:pk>/', SupportTicketDetailView.as_view(), name='support-ticket-detail'),
+    path('support/tickets/<int:pk>/messages/', SupportTicketMessageCreateView.as_view(), name='support-ticket-message'),
+    path('support/tickets/<int:pk>/close/', SupportTicketCloseView.as_view(), name='support-ticket-close'),
 
     # ── Payments ────────────────────────────────────────────────
     path('client/packs/buy/', InitiatePackPurchaseView.as_view(), name='client-pack-buy'),

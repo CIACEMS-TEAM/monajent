@@ -148,7 +148,7 @@
           <span class="yt-sidebar__label">Accueil</span>
         </router-link>
 
-        <a href="#" class="yt-sidebar__item yt-sidebar__item--soon" @click.prevent>
+        <!-- <a href="#" class="yt-sidebar__item yt-sidebar__item--soon" @click.prevent>
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -161,7 +161,7 @@
           </svg>
           <span class="yt-sidebar__label">Tendances</span>
           <span class="yt-badge-soon">Bientôt</span>
-        </a>
+        </a> -->
 
         <div class="yt-sidebar__separator"></div>
 
@@ -228,9 +228,16 @@
           <span class="yt-sidebar__label">Signalements</span>
         </a>
 
+        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/support')">
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+          </svg>
+          <span class="yt-sidebar__label">Aide & Support</span>
+        </a>
+
         <div class="yt-sidebar__separator"></div>
 
-        <div class="yt-sidebar__heading">Explorer</div>
+        <!-- <div class="yt-sidebar__heading">Explorer</div>
 
         <a href="#" class="yt-sidebar__item yt-sidebar__item--soon" @click.prevent>
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -252,11 +259,26 @@
           </svg>
           <span class="yt-sidebar__label">Nouveautés</span>
           <span class="yt-badge-soon">Bientôt</span>
-        </a>
+        </a> -->
       </nav>
 
-      <div class="yt-sidebar__footer">
-        <p class="yt-sidebar__legal">MonaJent &copy; 2026 CIACEMS</p>
+      <!-- Footer expanded -->
+      <div class="yt-sidebar__footer yt-sidebar__footer--expanded">
+        <div class="yt-sidebar__links">
+          <router-link to="/legal/cgu">Conditions d'utilisation</router-link>
+          <router-link to="/legal/confidentialite">Confidentialité</router-link>
+          <router-link to="/legal/conditions-agents">Conditions agents</router-link>
+        </div>
+        <p class="yt-sidebar__legal">&copy; 2026 MonaJent &mdash; CIACEMS</p>
+      </div>
+
+      <!-- Footer collapsed (icône) -->
+      <div class="yt-sidebar__footer yt-sidebar__footer--collapsed">
+        <router-link to="/legal/cgu" class="yt-sidebar__legal-icon" title="Mentions légales">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 15h2v2h-2v-2zm0-8h2v6h-2V8z"/>
+          </svg>
+        </router-link>
       </div>
     </aside>
 
@@ -944,8 +966,35 @@ function handleBottomNavProfile() {
 
 .yt-app:not(.sidebar-open) .yt-sidebar__heading,
 .yt-app:not(.sidebar-open) .yt-sidebar__separator,
-.yt-app:not(.sidebar-open) .yt-sidebar__footer {
+.yt-app:not(.sidebar-open) .yt-sidebar__footer--expanded {
   display: none;
+}
+
+.yt-sidebar__footer--collapsed {
+  display: none;
+}
+
+.yt-app:not(.sidebar-open) .yt-sidebar__footer--collapsed {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.yt-sidebar__legal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.yt-sidebar__legal-icon:hover {
+  background: var(--chip-bg);
+  color: var(--text-primary);
 }
 
 .yt-sidebar__separator {
@@ -968,9 +1017,27 @@ function handleBottomNavProfile() {
   border-top: 1px solid var(--border);
 }
 
+.yt-sidebar__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+}
+
+.yt-sidebar__links a {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  line-height: 1.6;
+}
+
+.yt-sidebar__links a:hover {
+  color: var(--text-primary);
+}
+
 .yt-sidebar__legal {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: #909090;
   white-space: nowrap;
   overflow: hidden;
 }

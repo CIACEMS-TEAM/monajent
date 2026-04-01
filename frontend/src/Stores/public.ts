@@ -69,6 +69,19 @@ export interface WatchVideoResult {
   already_watched: boolean
 }
 
+export interface TeaserResult {
+  stream_url: string
+  teaser_seconds: number
+  is_authenticated: boolean
+  is_agent_owner: boolean
+  is_unlocked: boolean
+  keys_available: number
+  video_id: number
+  listing_id: number
+  listing_title: string
+  duration_sec: number | null
+}
+
 export interface ListingListItem {
   id: number
   title: string
@@ -141,6 +154,13 @@ export const usePublicStore = defineStore('public', {
         this.physicalKeys = packs.reduce((s: number, p: any) => s + (p.has_physical_key ? 1 : 0), 0)
         this.keysLoaded = true
       } catch { /* silent */ }
+    },
+
+    async fetchTeaser(accessKey: string): Promise<TeaserResult> {
+      const { data } = await http.get<TeaserResult>(
+        `/api/videos/${accessKey}/teaser/`,
+      )
+      return data
     },
 
     async watchVideo(accessKey: string): Promise<WatchVideoResult> {

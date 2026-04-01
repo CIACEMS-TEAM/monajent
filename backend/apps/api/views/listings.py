@@ -57,10 +57,10 @@ class PublicListingListView(generics.ListAPIView):
     """
     GET /api/listings/
     Liste des annonces actives avec recherche et filtrage.
-    Réservé aux utilisateurs authentifiés (clients + agents).
+    Accessible à tous (public).
     """
     serializer_class = ListingListSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     throttle_scope = 'listing_search'
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -91,10 +91,10 @@ class PublicListingDetailView(generics.RetrieveAPIView):
     """
     GET /api/listings/{id}/
     Détail d'une annonce active.
-    Réservé aux utilisateurs authentifiés (clients + agents).
+    Accessible à tous (public).
     """
     serializer_class = ListingDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     lookup_field = 'pk'
 
     def get_queryset(self):
@@ -407,7 +407,11 @@ class AgentListingVideoUploadView(generics.CreateAPIView):
             if duration:
                 extra['duration_sec'] = duration
 
-        serializer.save(**extra)
+        video = serializer.save(**extra)
+
+        if not video.thumbnail and video.file:
+            from apps.core.tasks import generate_video_thumbnail_task
+            generate_video_thumbnail_task.delay(video.pk)
 
 
 class AgentListingVideoDeleteView(generics.DestroyAPIView):

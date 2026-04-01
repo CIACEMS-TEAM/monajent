@@ -10,9 +10,14 @@ class ClientRegisterSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=32)
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(write_only=True, min_length=8)
+    accepted_cgu = serializers.BooleanField()
+    accepted_privacy = serializers.BooleanField()
 
     def validate(self, attrs):
-        # Normalisation téléphone et politique mot de passe
+        if not attrs.get('accepted_cgu') or not attrs.get('accepted_privacy'):
+            raise serializers.ValidationError(
+                'Vous devez accepter les CGU et la politique de confidentialité.'
+            )
         normalized = normalize_to_e164(attrs['phone'])
         try:
             password_validation.validate_password(attrs['password'])
@@ -20,7 +25,6 @@ class ClientRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({'password': list(e.messages)})
         attrs['phone'] = normalized
         return attrs
-    # Pas de create: la vue gère le flux stateless
 
 
 class AgentRegisterSerializer(serializers.Serializer):
@@ -29,8 +33,14 @@ class AgentRegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, required=False, allow_blank=True)
     email = serializers.EmailField(required=False, allow_blank=True)
     agency_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    accepted_cgu = serializers.BooleanField()
+    accepted_privacy = serializers.BooleanField()
 
     def validate(self, attrs):
+        if not attrs.get('accepted_cgu') or not attrs.get('accepted_privacy'):
+            raise serializers.ValidationError(
+                'Vous devez accepter les CGU et la politique de confidentialité.'
+            )
         normalized = normalize_to_e164(attrs['phone'])
         try:
             password_validation.validate_password(attrs['password'])
@@ -38,7 +48,6 @@ class AgentRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({'password': list(e.messages)})
         attrs['phone'] = normalized
         return attrs
-    # Pas de create: la vue gère le flux stateless
 
 
 class LoginSerializer(serializers.Serializer):

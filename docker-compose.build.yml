@@ -1,0 +1,37 @@
+# ==============================================================================
+#  MonaJent — Build & Push (docker buildx bake)
+#
+#  Usage :
+#    # Build + push les deux images
+#    VITE_API_BASE_URL=https://api.monajent.com \
+#    VITE_PAYSTACK_PUBLIC_KEY=pk_live_26c2d6a1d9a134672175eec45142fca68e7052f9 \
+#      docker buildx bake -f docker-compose.build.yml \
+#        --builder cloud-ciacems-ciacems-builder --push
+#
+#    # Backend uniquement
+#    docker buildx bake -f docker-compose.build.yml \
+#      --builder cloud-ciacems-ciacems-builder --push backend
+#
+#    # Frontend uniquement
+#    VITE_API_BASE_URL=https://api.monajent.com \
+#    VITE_PAYSTACK_PUBLIC_KEY=pk_live_26c2d6a1d9a134672175eec45142fca68e7052f9 \
+#      docker buildx bake -f docker-compose.build.yml \
+#        --builder cloud-ciacems-ciacems-builder --push frontend
+# ==============================================================================
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: ciacems/mjt:backend
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.monajent.com}
+        VITE_PAYSTACK_PUBLIC_KEY: ${VITE_PAYSTACK_PUBLIC_KEY}
+    image: ciacems/mjt:frontend
