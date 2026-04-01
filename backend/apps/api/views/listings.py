@@ -171,17 +171,10 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
                     "Votre identité doit être vérifiée (KYC) avant de pouvoir publier une annonce."
                 )
             listing = self.get_object()
-            img_count = listing.images.count()
-            vid_count = listing.videos.count()
-            if img_count < 1 or vid_count < 1:
+            if listing.images.count() < 1:
                 from rest_framework.exceptions import ValidationError
-                missing = []
-                if img_count < 1:
-                    missing.append('au moins 1 photo')
-                if vid_count < 1:
-                    missing.append('au moins 1 vidéo')
                 raise ValidationError(
-                    f"Pour publier, votre annonce doit contenir {' et '.join(missing)}."
+                    "Pour publier, votre annonce doit contenir au moins 1 photo."
                 )
         serializer.save()
 
@@ -234,14 +227,14 @@ class AgentListingBulkActionView(APIView):
             from django.db.models import Count
             eligible = (
                 qs.filter(status__in=[Listing.Status.INACTIF])
-                .annotate(img_count=Count('images'), vid_count=Count('videos'))
-                .filter(img_count__gte=1, vid_count__gte=1)
+                .annotate(img_count=Count('images'))
+                .filter(img_count__gte=1)
             )
             skipped = qs.filter(status__in=[Listing.Status.INACTIF]).count() - eligible.count()
             count = Listing.objects.filter(pk__in=eligible.values_list('pk', flat=True)).update(status=Listing.Status.ACTIF)
             msg = f'{count} annonce(s) activée(s).'
             if skipped:
-                msg += f' {skipped} annonce(s) ignorée(s) (photo ou vidéo manquante).'
+                msg += f' {skipped} annonce(s) ignorée(s) (photo manquante).'
             return Response({'detail': msg})
         elif action == 'deactivate':
             count = qs.filter(status=Listing.Status.ACTIF).update(status=Listing.Status.INACTIF)
