@@ -2,15 +2,15 @@
 Mon Ajent MVP
 
 # ### JETON CLOUDFLARE ####
-## Utilisez ce jeton pour vous authentifier auprès de l’API Cloudflare :
+## Pour vous authentifier auprès de l’API Cloudflare Utilisez votre jeton :
 
 Valeur du jeton:
 ```
-rjEPTZafprJmLhaoCW1ROiUKjp-DPPHNoLndenGs
+rjEPTZa********
 ```
 
 
-## CHARTE GRAPHIQUE 
+## CHARTE GRAPHIQUE
 
 
 ###  COMMANDE DE DEPLOIEMENT LOCAL ET BUILD PROD 
@@ -44,3 +44,4 @@ VITE_API_BASE_URL=https://api.monajent.com \
 ```
 
 SECRET_KEY=<générer avec python3 -c "import secrets;print(secrets.token_urlsafe(50))">
+=======
