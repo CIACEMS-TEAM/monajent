@@ -21,10 +21,11 @@ class AgentMiniSerializer(serializers.ModelSerializer):
     agency_name = serializers.CharField(source='agent_profile.agency_name', default='')
     profile_photo = serializers.ImageField(source='agent_profile.profile_photo', default=None)
     verified = serializers.BooleanField(source='agent_profile.verified', default=False)
+    is_partner = serializers.BooleanField(source='agent_profile.is_partner', default=False)
 
     class Meta:
         model = User
-        fields = ['id', 'phone', 'username', 'agency_name', 'profile_photo', 'verified']
+        fields = ['id', 'phone', 'username', 'agency_name', 'profile_photo', 'verified', 'is_partner']
         read_only_fields = fields
 
 
@@ -132,6 +133,7 @@ class AgentDetailSerializer(serializers.ModelSerializer):
     agency_name = serializers.CharField(source='agent_profile.agency_name', default='')
     profile_photo = serializers.ImageField(source='agent_profile.profile_photo', default=None)
     verified = serializers.BooleanField(source='agent_profile.verified', default=False)
+    is_partner = serializers.BooleanField(source='agent_profile.is_partner', default=False)
     contact_phone = serializers.CharField(source='agent_profile.contact_phone', default='')
     contact_email = serializers.EmailField(source='agent_profile.contact_email', default='')
 
@@ -139,7 +141,7 @@ class AgentDetailSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'phone', 'username', 'agency_name', 'profile_photo', 'verified',
-            'contact_phone', 'contact_email',
+            'is_partner', 'contact_phone', 'contact_email',
         ]
         read_only_fields = fields
 

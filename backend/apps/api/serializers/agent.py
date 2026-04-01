@@ -75,19 +75,27 @@ class AgentProfileReadSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='user.role', read_only=True)
     member_since = serializers.DateTimeField(source='user.created_at', read_only=True)
     documents = AgentDocumentSerializer(many=True, read_only=True)
+    accepted_agent_conditions = serializers.SerializerMethodField()
 
     class Meta:
         model = AgentProfile
         fields = [
             'phone', 'username', 'email', 'role', 'member_since',
-            'agency_name', 'verified', 'kyc_status', 'kyc_rejection_reason', 'bio',
+            'agency_name', 'verified', 'is_partner', 'partner_since',
+            'kyc_status', 'kyc_rejection_reason', 'bio',
             'contact_phone', 'contact_email',
             'national_id_number', 'national_id_document',
             'profile_photo',
             'documents',
+            'accepted_agent_conditions',
             'created_at', 'updated_at',
         ]
         read_only_fields = fields
+
+    def get_accepted_agent_conditions(self, obj):
+        return obj.user.legal_consents.filter(
+            document_type='AGENT_CONDITIONS'
+        ).exists()
 
 
 class AgentProfileUpdateSerializer(serializers.Serializer):

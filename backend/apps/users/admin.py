@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
-from .models import User, ClientProfile, AgentProfile, AgentDocument, Notification
+from .models import User, ClientProfile, AgentProfile, AgentDocument, LegalConsent, Notification
 
 
 @admin.register(User)
@@ -46,10 +46,26 @@ class ClientProfileAdmin(admin.ModelAdmin):
 
 @admin.register(AgentProfile)
 class AgentProfileAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'agency_name', 'verified', 'created_at')
-    list_filter = ('verified',)
+    list_display = ('id', 'user', 'agency_name', 'verified', 'is_partner', 'kyc_status', 'created_at')
+    list_filter = ('verified', 'is_partner', 'kyc_status')
     search_fields = ('user__phone', 'user__username', 'agency_name', 'national_id_number')
     ordering = ('-created_at',)
+    actions = ['mark_as_partner', 'remove_partner']
+
+    @admin.action(description='Marquer comme partenaire')
+    def mark_as_partner(self, request, queryset):
+        from django.utils import timezone
+        updated = queryset.filter(is_partner=False).update(
+            is_partner=True, partner_since=timezone.now(),
+        )
+        self.message_user(request, f'{updated} agent(s) marqué(s) comme partenaire(s).')
+
+    @admin.action(description='Retirer le statut partenaire')
+    def remove_partner(self, request, queryset):
+        updated = queryset.filter(is_partner=True).update(
+            is_partner=False, partner_since=None,
+        )
+        self.message_user(request, f'{updated} agent(s) retiré(s) du statut partenaire.')
 
 
 @admin.register(AgentDocument)
@@ -57,6 +73,15 @@ class AgentDocumentAdmin(admin.ModelAdmin):
     list_display = ('id', 'agent_profile', 'label', 'uploaded_at')
     search_fields = ('agent_profile__user__phone', 'agent_profile__user__username', 'label')
     ordering = ('-uploaded_at',)
+
+
+@admin.register(LegalConsent)
+class LegalConsentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'document_type', 'document_version', 'ip_address', 'accepted_at')
+    list_filter = ('document_type', 'document_version')
+    search_fields = ('user__phone', 'user__username', 'ip_address')
+    ordering = ('-accepted_at',)
+    readonly_fields = ('user', 'document_type', 'document_version', 'ip_address', 'user_agent', 'accepted_at')
 
 
 @admin.register(Notification)

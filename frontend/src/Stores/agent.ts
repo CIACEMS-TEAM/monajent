@@ -16,6 +16,8 @@ export interface AgentProfileAPI {
   member_since: string
   agency_name: string
   verified: boolean
+  is_partner: boolean
+  partner_since: string | null
   kyc_status: 'NOT_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED'
   kyc_rejection_reason: string
   bio: string
@@ -25,6 +27,7 @@ export interface AgentProfileAPI {
   national_id_document: string | null
   profile_photo: string | null
   documents: AgentDocument[]
+  accepted_agent_conditions: boolean
   created_at: string
   updated_at: string
 }
@@ -80,6 +83,7 @@ export interface ListingAgent {
   agency_name: string
   profile_photo: string | null
   verified: boolean
+  is_partner: boolean
 }
 
 export interface ListingReportDetail {
@@ -364,6 +368,7 @@ export const useAgentStore = defineStore('agent', {
     agencyName: (s) => s.profile?.agency_name || '',
     profilePhoto: (s) => absUrl(s.profile?.profile_photo),
     isVerified: (s) => s.profile?.verified ?? false,
+    isPartner: (s) => s.profile?.is_partner ?? false,
     kycStatus: (s) => {
       if (s.profile?.verified) return 'APPROVED'
       return s.profile?.kyc_status ?? 'NOT_SUBMITTED'
@@ -461,6 +466,16 @@ export const useAgentStore = defineStore('agent', {
       if (this.profile) {
         this.profile.kyc_status = data.kyc_status as any
         this.profile.kyc_rejection_reason = ''
+      }
+      return data
+    },
+
+    async acceptAgentConditions() {
+      const { data } = await http.post('/api/legal/consent/', {
+        document_type: 'AGENT_CONDITIONS',
+      })
+      if (this.profile) {
+        this.profile.accepted_agent_conditions = true
       }
       return data
     },

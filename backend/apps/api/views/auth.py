@@ -14,10 +14,10 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from apps.users.models import User, ClientProfile, AgentProfile
+from apps.users.models import User, ClientProfile, AgentProfile, LegalConsent
 from apps.core.services.d7_verify import D7VerifyClient, D7VerifyError
 from apps.core.utils.phone import normalize_to_e164
-from apps.core.audit import write_auth_event
+from apps.core.audit import write_auth_event, _client_ip
 from ..serializers.auth import (
     ClientRegisterSerializer,
     AgentRegisterSerializer,
@@ -232,6 +232,8 @@ class RegisterClientView(APIView):
             'username': vd['username'],
             'email': None,
             'password_hash': make_password(vd['password']),
+            'accepted_cgu': True,
+            'accepted_privacy': True,
             'otp_id': otp_id,
             'exp_sec': expiry,
             'exp_ts': (timezone.now() + timedelta(seconds=expiry)).timestamp(),
@@ -274,6 +276,8 @@ class RegisterAgentView(APIView):
             'email': vd.get('email') or None,
             'agency_name': vd.get('agency_name') or '',
             'password_hash': make_password(vd['password']),
+            'accepted_cgu': True,
+            'accepted_privacy': True,
             'otp_id': otp_id,
             'exp_sec': expiry,
             'exp_ts': (timezone.now() + timedelta(seconds=expiry)).timestamp(),
@@ -448,6 +452,18 @@ class OTPVerifyView(APIView):
         elif role == 'AGENT':
             AgentProfile.objects.create(user=user, agency_name=pending.get('agency_name') or '')
 
+        if pending.get('accepted_cgu') and pending.get('accepted_privacy'):
+            client_ip = _client_ip(request)
+            ua = request.META.get('HTTP_USER_AGENT', '')[:512]
+            for doc_type in ('CGU', 'PRIVACY'):
+                LegalConsent.objects.create(
+                    user=user,
+                    document_type=doc_type,
+                    document_version=settings.LEGAL_DOCUMENT_VERSIONS[doc_type],
+                    ip_address=client_ip,
+                    user_agent=ua,
+                )
+
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
         response = Response({'access': access}, status=status.HTTP_200_OK)
@@ -551,6 +567,17 @@ class PasswordResetFinalizeView(APIView):
         except User.DoesNotExist:
             return Response({'detail': 'Utilisateur introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as e:
+            return Response(
+                {'detail': e.messages},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         user.set_password(new_password)
         user.save(update_fields=['password'])
         write_auth_event('RESET_FINALIZE_OK', request, user=user, phone_e164=phone_e164, success=True)
@@ -581,9 +608,14 @@ class PasswordChangeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(new_password) < 8:
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            validate_password(new_password, user=request.user)
+        except DjangoValidationError as e:
             return Response(
-                {'detail': 'Le nouveau mot de passe doit contenir au moins 8 caractères.'},
+                {'detail': e.messages},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -179,8 +179,12 @@ class ClientVisitListCreateView(APIView):
             .select_related('listing', 'listing__agent', 'slot')
             .order_by('-created_at')
         )
-        serializer = VisitRequestClientSerializer(visits, many=True)
-        return Response(serializer.data)
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        page = paginator.paginate_queryset(visits, request)
+        serializer = VisitRequestClientSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def post(self, request):
         ser = VisitRequestCreateSerializer(data=request.data)

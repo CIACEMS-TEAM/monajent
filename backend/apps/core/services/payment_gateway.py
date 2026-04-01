@@ -442,15 +442,19 @@ class PaystackGateway(BasePaymentGateway):
             headers.get('X-Paystack-Signature', ''),
         )
 
-        if raw_body and signature:
-            expected = hmac.HMAC(
-                self.secret_key.encode('utf-8'),
-                raw_body,
-                hashlib.sha512,
-            ).hexdigest()
+        if not raw_body or not signature:
+            raise ValueError(
+                "Webhook Paystack rejeté : signature ou body absent."
+            )
 
-            if not hmac.compare_digest(expected, signature):
-                raise ValueError("Signature Paystack invalide.")
+        expected = hmac.HMAC(
+            self.secret_key.encode('utf-8'),
+            raw_body,
+            hashlib.sha512,
+        ).hexdigest()
+
+        if not hmac.compare_digest(expected, signature):
+            raise ValueError("Signature Paystack invalide.")
 
         event = payload.get('event', '')
         data = payload.get('data', {})

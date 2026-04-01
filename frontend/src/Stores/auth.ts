@@ -12,13 +12,15 @@ export interface MeResponse {
 }
 
 interface LoginPayload { phone: string; password: string }
-interface RegisterClientPayload { phone: string; username: string; password: string }
+interface RegisterClientPayload { phone: string; username: string; password: string; accepted_cgu: boolean; accepted_privacy: boolean }
 interface RegisterAgentPayload {
   phone: string
   password: string
   username?: string
   email?: string
   agency_name?: string
+  accepted_cgu: boolean
+  accepted_privacy: boolean
 }
 
 export const useAuthStore = defineStore('auth', {

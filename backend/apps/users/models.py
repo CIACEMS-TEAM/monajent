@@ -135,6 +135,10 @@ class AgentProfile(models.Model):
     # Photo de profil de l'agent
     profile_photo = models.ImageField(upload_to='agents/profile_photos/', null=True, blank=True)
 
+    # Statut partenaire (attribué manuellement via admin)
+    is_partner = models.BooleanField(default=False)
+    partner_since = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -167,6 +171,31 @@ class AgentDocument(models.Model):
 
     def __str__(self) -> str:
         return f"AgentDocument<{self.agent_profile.user.phone}:{self.doc_type}/{self.side}>"
+
+
+class LegalConsent(models.Model):
+    """Trace juridique du consentement utilisateur aux documents légaux."""
+
+    class DocumentType(models.TextChoices):
+        CGU = 'CGU', 'Conditions Générales d\'Utilisation'
+        PRIVACY = 'PRIVACY', 'Politique de Confidentialité'
+        AGENT_CONDITIONS = 'AGENT_CONDITIONS', 'Conditions Spécifiques Agents'
+
+    user = models.ForeignKey('users.User', on_delete=models.CASCADE, related_name='legal_consents')
+    document_type = models.CharField(max_length=32, choices=DocumentType.choices)
+    document_version = models.CharField(max_length=32)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-accepted_at']
+        indexes = [
+            models.Index(fields=['user', 'document_type']),
+        ]
+
+    def __str__(self) -> str:
+        return f"Consent<{self.user.phone}:{self.document_type}:{self.document_version}>"
 
 
 class Notification(models.Model):

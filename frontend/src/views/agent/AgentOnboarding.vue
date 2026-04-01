@@ -11,8 +11,9 @@ const agent = useAgentStore()
 const toast = useToast()
 
 const step = ref(0)
-const totalSteps = 4
+const totalSteps = 5
 const saving = ref(false)
+const acceptedAgentConditions = ref(false)
 
 const form = reactive({
   agency_name: '',
@@ -67,8 +68,9 @@ function handleSingleChange(e: Event) {
 }
 
 const canProceed = computed(() => {
-  if (step.value === 1) return !!form.agency_name.trim()
-  if (step.value === 2) return !!(form.contact_phone.trim() || form.contact_email.trim())
+  if (step.value === 1) return acceptedAgentConditions.value
+  if (step.value === 2) return !!form.agency_name.trim()
+  if (step.value === 3) return !!(form.contact_phone.trim() || form.contact_email.trim())
   return true
 })
 
@@ -81,24 +83,32 @@ onMounted(async () => {
     form.bio = agent.profile.bio || ''
     form.contact_phone = agent.profile.contact_phone || ''
     form.contact_email = agent.profile.contact_email || ''
+    acceptedAgentConditions.value = agent.profile.accepted_agent_conditions || false
   }
 })
 
 async function next() {
-  if (step.value >= 1 && step.value <= 2 && !canProceed.value) {
-    toast.error(step.value === 1 ? 'Le nom d\'agence est obligatoire.' : 'Au moins un moyen de contact est requis.')
+  if (step.value >= 1 && step.value <= 3 && !canProceed.value) {
+    const msgs: Record<number, string> = {
+      1: 'Vous devez accepter les conditions spécifiques agents.',
+      2: 'Le nom d\'agence est obligatoire.',
+      3: 'Au moins un moyen de contact est requis.',
+    }
+    toast.error(msgs[step.value] || 'Champ requis')
     return
   }
 
   saving.value = true
   try {
     if (step.value === 1) {
+      await agent.acceptAgentConditions()
+    } else if (step.value === 2) {
       const payload: Record<string, any> = { agency_name: form.agency_name, bio: form.bio }
       if (form.profilePhoto) payload.profile_photo = form.profilePhoto
       await agent.updateProfile(payload)
-    } else if (step.value === 2) {
-      await agent.updateProfile({ contact_phone: form.contact_phone, contact_email: form.contact_email })
     } else if (step.value === 3) {
+      await agent.updateProfile({ contact_phone: form.contact_phone, contact_email: form.contact_email })
+    } else if (step.value === 4) {
       await uploadKycDocuments()
     }
   } catch (e: any) {
@@ -120,7 +130,7 @@ async function uploadKycDocuments() {
 }
 
 function skipKyc() {
-  if (step.value === 3) {
+  if (step.value === 4) {
     router.push('/agent')
   }
 }
@@ -157,8 +167,51 @@ function skipKyc() {
         </div>
       </div>
 
-      <!-- Step 1: Profile (OBLIGATOIRE) -->
+      <!-- Step 1: Conditions spécifiques agents (OBLIGATOIRE) -->
       <div v-else-if="step === 1" class="ob-step">
+        <div class="ob-step__icon">
+          <svg viewBox="0 0 64 64" width="80" height="80">
+            <circle cx="32" cy="32" r="30" fill="rgba(29,165,63,0.1)" stroke="#1DA53F" stroke-width="2"/>
+            <path fill="#1DA53F" d="M20 16h24v4H20zm0 8h24v4H20zm0 8h16v4H20z"/>
+          </svg>
+        </div>
+        <h1 class="ob-step__title">Conditions d'utilisation agent</h1>
+        <p class="ob-step__desc">Avant de configurer votre profil, veuillez prendre connaissance des conditions applicables aux agents partenaires Monajent.</p>
+
+        <div class="ob-conditions">
+          <div class="ob-conditions__item">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            <span>Publier uniquement des biens <strong>réels et disponibles</strong></span>
+          </div>
+          <div class="ob-conditions__item">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            <span>Assurer les <strong>visites physiques</strong> programmées</span>
+          </div>
+          <div class="ob-conditions__item">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            <span>Fournir des informations <strong>exactes</strong> sur les biens</span>
+          </div>
+          <div class="ob-conditions__item">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+            <span>Respecter les utilisateurs et la charte de la plateforme</span>
+          </div>
+        </div>
+
+        <a href="/legal/conditions-agents" target="_blank" class="ob-conditions__link">
+          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+          Lire les conditions complètes
+        </a>
+
+        <div class="ob-conditions__accept">
+          <label class="ob-consent">
+            <input type="checkbox" v-model="acceptedAgentConditions" />
+            <span>J'accepte les <strong>conditions spécifiques applicables aux agents</strong> Monajent</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 2: Profile (OBLIGATOIRE) -->
+      <div v-else-if="step === 2" class="ob-step">
         <h1 class="ob-step__title">Votre profil agence</h1>
         <p class="ob-step__desc">Ces informations seront visibles par les clients.</p>
         <div class="ob-form">
@@ -189,8 +242,8 @@ function skipKyc() {
         </div>
       </div>
 
-      <!-- Step 2: Contact (OBLIGATOIRE) -->
-      <div v-else-if="step === 2" class="ob-step">
+      <!-- Step 3: Contact (OBLIGATOIRE) -->
+      <div v-else-if="step === 3" class="ob-step">
         <h1 class="ob-step__title">Coordonnées de contact</h1>
         <p class="ob-step__desc">Comment vos clients peuvent vous joindre. <span class="ob-required">Au moins un champ requis.</span></p>
         <div class="ob-form">
@@ -205,8 +258,8 @@ function skipKyc() {
         </div>
       </div>
 
-      <!-- Step 3: KYC (OPTIONNEL) -->
-      <div v-else-if="step === 3" class="ob-step">
+      <!-- Step 4: KYC (OPTIONNEL) -->
+      <div v-else-if="step === 4" class="ob-step">
         <h1 class="ob-step__title">Vérification d'identité (KYC)</h1>
         <p class="ob-step__desc">
           Soumettez une pièce d'identité pour obtenir le badge vérifié et pouvoir publier vos annonces.
@@ -265,10 +318,10 @@ function skipKyc() {
       <div class="ob-actions">
         <button v-if="step > 0" class="ob-actions__back" @click="step--">Retour</button>
         <div class="ob-actions__right">
-          <button v-if="step === 3" class="ob-actions__skip" @click="skipKyc">Faire la vérification plus tard</button>
+          <button v-if="step === 4" class="ob-actions__skip" @click="skipKyc">Faire la vérification plus tard</button>
           <button
             class="ob-actions__next"
-            :disabled="saving || (step >= 1 && step <= 2 && !canProceed)"
+            :disabled="saving || (step >= 1 && step <= 3 && !canProceed)"
             @click="next"
           >
             {{ saving ? 'Enregistrement...' : step === totalSteps - 1 ? 'Soumettre et terminer' : 'Continuer' }}
@@ -356,6 +409,24 @@ function skipKyc() {
 }
 .ob-actions__next:hover { background: #178A33; }
 .ob-actions__next:disabled { opacity: .5; cursor: not-allowed; }
+
+.ob-conditions { display: flex; flex-direction: column; gap: 14px; max-width: 480px; margin: 0 auto 24px; text-align: left; }
+.ob-conditions__item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; border: 1px solid #E0E0E0; border-radius: 10px; font-size: 15px; color: #272727; line-height: 1.5; }
+.ob-conditions__item svg { flex-shrink: 0; margin-top: 1px; }
+.ob-conditions__link {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: #1DA53F; font-size: 14px; font-weight: 500; text-decoration: none;
+  margin-bottom: 24px;
+}
+.ob-conditions__link:hover { text-decoration: underline; }
+.ob-conditions__accept { max-width: 480px; margin: 0 auto; text-align: left; }
+.ob-consent {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px; border: 2px solid #E0E0E0; border-radius: 12px;
+  cursor: pointer; transition: border-color .2s; font-size: 15px; color: #272727; line-height: 1.5;
+}
+.ob-consent:has(input:checked) { border-color: #1DA53F; background: rgba(29,165,63,.04); }
+.ob-consent input[type="checkbox"] { margin-top: 2px; width: 20px; height: 20px; accent-color: #1DA53F; flex-shrink: 0; cursor: pointer; }
 
 @media (max-width: 600px) {
   .ob-step__title { font-size: 22px; }

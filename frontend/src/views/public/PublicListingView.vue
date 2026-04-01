@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { usePublicStore, type PublicListingVideo, type ListingListItem } from '@/Stores/public'
+import { usePublicStore, type PublicListingVideo, type ListingListItem, type TeaserResult } from '@/Stores/public'
 import { useAuthStore } from '@/Stores/auth'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
@@ -25,9 +25,32 @@ const showPaywall = ref(false)
 const showNoPack = ref(false)
 const showLoginPrompt = ref(false)
 const heroIdx = ref(0)
+const photoModalIdx = ref(-1)
+const showPhotoModal = ref(false)
 const descExpanded = ref(false)
 const otherListings = ref<ListingListItem[]>([])
 const activeChip = ref('all')
+
+// ── Teaser state ──
+let teaserVideoEl: HTMLVideoElement | null = null
+const teaserStreamUrl = ref('')
+const teaserSeconds = ref(15)
+const teaserPlaying = ref(false)
+const teaserPaused = ref(false)
+const teaserAccessKey = ref('')
+const teaserInfo = ref<TeaserResult | null>(null)
+const teaserLoading = ref(false)
+let teaserTimer: ReturnType<typeof setInterval> | null = null
+
+function setTeaserRef(el: any) {
+  teaserVideoEl = el instanceof HTMLVideoElement ? el : null
+}
+
+function clearTeaserTimer() {
+  if (teaserTimer) { clearTimeout(teaserTimer); teaserTimer = null }
+}
+
+onUnmounted(() => clearTeaserTimer())
 
 // ── Visite physique ──
 interface AvailSlot {
@@ -125,6 +148,19 @@ function heroNext() {
   heroIdx.value = (heroIdx.value + 1) % heroImages.value.length
 }
 
+function openPhotoModal(idx: number) {
+  photoModalIdx.value = idx
+  showPhotoModal.value = true
+}
+function photoModalPrev() {
+  if (!heroHasImages.value) return
+  photoModalIdx.value = (photoModalIdx.value - 1 + heroImages.value.length) % heroImages.value.length
+}
+function photoModalNext() {
+  if (!heroHasImages.value) return
+  photoModalIdx.value = (photoModalIdx.value + 1) % heroImages.value.length
+}
+
 const descriptionTruncated = computed(() => {
   if (!pub.listing?.description) return ''
   return pub.listing.description.length > 200
@@ -190,17 +226,9 @@ watch(listingId, () => {
 })
 
 function handleVirtualVisit() {
-  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
-  if (!isClient.value) { toast.warning('Seuls les clients peuvent visionner les vidéos.'); return }
   if (!firstVideo.value) return
-  const vid = firstVideo.value
-  if (pub.getUnlockedUrl(vid.access_key)) {
-    activeVideo.value = vid
-    scrollToVideo(vid.access_key)
-    return
-  }
-  activeVideo.value = vid
-  showPaywall.value = true
+  launchTeaser(firstVideo.value)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 async function handlePhysicalVisit() {
@@ -289,11 +317,118 @@ function scrollToVideo(accessKey: string) {
 }
 
 async function handleWatch(vid: PublicListingVideo) {
-  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
-  if (!isClient.value) { toast.warning('Seuls les clients peuvent visionner les vidéos.'); return }
-  if (pub.getUnlockedUrl(vid.access_key)) { activeVideo.value = vid; return }
+  launchTeaser(vid)
+}
+
+async function launchTeaser(vid: PublicListingVideo) {
+  if (pub.getUnlockedUrl(vid.access_key)) {
+    activeVideo.value = vid
+    scrollToVideo(vid.access_key)
+    return
+  }
+  teaserLoading.value = true
+  teaserAccessKey.value = vid.access_key
   activeVideo.value = vid
-  showPaywall.value = true
+  try {
+    const data = await pub.fetchTeaser(vid.access_key)
+    teaserInfo.value = data
+    teaserSeconds.value = data.teaser_seconds
+
+    if (data.is_agent_owner || data.is_unlocked) {
+      if (data.is_unlocked) {
+        await confirmWatch()
+      } else {
+        teaserStreamUrl.value = data.stream_url
+        teaserPlaying.value = true
+        teaserPaused.value = false
+      }
+      return
+    }
+
+    teaserStreamUrl.value = data.stream_url
+    teaserPlaying.value = true
+    teaserPaused.value = false
+    scrollToVideo(vid.access_key)
+
+    await nextTick()
+    startTeaserTimer()
+  } catch {
+    toast.error('Impossible de charger l\'aperçu vidéo.')
+  } finally {
+    teaserLoading.value = false
+  }
+}
+
+function pauseTeaser() {
+  if (teaserVideoEl) teaserVideoEl.pause()
+  teaserPaused.value = true
+  clearTeaserTimer()
+}
+
+function startTeaserTimer() {
+  clearTeaserTimer()
+  teaserTimer = setInterval(() => {
+    if (!teaserVideoEl || teaserPaused.value) { clearTeaserTimer(); return }
+    if (teaserVideoEl.currentTime >= teaserSeconds.value) {
+      pauseTeaser()
+    }
+  }, 150)
+}
+
+function handleTeaserTimeUpdate(event: Event) {
+  if (teaserPaused.value) return
+  const el = event.target as HTMLVideoElement
+  if (!el) return
+  if (!teaserVideoEl) teaserVideoEl = el
+  if (el.currentTime >= teaserSeconds.value) {
+    pauseTeaser()
+  }
+}
+
+function teaserGoLogin() {
+  resetTeaser()
+  router.push({ name: 'login', query: { redirect: route.fullPath } })
+}
+
+function teaserGoSignup() {
+  resetTeaser()
+  router.push({ name: 'signup-client' })
+}
+
+function teaserGoBuyPack() {
+  resetTeaser()
+  router.push({ name: 'client-packs' })
+}
+
+async function teaserUnlock() {
+  if (!activeVideo.value) return
+  watchLoading.value = true
+  try {
+    const result = await pub.watchVideo(activeVideo.value.access_key)
+    resetTeaser()
+    toast[result.already_watched ? 'info' : 'success'](
+      result.already_watched ? 'Vidéo déjà débloquée' : `Vidéo débloquée ! ${result.pack_remaining} clés restantes`
+    )
+    scrollToVideo(activeVideo.value.access_key)
+  } catch (e: any) {
+    if (e?.response?.status === 402) {
+      teaserPaused.value = true
+      teaserInfo.value = { ...(teaserInfo.value as TeaserResult), keys_available: 0 }
+    } else {
+      toast.error(e?.response?.data?.detail || 'Erreur lors du déblocage')
+    }
+  } finally { watchLoading.value = false }
+}
+
+function resetTeaser() {
+  clearTeaserTimer()
+  if (teaserVideoEl) { teaserVideoEl.pause(); teaserVideoEl.src = '' }
+  teaserVideoEl = null
+  teaserPlaying.value = false
+  teaserPaused.value = false
+  teaserStreamUrl.value = ''
+  teaserInfo.value = null
+  teaserAccessKey.value = ''
 }
 
 async function confirmWatch() {
@@ -361,8 +496,105 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
       <div class="yw-left">
         <!-- Player / Hero -->
         <div class="yw-player">
-          <!-- Images disponibles -->
-          <div v-if="heroHasImages" class="yw-player__frame">
+
+          <!-- ═══ HERO: Vidéo débloquée (lecture complète) ═══ -->
+          <div v-if="firstVideo && pub.getUnlockedUrl(firstVideo.access_key)" class="yw-player__frame" @contextmenu="preventContextMenu">
+            <video
+              :src="pub.getUnlockedUrl(firstVideo.access_key)!"
+              controls
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
+              playsinline
+              preload="metadata"
+              :poster="firstVideoThumb || undefined"
+              @error="(e: Event) => onVideoError(e, firstVideo!)"
+              @contextmenu="preventContextMenu"
+              class="yw-player__video"
+            ></video>
+            <div class="yw-player__watermark">MonaJent</div>
+          </div>
+
+          <!-- ═══ HERO: Teaser en cours ═══ -->
+          <div v-else-if="teaserPlaying && firstVideo && teaserAccessKey === firstVideo.access_key" class="yw-player__frame" @contextmenu="preventContextMenu">
+            <video
+              :ref="setTeaserRef"
+              :src="teaserStreamUrl"
+              autoplay
+              playsinline
+              :poster="firstVideoThumb || undefined"
+              controlsList="nodownload noplaybackrate"
+              disablePictureInPicture
+              @timeupdate="handleTeaserTimeUpdate"
+              @contextmenu="preventContextMenu"
+              class="yw-player__video"
+            ></video>
+            <div class="yw-player__watermark">MonaJent</div>
+
+            <!-- Barre de progression teaser -->
+            <div v-if="!teaserPaused" class="yw-teaser-bar yw-teaser-bar--hero">
+              <div class="yw-teaser-bar__label">Aperçu gratuit</div>
+              <div class="yw-teaser-bar__track">
+                <div class="yw-teaser-bar__fill" :style="{ animationDuration: teaserSeconds + 's' }"></div>
+              </div>
+            </div>
+
+            <!-- Overlay d'interruption (hero) -->
+            <div v-if="teaserPaused" class="yw-teaser-ov">
+              <div class="yw-teaser-ov__content">
+                <div class="yw-teaser-ov__icon">
+                  <svg viewBox="0 0 24 24" width="40" height="40"><path fill="#fff" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                </div>
+                <h3 class="yw-teaser-ov__title">Découvrez la visite complète</h3>
+                <p class="yw-teaser-ov__desc">
+                  Débloquez la vidéo et profitez de <strong>visites physiques gratuites</strong>.
+                </p>
+                <template v-if="!teaserInfo?.is_authenticated">
+                  <div class="yw-teaser-ov__btns">
+                    <button class="yw-teaser-btn yw-teaser-btn--primary" @click="teaserGoLogin">
+                      <i class="pi pi-sign-in"></i> Se connecter
+                    </button>
+                    <button class="yw-teaser-btn yw-teaser-btn--secondary" @click="teaserGoSignup">
+                      <i class="pi pi-user-plus"></i> Créer un compte gratuit
+                    </button>
+                  </div>
+                  <p class="yw-teaser-ov__sub">Inscription gratuite — accédez à toutes les visites</p>
+                </template>
+                <template v-else-if="(teaserInfo?.keys_available ?? 0) === 0">
+                  <div class="yw-teaser-ov__btns">
+                    <button class="yw-teaser-btn yw-teaser-btn--pack" @click="teaserGoBuyPack">
+                      <i class="pi pi-shopping-bag"></i> Obtenir des clés
+                    </button>
+                  </div>
+                  <p class="yw-teaser-ov__sub">Débloquez les vidéos + une visite physique offerte</p>
+                </template>
+                <template v-else>
+                  <div class="yw-teaser-ov__btns">
+                    <button class="yw-teaser-btn yw-teaser-btn--unlock" :disabled="watchLoading" @click="teaserUnlock">
+                      <i v-if="!watchLoading" class="pi pi-lock-open"></i>
+                      <i v-else class="pi pi-spin pi-spinner"></i>
+                      Débloquer la vidéo complète (1 clé)
+                    </button>
+                  </div>
+                  <p class="yw-teaser-ov__sub">{{ teaserInfo!.keys_available }} clé{{ teaserInfo!.keys_available > 1 ? 's' : '' }} disponible{{ teaserInfo!.keys_available > 1 ? 's' : '' }}</p>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ HERO: Vidéo (thumbnail ou placeholder, cliquable pour lancer teaser) ═══ -->
+          <div v-else-if="hasVideos" class="yw-player__frame yw-player__frame--vid" @click="handleVirtualVisit">
+            <img v-if="firstVideoThumb" :src="firstVideoThumb" :alt="pub.listing.title" class="yw-player__img" />
+            <div v-else class="yw-player__placeholder">
+              <i class="pi pi-video" style="font-size:48px;color:#1DA53F"></i>
+            </div>
+            <div class="yw-player__play-ov">
+              <div class="yw-player__play-btn"><i class="pi pi-play-circle"></i></div>
+              <span class="yw-player__play-label">Lancer l'aperçu vidéo</span>
+            </div>
+          </div>
+
+          <!-- ═══ HERO: Images (seulement si aucune vidéo) ═══ -->
+          <div v-else-if="heroHasImages" class="yw-player__frame">
             <img :src="mediaUrl(heroImages[heroIdx].image)!" :alt="pub.listing.title" class="yw-player__img" />
             <template v-if="heroImages.length > 1">
               <button class="yw-player__nav yw-player__nav--prev" @click.stop="heroPrev"><i class="pi pi-chevron-left"></i></button>
@@ -370,39 +602,36 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
               <span class="yw-player__counter">{{ heroIdx + 1 }} / {{ heroImages.length }}</span>
             </template>
           </div>
-          <!-- Pas d'image mais thumbnail vidéo → l'afficher en hero -->
-          <div v-else-if="firstVideoThumb" class="yw-player__frame yw-player__frame--vid" @click="handleVirtualVisit">
-            <img :src="firstVideoThumb" :alt="pub.listing.title" class="yw-player__img" />
-            <div class="yw-player__play-ov">
-              <div class="yw-player__play-btn"><i class="pi pi-play-circle"></i></div>
-              <span class="yw-player__play-label">Voir la visite virtuelle</span>
+
+          <!-- ═══ HERO: Rien ═══ -->
+          <div v-else class="yw-player__empty"><i class="pi pi-image" style="font-size:36px;color:#ccc"></i><span>Aucun média</span></div>
+
+          <!-- Galerie photos superposée en bas du hero -->
+          <div v-if="heroHasImages && hasVideos" class="yw-photos-ov">
+            <div class="yw-photos-ov__strip">
+              <div
+                v-for="(img, i) in heroImages"
+                :key="img.id"
+                class="yw-photos-ov__item"
+                @click.stop="openPhotoModal(i)"
+              ><img :src="mediaUrl(img.image)!" :alt="`Photo ${i + 1}`" /></div>
+              <div class="yw-photos-ov__count">
+                <i class="pi pi-images"></i> {{ heroImages.length }}
+              </div>
             </div>
           </div>
-          <!-- Rien du tout -->
-          <div v-else class="yw-player__empty"><i class="pi pi-image" style="font-size:36px;color:#ccc"></i><span>Aucun média</span></div>
-        </div>
-
-        <!-- Thumbstrip -->
-        <div v-if="heroImages.length > 1" class="yw-thumbs">
-          <div
-            v-for="(img, i) in heroImages"
-            :key="img.id"
-            class="yw-thumbs__item"
-            :class="{ 'yw-thumbs__item--on': heroIdx === i }"
-            @click="heroIdx = i"
-          ><img :src="mediaUrl(img.image)!" alt="" /></div>
         </div>
 
         <!-- === CTA BUTTONS: Visite Virtuelle + Visite Physique === -->
         <div class="yw-cta">
-          <button v-if="hasVideos" class="yw-cta__btn yw-cta__btn--virtual" @click="handleVirtualVisit">
+          <button v-if="hasVideos && !teaserPlaying && !pub.getUnlockedUrl(firstVideo?.access_key ?? '')" class="yw-cta__btn yw-cta__btn--virtual" @click="handleVirtualVisit">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-            <span>Visite virtuelle</span>
+            <span>Voir l'aperçu vidéo (Gratuit)</span>
             <small v-if="firstVideo">{{ durationStr(firstVideo.duration_sec) }}</small>
           </button>
           <button class="yw-cta__btn yw-cta__btn--physical" @click="handlePhysicalVisit">
             <i class="pi pi-map-marker"></i>
-            <span>Visite physique</span>
+            <span>Visite physique (Gratuite)</span>
           </button>
         </div>
 
@@ -521,15 +750,16 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
         </div>
 
         <!-- Videos PPV -->
-        <section v-if="pub.listing.videos.length" class="yw-vids">
+        <section v-if="pub.listing.videos.length > 1" class="yw-vids">
           <div class="yw-vids__head">
             <h2 class="yw-vids__title"><i class="pi pi-video"></i> {{ pub.listing.videos.length }} vidéo{{ pub.listing.videos.length > 1 ? 's' : '' }}</h2>
-            <span class="yw-ppv">Pay-Per-View</span>
+            <span class="yw-ppv">Visite virtuelle</span>
           </div>
-          <p class="yw-vids__hint"><i class="pi pi-info-circle"></i> 1 clé par visionnage. Déjà débloquée = gratuite.</p>
+          <p class="yw-vids__hint"><i class="pi pi-info-circle"></i> Cliquez pour voir un aperçu gratuit de chaque vidéo.</p>
           <div class="yw-vids__grid">
             <div v-for="vid in pub.listing.videos" :key="vid.id" :id="`video-${vid.access_key}`" class="yw-vcard" :class="{ 'yw-vcard--hl': highlightVideoKey === vid.access_key }">
-              <!-- Vidéo débloquée — player sécurisé -->
+
+              <!-- Vidéo DÉBLOQUÉE — player complet -->
               <div v-if="pub.getUnlockedUrl(vid.access_key)" class="yw-vcard__player" @contextmenu="preventContextMenu">
                 <video
                   :src="pub.getUnlockedUrl(vid.access_key)!"
@@ -543,16 +773,31 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
                 ></video>
                 <div class="yw-vcard__watermark">MonaJent</div>
               </div>
-              <!-- Vidéo verrouillée -->
+
+              <!-- Teaser en cours sur cette vidéo → indiquer que ça joue dans le hero -->
+              <div v-else-if="teaserPlaying && teaserAccessKey === vid.access_key" class="yw-vcard__locked yw-vcard__locked--active">
+                <img v-if="vid.thumbnail" :src="mediaUrl(vid.thumbnail)!" alt="" class="yw-vcard__thumb" />
+                <div v-else class="yw-vcard__nothumb"><i class="pi pi-video"></i></div>
+                <div class="yw-vcard__ov">
+                  <div class="yw-vcard__play yw-vcard__play--pulse"><i class="pi pi-play"></i></div>
+                  <span class="yw-vcard__lbl">Lecture en cours ↑</span>
+                </div>
+              </div>
+
+              <!-- Vidéo VERROUILLÉE — thumbnail avec play -->
               <div v-else class="yw-vcard__locked" @click="handleWatch(vid)">
                 <img v-if="vid.thumbnail" :src="mediaUrl(vid.thumbnail)!" alt="" class="yw-vcard__thumb" />
                 <div v-else class="yw-vcard__nothumb"><i class="pi pi-video"></i></div>
                 <div class="yw-vcard__ov">
-                  <div class="yw-vcard__play"><i class="pi pi-lock"></i></div>
-                  <span class="yw-vcard__lbl">{{ isLoggedIn ? 'Débloquer (1 clé)' : 'Connectez-vous' }}</span>
+                  <div class="yw-vcard__play">
+                    <i v-if="teaserLoading && teaserAccessKey === vid.access_key" class="pi pi-spin pi-spinner"></i>
+                    <i v-else class="pi pi-play"></i>
+                  </div>
+                  <span class="yw-vcard__lbl">Voir l'aperçu</span>
                 </div>
                 <span v-if="vid.duration_sec" class="yw-vcard__dur">{{ durationStr(vid.duration_sec) }}</span>
               </div>
+
               <div class="yw-vcard__foot">
                 <span v-if="vid.duration_sec"><i class="pi pi-clock"></i> {{ durationStr(vid.duration_sec) }}</span>
                 <span><i class="pi pi-eye"></i> {{ vid.views_count }} vue{{ vid.views_count !== 1 ? 's' : '' }}</span>
@@ -600,6 +845,17 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
         </div>
       </aside>
     </div>
+
+    <!-- ══ Photo modal (lightbox) ══ -->
+    <Teleport to="body">
+      <div v-if="showPhotoModal && heroHasImages" class="yw-lightbox" @click.self="showPhotoModal = false">
+        <button class="yw-lightbox__close" @click="showPhotoModal = false"><i class="pi pi-times"></i></button>
+        <button class="yw-lightbox__nav yw-lightbox__nav--prev" @click="photoModalPrev"><i class="pi pi-chevron-left"></i></button>
+        <img :src="mediaUrl(heroImages[photoModalIdx].image)!" :alt="`Photo ${photoModalIdx + 1}`" class="yw-lightbox__img" />
+        <button class="yw-lightbox__nav yw-lightbox__nav--next" @click="photoModalNext"><i class="pi pi-chevron-right"></i></button>
+        <span class="yw-lightbox__counter">{{ photoModalIdx + 1 }} / {{ heroImages.length }}</span>
+      </div>
+    </Teleport>
 
     <!-- Paywall — Visite virtuelle -->
     <Dialog :visible="showPaywall" @update:visible="(v: boolean) => showPaywall = v" header="Visite virtuelle" :modal="true" :closable="!watchLoading" :style="{ width: '440px' }">
@@ -805,7 +1061,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 .yw-left { min-width: 0; }
 
 /* Player */
-.yw-player { margin-bottom: 4px; }
+.yw-player { margin-bottom: 4px; position: relative; }
 .yw-player__frame {
   position: relative;
   width: 100%;
@@ -816,6 +1072,17 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   overflow: hidden;
 }
 .yw-player__img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.yw-player__video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
+.yw-player__watermark {
+  position: absolute; top: 10px; right: 12px;
+  font-size: 12px; font-weight: 700; color: rgba(255,255,255,.2);
+  letter-spacing: 1px; pointer-events: none; text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,.3); z-index: 2;
+}
+.yw-player__play-ov--img {
+  cursor: pointer; pointer-events: auto;
+}
+.yw-player__play-ov--img:hover .yw-player__play-btn { transform: scale(1.1); }
 .yw-player__empty {
   width: 100%; aspect-ratio: 16 / 9; max-height: 420px;
   background: #e8e8e8; border-radius: 12px;
@@ -828,6 +1095,10 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   position: absolute; inset: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   pointer-events: none;
+}
+.yw-player__placeholder {
+  width: 100%; height: 100%; background: linear-gradient(135deg, #1a1a2e, #16213e);
+  display: flex; align-items: center; justify-content: center;
 }
 .yw-player__play-btn { font-size: 48px; color: #fff; filter: drop-shadow(0 2px 8px rgba(0,0,0,.4)); transition: transform 0.2s; }
 .yw-player__frame--vid:hover .yw-player__play-btn { transform: scale(1.1); }
@@ -850,14 +1121,62 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 }
 
 /* Thumbs */
-.yw-thumbs { display: flex; gap: 5px; margin: 4px 0 6px; overflow-x: auto; scrollbar-width: thin; }
-.yw-thumbs__item {
-  width: 56px; height: 32px; border-radius: 5px; overflow: hidden; flex-shrink: 0;
-  cursor: pointer; border: 2px solid transparent; opacity: 0.5; transition: all 0.15s;
+/* Photo overlay strip (inside hero) */
+.yw-photos-ov {
+  position: absolute; bottom: 8px; left: 8px; right: 8px; z-index: 5;
+  pointer-events: auto;
 }
-.yw-thumbs__item--on { border-color: #0f0f0f; opacity: 1; }
-.yw-thumbs__item:hover { opacity: 0.8; }
-.yw-thumbs__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.yw-photos-ov__strip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 8px; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px);
+  overflow-x: auto; scrollbar-width: none;
+}
+.yw-photos-ov__strip::-webkit-scrollbar { display: none; }
+.yw-photos-ov__item {
+  width: 48px; height: 34px; border-radius: 4px; overflow: hidden; flex-shrink: 0;
+  cursor: pointer; border: 2px solid transparent; opacity: 0.8; transition: all 0.15s;
+}
+.yw-photos-ov__item:hover { opacity: 1; border-color: #1DA53F; transform: scale(1.08); }
+.yw-photos-ov__item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.yw-photos-ov__count {
+  flex-shrink: 0; color: rgba(255,255,255,0.85); font-size: 0.72rem; font-weight: 600;
+  display: flex; align-items: center; gap: 3px; padding: 0 4px; white-space: nowrap;
+}
+.yw-photos-ov__count i { font-size: 0.8rem; }
+
+/* Lightbox */
+.yw-lightbox {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center;
+  animation: yw-ov-fadein 0.2s ease;
+}
+.yw-lightbox__img {
+  max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 6px;
+  box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+}
+.yw-lightbox__close {
+  position: absolute; top: 16px; right: 20px;
+  background: rgba(255,255,255,0.15); border: none; color: #fff;
+  width: 40px; height: 40px; border-radius: 50%; font-size: 1.2rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.yw-lightbox__close:hover { background: rgba(255,255,255,0.3); }
+.yw-lightbox__nav {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.15); border: none; color: #fff;
+  width: 44px; height: 44px; border-radius: 50%; font-size: 1.1rem;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.yw-lightbox__nav:hover { background: rgba(255,255,255,0.3); }
+.yw-lightbox__nav--prev { left: 16px; }
+.yw-lightbox__nav--next { right: 16px; }
+.yw-lightbox__counter {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 600;
+}
 
 /* CTA Buttons */
 .yw-cta {
@@ -1056,6 +1375,13 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   width: 44px; height: 44px; border-radius: 50%; background: rgba(29,165,63,0.9);
   color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: transform 0.15s;
 }
+.yw-vcard__locked--active { pointer-events: none; }
+.yw-vcard__locked--active .yw-vcard__thumb { filter: brightness(0.6); }
+.yw-vcard__play--pulse {
+  animation: yw-pulse 1.5s ease-in-out infinite;
+  background: rgba(29,165,63,0.9) !important;
+}
+@keyframes yw-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
 .yw-vcard__locked:hover .yw-vcard__play { transform: scale(1.1); }
 .yw-vcard__lbl { color: #fff; font-size: 11px; font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 .yw-vcard__dur { position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.75); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 3px; }
@@ -1122,6 +1448,148 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 .yw-sg__stats { font-size: 11px; color: #606060; }
 .yw-sg__price { font-weight: 600; color: #1DA53F; }
 .yw-sg-empty { font-size: 13px; color: #999; text-align: center; padding: 20px 0; }
+
+/* ===== TEASER ===== */
+.yw-vcard__teaser {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  -webkit-user-select: none;
+  user-select: none;
+  background: #000;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+}
+.yw-vcard__teaser video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.yw-teaser-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(0,0,0,.6) 0%, transparent 100%);
+  z-index: 3;
+}
+.yw-teaser-bar--hero { padding: 10px 16px; }
+.yw-teaser-bar--hero .yw-teaser-bar__label { font-size: 13px; }
+.yw-teaser-bar--hero .yw-teaser-bar__track { height: 4px; }
+.yw-teaser-bar__label {
+  font-size: 11px; font-weight: 600; color: #fff;
+  white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.5);
+}
+.yw-teaser-bar__track {
+  flex: 1; height: 3px; border-radius: 2px;
+  background: rgba(255,255,255,.25); overflow: hidden;
+}
+.yw-teaser-bar__fill {
+  height: 100%; width: 0%;
+  background: #1DA53F; border-radius: 2px;
+  animation: teaser-progress linear forwards;
+}
+@keyframes teaser-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+/* Teaser overlay */
+.yw-teaser-ov {
+  position: absolute; inset: 0; z-index: 5;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: yw-ov-fadein 0.4s ease;
+}
+@keyframes yw-ov-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.yw-teaser-ov__content {
+  text-align: center;
+  padding: 24px 20px;
+  max-width: 380px;
+}
+.yw-teaser-ov__icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: rgba(29, 165, 63, 0.8);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  animation: yw-icon-bounce 0.5s ease;
+}
+@keyframes yw-icon-bounce {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.yw-teaser-ov__title {
+  font-size: 18px; font-weight: 700; color: #fff;
+  margin: 0 0 8px; text-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.yw-teaser-ov__desc {
+  font-size: 13px; color: rgba(255,255,255,.85);
+  margin: 0 0 18px; line-height: 1.5;
+}
+.yw-teaser-ov__desc strong { color: #4ade80; }
+
+.yw-teaser-ov__btns {
+  display: flex; flex-direction: column; gap: 8px;
+  margin-bottom: 12px;
+}
+
+.yw-teaser-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 11px 20px; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; width: 100%;
+}
+.yw-teaser-btn--primary {
+  background: #1DA53F; color: #fff;
+  box-shadow: 0 2px 10px rgba(29,165,63,.4);
+}
+.yw-teaser-btn--primary:hover {
+  background: #168a34; transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(29,165,63,.5);
+}
+.yw-teaser-btn--secondary {
+  background: rgba(255,255,255,.15); color: #fff;
+  border: 1px solid rgba(255,255,255,.25);
+}
+.yw-teaser-btn--secondary:hover {
+  background: rgba(255,255,255,.25);
+}
+.yw-teaser-btn--pack {
+  background: linear-gradient(135deg, #ea580c, #c2410c);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(234,88,12,.4);
+}
+.yw-teaser-btn--pack:hover {
+  background: linear-gradient(135deg, #c2410c, #9a3412);
+  transform: translateY(-1px);
+}
+.yw-teaser-btn--unlock {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(37,99,235,.4);
+}
+.yw-teaser-btn--unlock:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+}
+.yw-teaser-btn--unlock:disabled {
+  opacity: 0.7; cursor: wait; transform: none;
+}
+
+.yw-teaser-ov__sub {
+  font-size: 11px; color: rgba(255,255,255,.6);
+  margin: 0; line-height: 1.4;
+}
+.yw-teaser-ov__sub strong { color: rgba(255,255,255,.85); }
 
 /* ===== PAYWALL RICH ===== */
 .yw-pw-rich { text-align: center; padding: 10px 0 4px; }
@@ -1295,5 +1763,9 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   .yw-suggestions { flex-direction: column; }
   .yw-sg { min-width: 0; }
   .yw-sg__thumb { width: 130px; height: 73px; }
+  .yw-teaser-ov__content { padding: 16px 14px; }
+  .yw-teaser-ov__title { font-size: 15px; }
+  .yw-teaser-ov__desc { font-size: 12px; }
+  .yw-teaser-btn { font-size: 13px; padding: 10px 16px; }
 }
 </style>

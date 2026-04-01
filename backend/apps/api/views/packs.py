@@ -10,11 +10,12 @@ Endpoints :
     GET  /api/agent/views/                    → Vues reçues sur mes annonces (stats agent)
 """
 
+from django.conf import settings as django_settings
 from django.core import signing
 from django.http import FileResponse
 
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -24,6 +25,7 @@ from apps.core.permissions import IsClient, IsAgent, IsObjectOwner
 from apps.api.throttles import PackPurchaseThrottle, VideoViewThrottle
 
 VIDEO_TOKEN_MAX_AGE = 3600  # 1 hour
+TEASER_TOKEN_MAX_AGE = 120  # 2 minutes (enough time to watch teaser + react)
 from apps.api.serializers.packs import (
     PackPurchaseSerializer,
     PackPurchaseCreateSerializer,
@@ -155,6 +157,85 @@ class WatchVideoView(APIView):
         return Response(response_serializer.data, status=status.HTTP_200_OK)
 
 
+class VideoTeaserView(APIView):
+    """
+    GET /api/videos/{access_key}/teaser/
+
+    Public endpoint (no auth required).
+    Returns a short-lived stream URL for the teaser preview,
+    plus contextual info so the frontend knows which CTA to show.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, access_key):
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+
+        try:
+            video = (
+                Video.objects
+                .select_related('listing', 'listing__agent')
+                .get(access_key=access_key)
+            )
+        except Video.DoesNotExist:
+            return Response(
+                {'detail': 'Vidéo introuvable.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user = None
+        try:
+            auth_result = JWTAuthentication().authenticate(request)
+            if auth_result:
+                user = auth_result[0]
+        except Exception:
+            pass
+
+        is_authenticated = user is not None
+        is_agent_owner = (
+            is_authenticated
+            and hasattr(user, 'role')
+            and user.role == 'AGENT'
+            and video.listing.agent_id == user.id
+        )
+        is_unlocked = False
+        keys_available = 0
+
+        if is_authenticated and not is_agent_owner:
+            is_unlocked = VirtualKeyUsage.objects.filter(
+                user=user, video=video,
+            ).exists()
+
+            if not is_unlocked:
+                packs = PackPurchase.objects.filter(user=user)
+                keys_available = sum(
+                    max(p.virtual_total - p.virtual_used, 0) for p in packs
+                )
+
+        teaser_seconds = getattr(django_settings, 'TEASER_SECONDS', 15)
+
+        teaser_token = signing.dumps(
+            {'v': video.pk, 't': True},
+            salt='video-stream',
+        )
+        stream_url = request.build_absolute_uri(
+            f'/api/videos/stream/{teaser_token}/'
+        )
+
+        return Response({
+            'stream_url': stream_url,
+            'teaser_seconds': teaser_seconds,
+            'is_authenticated': is_authenticated,
+            'is_agent_owner': is_agent_owner,
+            'is_unlocked': is_unlocked,
+            'keys_available': keys_available,
+            'video_id': video.pk,
+            'listing_id': video.listing_id,
+            'listing_title': video.listing.title,
+            'duration_sec': video.duration_sec,
+        })
+
+
 class VideoStreamView(APIView):
     """
     GET /api/videos/stream/{token}/
@@ -165,8 +246,10 @@ class VideoStreamView(APIView):
     authentication_classes = []
 
     def get(self, request, token):
+        is_teaser = False
         try:
             payload = signing.loads(token, salt='video-stream', max_age=VIDEO_TOKEN_MAX_AGE)
+            is_teaser = payload.get('t', False)
         except signing.BadSignature:
             return Response(
                 {'detail': 'Lien vidéo expiré ou invalide. Rechargez la page.'},

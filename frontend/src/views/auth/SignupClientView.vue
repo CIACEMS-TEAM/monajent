@@ -10,6 +10,8 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const form = reactive({ phone: '', username: '', password: '' })
+const acceptedCgu = ref(false)
+const acceptedPrivacy = ref(false)
 const loading = ref(false)
 const otpMode = ref(false)
 const otpCode = ref('')
@@ -20,9 +22,17 @@ async function submit() {
     toast.error('Tous les champs sont requis')
     return
   }
+  if (!acceptedCgu.value || !acceptedPrivacy.value) {
+    toast.error('Vous devez accepter les CGU et la politique de confidentialité')
+    return
+  }
   loading.value = true
   try {
-    const data = await auth.registerClient(form)
+    const data = await auth.registerClient({
+      ...form,
+      accepted_cgu: acceptedCgu.value,
+      accepted_privacy: acceptedPrivacy.value,
+    })
     if (data?.pending_token) {
       otpMode.value = true
       toast.success('OTP envoyé. Vérifiez vos messages.')
@@ -91,7 +101,18 @@ async function verifyOtp() {
         <label class="label">Mot de passe</label>
         <input class="input" v-model="form.password" type="password" placeholder="••••••••" />
 
-        <button class="btn" :disabled="loading" type="submit">{{ loading ? 'Création...' : 'Créer mon compte' }}</button>
+        <div class="consent-group">
+          <label class="consent">
+            <input type="checkbox" v-model="acceptedCgu" />
+            <span>J'accepte les <a href="/legal/cgu" target="_blank">Conditions Générales d'Utilisation</a></span>
+          </label>
+          <label class="consent">
+            <input type="checkbox" v-model="acceptedPrivacy" />
+            <span>J'accepte la <a href="/legal/confidentialite" target="_blank">Politique de Confidentialité</a></span>
+          </label>
+        </div>
+
+        <button class="btn" :disabled="loading || !acceptedCgu || !acceptedPrivacy" type="submit">{{ loading ? 'Création...' : 'Créer mon compte' }}</button>
 
         <p class="muted">Plutôt agent ? <router-link to="/auth/signup/agent">Créer un compte agent</router-link></p>
         <p class="muted">Déjà un compte ? <router-link to="/auth/login">Se connecter</router-link></p>
@@ -128,5 +149,10 @@ async function verifyOtp() {
 .btn:disabled { opacity: .7; cursor: default; }
 .muted { color: #272727; font-size: 14px; margin-top: 8px; }
 .muted a { color: #1DA53F; }
+.consent-group { display: flex; flex-direction: column; gap: 10px; }
+.consent { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #272727; cursor: pointer; line-height: 1.5; }
+.consent input[type="checkbox"] { margin-top: 3px; width: 18px; height: 18px; accent-color: #1DA53F; flex-shrink: 0; cursor: pointer; }
+.consent a { color: #1DA53F; text-decoration: none; }
+.consent a:hover { text-decoration: underline; }
 @media (max-width: 600px) { .logo { height: 26px; } }
 </style>
