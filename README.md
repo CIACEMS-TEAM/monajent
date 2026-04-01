@@ -44,4 +44,4 @@ VITE_API_BASE_URL=https://api.monajent.com \
 ```
 
 SECRET_KEY=<générer avec python3 -c "import secrets;print(secrets.token_urlsafe(50))">
-=======
+## CHARTE GRAPHIQUE 
