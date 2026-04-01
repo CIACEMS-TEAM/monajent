@@ -1,12 +1,21 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.forms import UserChangeForm as BaseUserChangeForm
 from django.utils.translation import gettext_lazy as _
 
 from .models import User, ClientProfile, AgentProfile, AgentDocument, LegalConsent, Notification
 
 
+class CustomUserChangeForm(BaseUserChangeForm):
+    """username est nullable sur notre modèle ; empêche len(None) dans UsernameField."""
+
+    def clean_username(self):
+        return self.cleaned_data.get('username') or None
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    form = CustomUserChangeForm
     list_display = ('id', 'phone', 'username', 'email', 'role', 'is_active', 'is_staff', 'created_at')
     list_filter = ('role', 'is_active', 'is_staff')
     search_fields = ('phone', 'username', 'email')
