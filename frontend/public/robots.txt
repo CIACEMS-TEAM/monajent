@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+Disallow: /agent/
+Disallow: /home/dashboard
+Disallow: /home/favorites
+Disallow: /home/history
+Disallow: /home/packs
+Disallow: /home/payments
+Disallow: /home/visits
+Disallow: /home/reports
+Disallow: /home/profile
+Disallow: /home/support
+Disallow: /auth/signup/
+
+Sitemap: https://api.monajent.com/api/sitemap.xml

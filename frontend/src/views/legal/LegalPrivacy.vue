@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import logoUrl from '@/assets/icons/logo_monajent_header.png'
+import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 </script>
 
 <template>

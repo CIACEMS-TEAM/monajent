@@ -101,8 +101,14 @@ from .views.support import (
     SupportTicketMessageCreateView,
     SupportTicketCloseView,
 )
+from .views.sitemap import SitemapXMLView
+from .views.share import ListingShareOGView
 
 urlpatterns = [
+    # ── SEO / Partage social ──────────────────────────────────
+    path('sitemap.xml', SitemapXMLView.as_view(), name='sitemap-xml'),
+    path('share/<slug:slug>/', ListingShareOGView.as_view(), name='listing-share-og'),
+
     # ── Auth ──────────────────────────────────────────────────
     path('auth/register/client', RegisterClientView.as_view()),
     path('auth/register/agent', RegisterAgentView.as_view()),
@@ -119,7 +125,7 @@ urlpatterns = [
 
     # ── Listings publics (recherche / détail) ─────────────────
     path('listings/', PublicListingListView.as_view(), name='listing-list'),
-    path('listings/<int:pk>/', PublicListingDetailView.as_view(), name='listing-detail'),
+    path('listings/<slug:slug>/', PublicListingDetailView.as_view(), name='listing-detail'),
 
     # ── Agent : CRUD annonces ─────────────────────────────────
     path('agent/listings/', AgentListingListCreateView.as_view(), name='agent-listing-list'),

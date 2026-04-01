@@ -14,7 +14,7 @@ const pub = usePublicStore()
 const auth = useAuthStore()
 const toast = useToast()
 
-const listingId = computed(() => Number(route.params.id))
+const listingSlug = computed(() => route.params.slug as string)
 const highlightVideoKey = computed(() => (route.query.video as string) || null)
 const isClient = computed(() => auth.me?.role === 'CLIENT')
 const isLoggedIn = computed(() => !!auth.me)
@@ -172,10 +172,10 @@ const showToggle = computed(() => needsTruncation.value || (pub.listing?.ameniti
 const hasVideos = computed(() => (pub.listing?.videos?.length ?? 0) > 0)
 const firstVideo = computed(() => pub.listing?.videos?.[0] ?? null)
 
-function goToListing(id: number) {
+function goToListing(slug: string) {
   heroIdx.value = 0
   descExpanded.value = false
-  router.push({ name: 'public-listing', params: { id } })
+  router.push({ name: 'public-listing', params: { slug } })
 }
 
 function coverUrl(item: ListingListItem): string | null {
@@ -189,7 +189,7 @@ async function loadOtherListings() {
     if (activeChip.value === 'LOCATION' || activeChip.value === 'VENTE') params.listing_type = activeChip.value
     else if (activeChip.value !== 'all') params.city = activeChip.value
     await pub.fetchListings(params)
-    otherListings.value = (pub.listings ?? []).filter(l => l.id !== listingId.value).slice(0, 20)
+    otherListings.value = (pub.listings ?? []).filter(l => l.slug !== listingSlug.value).slice(0, 20)
   } catch (_) {}
 }
 
@@ -202,7 +202,7 @@ async function loadListing() {
   heroIdx.value = 0
   descExpanded.value = false
   try {
-    await pub.fetchPublicListing(listingId.value)
+    await pub.fetchPublicListing(listingSlug.value)
   } catch (e: any) {
     if (e?.response?.status === 404) toast.error('Annonce introuvable ou expirée')
   }
@@ -218,7 +218,7 @@ onMounted(() => {
   loadOtherListings()
 })
 
-watch(listingId, () => {
+watch(listingSlug, () => {
   loadListing()
   loadOtherListings()
   window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -238,8 +238,8 @@ async function handlePhysicalVisit() {
   selectedSlotId.value = null
   visitNote.value = ''
   try {
-    const { data } = await http.get<AvailSlot[]>(`/api/listings/${listingId.value}/availability/`)
-    visitSlots.value = data
+    const { data } = await http.get<any>(`/api/listings/${pub.listing!.id}/availability/`)
+    visitSlots.value = Array.isArray(data) ? data : (data.results ?? [])
   } catch {
     toast.error('Impossible de charger les créneaux disponibles.')
     showVisitModal.value = false
@@ -253,7 +253,7 @@ async function submitVisitRequest() {
   visitSubmitting.value = true
   try {
     await http.post('/api/client/visits/', {
-      listing_id: listingId.value,
+      listing_id: pub.listing!.id,
       slot_id: selectedSlotId.value,
       client_note: visitNote.value.trim(),
     })
@@ -290,8 +290,8 @@ async function submitReport() {
   if (!reportReason.value) { toast.error('Veuillez choisir un motif.'); return }
   reportSubmitting.value = true
   try {
-    await http.post(`/api/listings/${listingId.value}/report/`, {
-      listing: listingId.value,
+    await http.post(`/api/listings/${pub.listing!.id}/report/`, {
+      listing: pub.listing!.id,
       reason: reportReason.value,
       description: reportDescription.value.trim(),
     })
@@ -461,17 +461,18 @@ function preventContextMenu(e: Event) { e.preventDefault() }
 function goBuyPack() { showNoPack.value = false; router.push({ name: 'client-packs' }) }
 function goLogin() { showLoginPrompt.value = false; router.push({ name: 'login' }) }
 
-function shareUrl(): string { return window.location.origin + `/home/annonce/${listingId.value}` }
+function spaUrl(): string { return window.location.origin + `/home/annonce/${listingSlug.value}` }
+function ogUrl(): string { return `${window.location.origin}/share/${listingSlug.value}/` }
 function shareText(): string {
-  if (!pub.listing) return shareUrl()
-  return `${pub.listing.title}\n${formatPrice(pub.listing.price)} — ${pub.listing.city}\n\n${shareUrl()}`
+  if (!pub.listing) return ogUrl()
+  return `${pub.listing.title}\n${formatPrice(pub.listing.price)} — ${pub.listing.city}\n\nVisite Gratuite !\n${ogUrl()}`
 }
 async function copyLink() {
-  try { await navigator.clipboard.writeText(shareUrl()); toast.success('Lien copié !') }
+  try { await navigator.clipboard.writeText(spaUrl()); toast.success('Lien copié !') }
   catch (_) { toast.error('Impossible de copier') }
 }
 function shareWhatsApp() { window.open(`https://wa.me/?text=${encodeURIComponent(shareText())}`, '_blank') }
-function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`, '_blank') }
+function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(ogUrl())}`, '_blank') }
 </script>
 
 <template>
@@ -826,7 +827,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
         <!-- Other listings -->
         <div class="yw-suggestions">
-          <div v-for="item in otherListings" :key="item.id" class="yw-sg" @click="goToListing(item.id)">
+          <div v-for="item in otherListings" :key="item.id" class="yw-sg" @click="goToListing(item.slug)">
             <div class="yw-sg__thumb">
               <img v-if="coverUrl(item)" :src="coverUrl(item)!" :alt="item.title" />
               <div v-else class="yw-sg__nothumb"><i class="pi pi-image"></i></div>

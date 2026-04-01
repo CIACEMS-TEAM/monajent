@@ -9,6 +9,30 @@ import keyPhyImg from '@/assets/icons/key_phy.png'
 
 declare const PaystackPop: any
 
+let paystackLoaded = false
+function loadPaystackSDK(retries = 3, delay = 2000): Promise<void> {
+  if (paystackLoaded || typeof PaystackPop !== 'undefined') {
+    paystackLoaded = true
+    return Promise.resolve()
+  }
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src*="paystack"]')
+    if (existing) existing.remove()
+    const s = document.createElement('script')
+    s.src = 'https://js.paystack.co/v2/inline.js'
+    s.onload = () => { paystackLoaded = true; resolve() }
+    s.onerror = () => {
+      s.remove()
+      if (retries > 0) {
+        setTimeout(() => loadPaystackSDK(retries - 1, delay * 1.5).then(resolve, reject), delay)
+      } else {
+        reject(new Error('Paystack SDK unreachable'))
+      }
+    }
+    document.head.appendChild(s)
+  })
+}
+
 const toast = useToast()
 const route = useRoute()
 const pub = usePublicStore()
@@ -49,8 +73,9 @@ async function fetchPacks() {
 
 async function handleBuyPack() {
   if (buying.value) return
+  try { await loadPaystackSDK() } catch {}
   if (typeof PaystackPop === 'undefined') {
-    toast.error('Le module de paiement n\'a pas pu charger. Actualisez la page.')
+    toast.error('Le serveur de paiement Paystack est temporairement injoignable. Réessayez dans quelques minutes.')
     return
   }
 
@@ -138,6 +163,7 @@ async function verifyPaymentFromCallback() {
 
 onMounted(async () => {
   await fetchPacks()
+  loadPaystackSDK().catch(() => {})
   await verifyPaymentFromCallback()
 })
 </script>

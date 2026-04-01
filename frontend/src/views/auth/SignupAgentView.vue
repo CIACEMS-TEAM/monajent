@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
-import logoUrl from '@/assets/icons/logo_monajent_header.png'
+import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
 const toast = useToast()
 const router = useRouter()

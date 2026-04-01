@@ -30,17 +30,17 @@
     <!-- Listings Grid -->
     <div v-else class="yt-grid">
       <div
-        v-for="listing in displayListings"
+        v-for="(listing, idx) in displayListings"
         :key="listing.id"
         class="yt-card"
-        @click="handleCardClick(listing.id)"
+        @click="handleCardClick(listing.slug)"
       >
         <div class="yt-card__thumb">
           <div
             class="yt-card__thumb-img"
             :style="!listing.coverImage ? { background: listing.thumbGradient } : {}"
           >
-            <img v-if="listing.coverImage" :src="listing.coverImage" :alt="listing.title" class="yt-card__cover" />
+            <img v-if="listing.coverImage" :src="listing.coverImage" :alt="listing.title" class="yt-card__cover" :fetchpriority="idx === 0 ? 'high' : undefined" :loading="idx > 2 ? 'lazy' : undefined" />
             <div class="yt-card__play-overlay">
               <svg viewBox="0 0 48 48" width="48" height="48">
                 <circle cx="24" cy="24" r="22" fill="rgba(0,0,0,0.65)" />
@@ -74,7 +74,7 @@
         <div class="yt-card__body">
           <div class="yt-card__avatar-wrap">
             <div class="yt-card__avatar" :style="{ backgroundColor: listing.agentColor }">
-              <img v-if="listing.agentPhoto" :src="listing.agentPhoto" alt="" class="yt-card__avatar-img" />
+              <img v-if="listing.agentPhoto" :src="listing.agentPhoto" alt="" class="yt-card__avatar-img" loading="lazy" width="36" height="36" />
               <span v-else>{{ listing.agentInitial }}</span>
             </div>
             <svg v-if="listing.agentVerified" class="yt-card__avatar-badge" viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="11" fill="#1DA53F" stroke="#fff" stroke-width="2"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
@@ -138,6 +138,7 @@ const chips = [
 
 interface DisplayListing {
   id: number
+  slug: string
   title: string
   type: 'LOCATION' | 'VENTE'
   price: string
@@ -209,6 +210,7 @@ function apiToDisplay(item: ListingListItem): DisplayListing {
   const agentPhoto = item.agent.profile_photo ? mediaUrl(item.agent.profile_photo) : null
   return {
     id: item.id,
+    slug: item.slug,
     title: item.title,
     type: item.listing_type,
     price: formatPrice(item.price),
@@ -231,8 +233,8 @@ const displayListings = computed<DisplayListing[]>(() => {
   return pub.listings.map(apiToDisplay)
 })
 
-function handleCardClick(id: number) {
-  router.push({ name: 'public-listing', params: { id } })
+function handleCardClick(slug: string) {
+  router.push({ name: 'public-listing', params: { slug } })
 }
 
 async function loadListings() {

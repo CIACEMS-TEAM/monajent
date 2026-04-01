@@ -89,13 +89,13 @@ class PublicListingListView(generics.ListAPIView):
 
 class PublicListingDetailView(generics.RetrieveAPIView):
     """
-    GET /api/listings/{id}/
-    Détail d'une annonce active.
+    GET /api/listings/{slug}/
+    Détail d'une annonce active (lookup par slug).
     Accessible à tous (public).
     """
     serializer_class = ListingDetailSerializer
     permission_classes = [permissions.AllowAny]
-    lookup_field = 'pk'
+    lookup_field = 'slug'
 
     def get_queryset(self):
         return (

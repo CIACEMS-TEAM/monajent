@@ -8,6 +8,7 @@ import http from '@/services/http'
 interface Favorite {
   id: number
   listing_id: number
+  listing_slug: string
   listing_title: string
   listing_city: string
   listing_type: string
@@ -40,8 +41,8 @@ async function removeFavorite(listingId: number) {
   } catch { /* ignore */ }
 }
 
-function goToListing(id: number) {
-  router.push({ name: 'public-listing', params: { id } })
+function goToListing(slug: string) {
+  router.push({ name: 'public-listing', params: { slug } })
 }
 
 function typeLabel(t: string) { return t === 'LOCATION' ? 'Location' : 'Vente' }
@@ -80,7 +81,7 @@ function timeAgo(dateStr: string): string {
     </div>
 
     <div v-else class="fav__grid">
-      <div v-for="fav in favorites" :key="fav.id" class="fav__card" @click="goToListing(fav.listing_id)">
+      <div v-for="fav in favorites" :key="fav.id" class="fav__card" @click="goToListing(fav.listing_slug)">
         <div class="fav__thumb" :style="fav.thumbnail ? { backgroundImage: `url(${fav.thumbnail})` } : {}">
           <span class="fav__type" :class="fav.listing_type === 'LOCATION' ? 'fav__type--loc' : 'fav__type--vente'">
             {{ typeLabel(fav.listing_type) }}

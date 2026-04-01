@@ -31,6 +31,7 @@ export interface PublicListingVideo {
 
 export interface PublicListing {
   id: number
+  slug: string
   title: string
   description: string
   listing_type: 'LOCATION' | 'VENTE'
@@ -84,6 +85,7 @@ export interface TeaserResult {
 
 export interface ListingListItem {
   id: number
+  slug: string
   title: string
   listing_type: 'LOCATION' | 'VENTE'
   status: string
@@ -136,10 +138,10 @@ export const usePublicStore = defineStore('public', {
       }
     },
 
-    async fetchPublicListing(id: number) {
+    async fetchPublicListing(slug: string) {
       this.listingLoading = true
       try {
-        const { data } = await http.get<PublicListing>(`/api/listings/${id}/`)
+        const { data } = await http.get<PublicListing>(`/api/listings/${slug}/`)
         this.listing = data
         return data
       } finally {

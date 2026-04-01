@@ -23,6 +23,7 @@ const selectedVideoKey = ref<string | null>(null)
 
 const origin = typeof window !== 'undefined' ? window.location.origin : ''
 const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || origin
+const ogBase = `${origin}/share`
 
 function mediaUrl(url: string | null): string | null {
   if (!url) return null
@@ -44,13 +45,18 @@ watch(() => props.visible, async (open) => {
 
 const listingUrl = computed(() => {
   if (!listing.value) return ''
-  return `${origin}/home/annonce/${listing.value.id}`
+  return `${origin}/home/annonce/${listing.value.slug || listing.value.id}`
+})
+
+const shareOgUrl = computed(() => {
+  if (!listing.value) return ''
+  return `${ogBase}/${listing.value.slug || listing.value.id}/`
 })
 
 const shareUrl = computed(() => {
   if (!listing.value) return ''
   if (selectedVideoKey.value) {
-    return `${origin}/home/annonce/${listing.value.id}?video=${selectedVideoKey.value}`
+    return `${origin}/home/annonce/${listing.value.slug || listing.value.id}?video=${selectedVideoKey.value}`
   }
   return listingUrl.value
 })
@@ -61,7 +67,7 @@ const shareText = computed(() => {
   const type = listing.value.listing_type === 'LOCATION' ? 'Location' : 'Vente'
   let text = `${listing.value.title}\n${type} — ${price}\n${listing.value.city}`
   if (listing.value.neighborhood) text += ` — ${listing.value.neighborhood}`
-  text += `\n\nVoir l'annonce : ${shareUrl.value}`
+  text += `\n\n*VISITE GRATUITE!*\n\nVoir l'annonce : ${shareUrl.value}`
   return text
 })
 
@@ -77,15 +83,16 @@ async function copyLink() {
 }
 
 function shareWhatsApp() {
-  window.open(`https://wa.me/?text=${encodeURIComponent(shareText.value)}`, '_blank')
+  const text = shareText.value.replace(shareUrl.value, shareOgUrl.value)
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
 }
 
 function shareFacebook() {
-  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl.value)}`, '_blank')
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareOgUrl.value)}`, '_blank')
 }
 
 function shareTelegram() {
-  window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl.value)}&text=${encodeURIComponent(shareText.value)}`, '_blank')
+  window.open(`https://t.me/share/url?url=${encodeURIComponent(shareOgUrl.value)}&text=${encodeURIComponent(shareText.value)}`, '_blank')
 }
 
 function selectVideo(key: string | null) {

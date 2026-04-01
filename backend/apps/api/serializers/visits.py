@@ -181,11 +181,12 @@ class ListingReportCreateSerializer(serializers.ModelSerializer):
 class ListingReportSerializer(serializers.ModelSerializer):
     """Détail d'un signalement (lecture)."""
     listing_title = serializers.CharField(source='listing.title', read_only=True)
+    listing_slug = serializers.CharField(source='listing.slug', read_only=True)
 
     class Meta:
         model = ListingReport
         fields = [
-            'id', 'listing_id', 'listing_title',
+            'id', 'listing_id', 'listing_slug', 'listing_title',
             'reason', 'description', 'status',
             'created_at',
         ]

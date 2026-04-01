@@ -8,6 +8,7 @@ interface ViewEntry {
   id: number
   video_id: number | null
   listing_id: number | null
+  listing_slug: string | null
   listing_title: string
   listing_city: string
   listing_status: string
@@ -61,7 +62,7 @@ function goToListing(entry: ViewEntry) {
     toast.info('Cette annonce n\'est plus disponible sur la plateforme.')
     return
   }
-  router.push({ name: 'public-listing', params: { id: entry.listing_id! } })
+  router.push({ name: 'public-listing', params: { slug: entry.listing_slug! } })
 }
 </script>
 

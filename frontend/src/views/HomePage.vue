@@ -13,7 +13,7 @@
           </svg>
         </button>
         <router-link to="/home" class="yt-logo">
-          <img src="@/assets/icons/logo_monajent_header.png" alt="MonaJent" class="yt-logo__img" />
+          <img src="@/assets/icons/logo_monajent_header.webp" alt="MonaJent" class="yt-logo__img" />
         </router-link>
       </div>
 

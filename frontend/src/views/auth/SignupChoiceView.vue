@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
-import logoUrl from '@/assets/icons/logo_monajent_header.png'
+import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 import clientIcon from '@/assets/icons/client.png'
 import agentIcon from '@/assets/icons/icone_agent_sf.png'
 

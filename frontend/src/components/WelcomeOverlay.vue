@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import logoUrl from '@/assets/icons/logo_monajent.png'
+import logoUrl from '@/assets/icons/logo_monajent.webp'
 
 const STORAGE_KEY_PERMANENT = 'monajent_welcome_dismissed'
 const STORAGE_KEY_SESSION = 'monajent_welcome_seen'

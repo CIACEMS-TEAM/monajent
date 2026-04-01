@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAgentStore } from '@/Stores/agent'
 import { useToast } from 'vue-toastification'
-import logoUrl from '@/assets/icons/logo_monajent_header.png'
+import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
 const URL = globalThis.URL
 const router = useRouter()

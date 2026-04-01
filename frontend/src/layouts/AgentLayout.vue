@@ -4,7 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { useAgentStore } from '@/Stores/agent'
 import { useNotificationStore } from '@/Stores/notifications'
-import logoIconUrl from '@/assets/icons/logo_icone_header.png'
+import logoIconUrl from '@/assets/icons/logo_icone_header.webp'
 
 const router = useRouter()
 const route = useRoute()
@@ -216,7 +216,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
               <span v-else>{{ initials }}</span>
             </button>
             <svg v-if="agent.isVerified" class="agt-avatar-badge agt-avatar-badge--sm" viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
-            <svg v-if="agent.isPartner" class="agt-partner-badge agt-partner-badge--sm" viewBox="0 0 24 24" width="14" height="14"><path fill="#D4A017" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path fill="#fff" d="M12 7l1.45 2.94 3.24.47-2.35 2.29.55 3.23L12 14.27l-2.89 1.66.55-3.23-2.35-2.29 3.24-.47z"/></svg>
+            <svg v-if="agent.isPartner" class="agt-partner-badge agt-partner-badge--sm" viewBox="0 0 24 24" width="14" height="14"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path fill="#fff" d="M6 12l2-2 4 2-2 2zM18 12l-2-2-4 2 2 2z"/></svg>
           </div>
           <div v-if="profileOpen" class="agt-profile-dropdown">
             <div class="agt-profile-dropdown__header">
@@ -226,13 +226,13 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
                   <span v-else>{{ initials }}</span>
                 </div>
                 <svg v-if="agent.isVerified" class="agt-avatar-badge" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
-                <svg v-if="agent.isPartner" class="agt-partner-badge" viewBox="0 0 24 24" width="16" height="16"><path fill="#D4A017" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path fill="#fff" d="M12 7l1.45 2.94 3.24.47-2.35 2.29.55 3.23L12 14.27l-2.89 1.66.55-3.23-2.35-2.29 3.24-.47z"/></svg>
+                <svg v-if="agent.isPartner" class="agt-partner-badge" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path fill="#fff" d="M6 12l2-2 4 2-2 2zM18 12l-2-2-4 2 2 2z"/></svg>
               </div>
               <div>
                 <div class="agt-profile-dropdown__name">
                   {{ agent.agencyName || 'Agent' }}
                   <svg v-if="agent.isVerified" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle;margin-left:3px"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
-                  <svg v-if="agent.isPartner" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle;margin-left:3px" title="Partenaire"><path fill="#D4A017" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path fill="#fff" d="M12 7l1.45 2.94 3.24.47-2.35 2.29.55 3.23L12 14.27l-2.89 1.66.55-3.23-2.35-2.29 3.24-.47z"/></svg>
+                  <svg v-if="agent.isPartner" viewBox="0 0 24 24" width="14" height="14" style="vertical-align:middle;margin-left:3px" title="Partenaire"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path fill="#fff" d="M6 12l2-2 4 2-2 2zM18 12l-2-2-4 2 2 2z"/></svg>
                 </div>
                 <div class="agt-profile-dropdown__phone">{{ auth.me?.phone }}</div>
               </div>
@@ -264,7 +264,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
             <span v-else>{{ initials }}</span>
           </div>
           <svg v-if="agent.isVerified" class="agt-avatar-badge" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
-          <svg v-if="agent.isPartner" class="agt-partner-badge" viewBox="0 0 24 24" width="16" height="16"><path fill="#D4A017" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path fill="#fff" d="M12 7l1.45 2.94 3.24.47-2.35 2.29.55 3.23L12 14.27l-2.89 1.66.55-3.23-2.35-2.29 3.24-.47z"/></svg>
+          <svg v-if="agent.isPartner" class="agt-partner-badge" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path fill="#fff" d="M6 12l2-2 4 2-2 2zM18 12l-2-2-4 2 2 2z"/></svg>
         </div>
         <div class="agt-sidebar__info">
           <div class="agt-sidebar__agency">{{ agent.agencyName || 'Mon agence' }}</div>
@@ -278,7 +278,7 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
             <span v-else>{{ initials }}</span>
           </div>
           <svg v-if="agent.isVerified" class="agt-avatar-badge agt-avatar-badge--sm" viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><path fill="#fff" d="M10 15.59l-3.29-3.3 1.41-1.41L10 12.76l5.88-5.88 1.41 1.41z"/></svg>
-          <svg v-if="agent.isPartner" class="agt-partner-badge agt-partner-badge--sm" viewBox="0 0 24 24" width="12" height="12"><path fill="#D4A017" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/><path fill="#fff" d="M12 7l1.45 2.94 3.24.47-2.35 2.29.55 3.23L12 14.27l-2.89 1.66.55-3.23-2.35-2.29 3.24-.47z"/></svg>
+          <svg v-if="agent.isPartner" class="agt-partner-badge agt-partner-badge--sm" viewBox="0 0 24 24" width="12" height="12"><circle cx="12" cy="12" r="11" fill="#2563eb"/><path fill="#fff" d="M6 12l2-2 4 2-2 2zM18 12l-2-2-4 2 2 2z"/></svg>
         </div>
       </div>
 
@@ -502,10 +502,10 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 .agt-avatar-badge--sm { bottom: -1px; right: -3px; }
 
 .agt-partner-badge {
-  position: absolute; top: -3px; right: -4px;
+  position: absolute; bottom: -1px; left: -2px;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
 }
-.agt-partner-badge--sm { top: -3px; right: -4px; }
+.agt-partner-badge--sm { bottom: -1px; left: -3px; }
 
 .agt-header__avatar {
   width: 32px;

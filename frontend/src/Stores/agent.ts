@@ -107,6 +107,7 @@ export interface ListingFavoriteDetail {
 
 export interface Listing {
   id: number
+  slug: string
   title: string
   description: string
   listing_type: 'LOCATION' | 'VENTE'
@@ -144,6 +145,7 @@ export interface Listing {
 
 export interface ListingListItem {
   id: number
+  slug: string
   title: string
   listing_type: 'LOCATION' | 'VENTE'
   status: 'ACTIF' | 'INACTIF' | 'EXPIRED' | 'SUSPENDED'

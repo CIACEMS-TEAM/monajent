@@ -86,6 +86,7 @@ class ClientDashboardSerializer(serializers.Serializer):
 class FavoriteListingSerializer(serializers.ModelSerializer):
     """Annonce en favori avec info résumée du listing."""
     listing_id = serializers.IntegerField(source='listing.id', read_only=True)
+    listing_slug = serializers.CharField(source='listing.slug', read_only=True)
     listing_title = serializers.CharField(source='listing.title', read_only=True)
     listing_city = serializers.CharField(source='listing.city', read_only=True)
     listing_type = serializers.CharField(source='listing.listing_type', read_only=True)
@@ -98,7 +99,7 @@ class FavoriteListingSerializer(serializers.ModelSerializer):
     class Meta:
         model = FavoriteListing
         fields = [
-            'id', 'listing_id', 'listing_title', 'listing_city',
+            'id', 'listing_id', 'listing_slug', 'listing_title', 'listing_city',
             'listing_type', 'listing_price', 'listing_status',
             'thumbnail', 'created_at',
         ]

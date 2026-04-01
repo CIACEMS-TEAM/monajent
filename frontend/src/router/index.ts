@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HomePage.vue'),
     children: [
       { path: '', name: 'home', component: () => import('@/views/HomeListings.vue') },
-      { path: 'annonce/:id', name: 'public-listing', component: () => import('@/views/public/PublicListingView.vue'), props: true },
+      { path: 'annonce/:slug', name: 'public-listing', component: () => import('@/views/public/PublicListingView.vue'), props: true },
       { path: 'dashboard', name: 'client-dashboard', component: () => import('@/views/client/ClientDashboard.vue'), meta: { requiresClient: true } },
       { path: 'favorites', name: 'client-favorites', component: () => import('@/views/client/ClientFavorites.vue'), meta: { requiresClient: true } },
       { path: 'history', name: 'client-history', component: () => import('@/views/client/ClientHistory.vue'), meta: { requiresClient: true } },
@@ -26,8 +26,7 @@ const routes: RouteRecordRaw[] = [
     ],
   },
 
-  // Redirect ancien lien /annonces/:id vers /home/annonce/:id
-  { path: '/annonces/:id', redirect: to => ({ name: 'public-listing', params: { id: to.params.id } }) },
+  { path: '/annonces/:slug', redirect: to => ({ name: 'public-listing', params: { slug: to.params.slug } }) },
 
   // Legal
   { path: '/legal/cgu', name: 'legal-cgu', component: () => import('@/views/legal/LegalCGU.vue') },

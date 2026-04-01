@@ -141,6 +141,7 @@ class ListingAvailabilityView(generics.ListAPIView):
     """
     permission_classes = [AllowAny]
     serializer_class = AgentAvailabilityPublicSerializer
+    pagination_class = None
 
     def get_queryset(self):
         listing = get_object_or_404(

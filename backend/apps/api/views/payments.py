@@ -102,6 +102,9 @@ def _get_client_ip(request) -> str:
     xff = request.META.get('HTTP_X_FORWARDED_FOR')
     if xff:
         return xff.split(',')[0].strip()
+    xri = request.META.get('HTTP_X_REAL_IP')
+    if xri:
+        return xri.strip()
     return request.META.get('REMOTE_ADDR', '')
 
 
@@ -118,6 +121,13 @@ class PaymentWebhookView(APIView):
     def post(self, request):
         if not settings.DEBUG:
             client_ip = _get_client_ip(request)
+            logger.info(
+                "Webhook reçu — REMOTE_ADDR=%s, X-Forwarded-For=%s, X-Real-Ip=%s, IP résolue=%s",
+                request.META.get('REMOTE_ADDR', ''),
+                request.META.get('HTTP_X_FORWARDED_FOR', ''),
+                request.META.get('HTTP_X_REAL_IP', ''),
+                client_ip,
+            )
             if client_ip not in PAYSTACK_WEBHOOK_IPS:
                 logger.warning(
                     "Webhook rejeté : IP %s non autorisée", client_ip,

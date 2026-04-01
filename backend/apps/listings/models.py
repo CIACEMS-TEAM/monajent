@@ -17,6 +17,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 # ── Constantes configurables ─────────────────────────────────
@@ -53,6 +54,10 @@ class Listing(models.Model):
 
     # ── Informations principales ──────────────────────────────
     title = models.CharField('Titre', max_length=255)
+    slug = models.SlugField(
+        'Slug', max_length=280, unique=True, blank=True,
+        help_text='Généré automatiquement depuis le titre et la ville.',
+    )
     description = models.TextField('Description détaillée', blank=True)
     listing_type = models.CharField(
         'Type', max_length=16, choices=Type.choices,
@@ -153,8 +158,19 @@ class Listing(models.Model):
     def __str__(self) -> str:
         return f"{self.title} — {self.city} ({self.get_listing_type_display()})"
 
+    def _generate_unique_slug(self):
+        base = slugify(f"{self.title} {self.city}")[:250] or 'annonce'
+        slug = base
+        counter = 1
+        qs = Listing.objects.exclude(pk=self.pk) if self.pk else Listing.objects.all()
+        while qs.filter(slug=slug).exists():
+            slug = f"{base}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
-        # Auto-set published_at et expires_at à la première publication
+        if not self.slug:
+            self.slug = self._generate_unique_slug()
         if not self.published_at and self.status == self.Status.ACTIF:
             self.published_at = timezone.now()
             self.expires_at = self.published_at + timedelta(days=LISTING_EXPIRY_DAYS)

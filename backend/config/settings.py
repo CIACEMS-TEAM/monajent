@@ -206,6 +206,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173'])
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173'])
 
+FRONTEND_URL = env('FRONTEND_URL', default=CORS_ALLOWED_ORIGINS[0] if CORS_ALLOWED_ORIGINS else 'http://localhost:5173')
+
 # ── Cookies sécurité ─────────────────────────────────────────────────────────
 AUTH_COOKIE_SAMESITE = env('AUTH_COOKIE_SAMESITE', default='Lax')
 SESSION_COOKIE_SECURE = not DEBUG
@@ -308,6 +310,7 @@ if USE_R2:
     AWS_QUERYSTRING_EXPIRE = 3600
     AWS_S3_FILE_OVERWRITE = False
     AWS_S3_SIGNATURE_VERSION = 's3v4'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'public, max-age=86400'}
 
 # ── Payment Gateway ──────────────────────────────────────────────────────────
 PAYMENT_GATEWAY = env('PAYMENT_GATEWAY', default='simulation')

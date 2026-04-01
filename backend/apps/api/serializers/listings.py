@@ -103,7 +103,7 @@ class ListingListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'listing_type', 'status',
+            'id', 'slug', 'title', 'listing_type', 'status',
             'city', 'neighborhood', 'price',
             'rooms', 'bedrooms', 'surface_m2', 'furnishing',
             'deposit_months', 'advance_months', 'agency_fee_months',
@@ -166,7 +166,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'description', 'listing_type', 'status',
+            'id', 'slug', 'title', 'description', 'listing_type', 'status',
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
@@ -194,7 +194,7 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'description', 'listing_type', 'status',
+            'id', 'slug', 'title', 'description', 'listing_type', 'status',
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
@@ -265,7 +265,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Listing
         fields = [
-            'id', 'title', 'description', 'listing_type', 'status',
+            'id', 'slug', 'title', 'description', 'listing_type', 'status',
             'city', 'neighborhood', 'address', 'latitude', 'longitude',
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
@@ -273,7 +273,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'other_conditions', 'agent_note',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
 
     def validate_price(self, value):
         if value <= 0:

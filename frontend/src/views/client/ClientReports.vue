@@ -51,7 +51,7 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
     <div v-else class="rpt__list">
       <div v-for="r in client.reports" :key="r.id" class="rpt__card">
         <div class="rpt__card-head">
-          <router-link :to="{ name: 'public-listing', params: { id: r.listing_id } }" class="rpt__listing-title">
+          <router-link :to="{ name: 'public-listing', params: { slug: r.listing_slug } }" class="rpt__listing-title">
             {{ r.listing_title }}
           </router-link>
           <span class="rpt__badge" :class="statusConfig[r.status]?.cls">
