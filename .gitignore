@@ -1,15 +1,45 @@
+# ── Python ────────────────────────────────────────────────────
 backend/venv/
 backend/__pycache__/
-backend/migrations/
+backend/**/__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# ── Django ────────────────────────────────────────────────────
 backend/staticfiles/
-backend/media/
 backend/media/
 backend/db.sqlite3
 backend/db.sqlite3-journal
 backend/db.sqlite3-shm
 backend/db.sqlite3-wal
-backend/db.sqlite3-shm
 
-
-
+# ── Environnement (SECRETS — ne jamais commiter) ─────────────
 .env
+.env.prod
+.env.docker
+.env.local
+.env.staging
+.envDokploy.txt
+frontend/.env.development
+frontend/.env.production
+frontend/.env.local
+
+# ── Node ─────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+
+# ── IDE ──────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── OS ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ─────────────────────────────────────────────────────
+*.log
+logs/

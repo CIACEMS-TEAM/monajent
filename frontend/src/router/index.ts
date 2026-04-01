@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HomePage.vue'),
     children: [
       { path: '', name: 'home', component: () => import('@/views/HomeListings.vue') },
-      { path: 'annonce/:id', name: 'public-listing', component: () => import('@/views/public/PublicListingView.vue'), meta: { requiresAuth: true }, props: true },
+      { path: 'annonce/:id', name: 'public-listing', component: () => import('@/views/public/PublicListingView.vue'), props: true },
       { path: 'dashboard', name: 'client-dashboard', component: () => import('@/views/client/ClientDashboard.vue'), meta: { requiresClient: true } },
       { path: 'favorites', name: 'client-favorites', component: () => import('@/views/client/ClientFavorites.vue'), meta: { requiresClient: true } },
       { path: 'history', name: 'client-history', component: () => import('@/views/client/ClientHistory.vue'), meta: { requiresClient: true } },
@@ -20,11 +20,19 @@ const routes: RouteRecordRaw[] = [
       { path: 'visits', name: 'client-visits', component: () => import('@/views/client/ClientVisits.vue'), meta: { requiresClient: true } },
       { path: 'reports', name: 'client-reports', component: () => import('@/views/client/ClientReports.vue'), meta: { requiresClient: true } },
       { path: 'profile', name: 'client-profile', component: () => import('@/views/client/ClientProfile.vue'), meta: { requiresClient: true } },
+      { path: 'support', name: 'client-support', component: () => import('@/views/support/SupportListView.vue'), meta: { requiresAuth: true } },
+      { path: 'support/new', name: 'client-support-new', component: () => import('@/views/support/SupportCreateView.vue'), meta: { requiresAuth: true } },
+      { path: 'support/:id', name: 'client-support-detail', component: () => import('@/views/support/SupportDetailView.vue'), meta: { requiresAuth: true }, props: true },
     ],
   },
 
   // Redirect ancien lien /annonces/:id vers /home/annonce/:id
   { path: '/annonces/:id', redirect: to => ({ name: 'public-listing', params: { id: to.params.id } }) },
+
+  // Legal
+  { path: '/legal/cgu', name: 'legal-cgu', component: () => import('@/views/legal/LegalCGU.vue') },
+  { path: '/legal/confidentialite', name: 'legal-privacy', component: () => import('@/views/legal/LegalPrivacy.vue') },
+  { path: '/legal/conditions-agents', name: 'legal-agent', component: () => import('@/views/legal/LegalAgentConditions.vue') },
 
   // Auth
   { path: '/auth/login', name: 'login', component: () => import('@/views/auth/LoginView.vue') },
@@ -50,6 +58,9 @@ const routes: RouteRecordRaw[] = [
       { path: 'visits', name: 'agent-visits', component: () => import('@/views/agent/AgentVisits.vue') },
       { path: 'wallet', name: 'agent-wallet', component: () => import('@/views/agent/AgentWallet.vue') },
       { path: 'settings', name: 'agent-settings', component: () => import('@/views/agent/AgentSettings.vue') },
+      { path: 'support', name: 'agent-support', component: () => import('@/views/support/SupportListView.vue') },
+      { path: 'support/new', name: 'agent-support-new', component: () => import('@/views/support/SupportCreateView.vue') },
+      { path: 'support/:id', name: 'agent-support-detail', component: () => import('@/views/support/SupportDetailView.vue'), props: true },
     ],
   },
 ]

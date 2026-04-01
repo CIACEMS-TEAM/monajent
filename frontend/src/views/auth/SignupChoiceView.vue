@@ -26,7 +26,7 @@ const router = useRouter()
         <button class="card" @click="router.push('/auth/signup/client')">
           <img :src="clientIcon" alt="Client" class="icon-img client" />
           <div class="h">Je suis client, je cherche un logement</div>
-          <p class="p">Créez votre compte pour explorer avec des clés virtuelles et réserver des visites.</p>
+          <p class="p">Créez votre compte pour explorer avec des clés virtuelles et réserver des visites gratuites.</p>
         </button>
         <button class="card" @click="router.push('/auth/signup/agent')">
           <img :src="agentIcon" alt="Agent" class="icon-img agent" />

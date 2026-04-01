@@ -42,11 +42,11 @@ function handleNeverShow() {
           <!-- Hero -->
           <section class="wo-hero">
             <h1 class="wo-hero__title">
-              Bienvenue sur <span class="wo-green">MonaJent</span>
+              Trouvez votre bien,<br /><span class="wo-green">visitez gratuitement</span>
             </h1>
             <p class="wo-hero__subtitle">
-              Le premier modèle africain de <strong>Pay-Per-View immobilier</strong>.<br />
-              Visitez des biens virtuellement et physiquement, simplement avec des clés.
+              MonaJent vous donne accès aux biens immobiliers en vidéo
+              et vous offre des visites physiques gratuites, sans frais d'agence.
             </p>
           </section>
 
@@ -58,18 +58,16 @@ function handleNeverShow() {
               <div class="wo-step">
                 <div class="wo-step__icon wo-step__icon--1">
                   <svg viewBox="0 0 48 48" width="40" height="40">
-                    <rect x="8" y="6" width="32" height="36" rx="4" fill="none" stroke="currentColor" stroke-width="2.5" />
-                    <path d="M16 18h16M16 26h10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
-                    <circle cx="34" cy="34" r="10" fill="#1DA53F" />
-                    <path d="M30 34h8M34 30v8" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+                    <circle cx="24" cy="24" r="18" fill="none" stroke="currentColor" stroke-width="2.5" />
+                    <path d="M16 24h16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+                    <path d="M24 18v12" stroke="#1DA53F" stroke-width="2.5" stroke-linecap="round" />
                   </svg>
                 </div>
                 <div class="wo-step__num">1</div>
-                <h3 class="wo-step__title">Achetez un pack</h3>
+                <h3 class="wo-step__title">Créez votre compte</h3>
                 <p class="wo-step__desc">
-                  Pour seulement <strong>500 F CFA</strong>, obtenez
-                  <strong>33 clés virtuelles</strong> + <strong>1 clé physique</strong>
-                  de visite gratuite.
+                  Inscription rapide et <strong>gratuite</strong>.
+                  Accédez immédiatement à tous les biens disponibles.
                 </p>
               </div>
 
@@ -81,10 +79,10 @@ function handleNeverShow() {
                   </svg>
                 </div>
                 <div class="wo-step__num">2</div>
-                <h3 class="wo-step__title">Visionnez les vidéos</h3>
+                <h3 class="wo-step__title">Découvrez en vidéo</h3>
                 <p class="wo-step__desc">
-                  Chaque vidéo d'un bien immobilier consomme <strong>1 clé virtuelle</strong>.
-                  Découvrez les biens comme si vous y étiez.
+                  Parcourez les biens immobiliers en <strong>vidéo complète</strong>,
+                  comme si vous y étiez, depuis votre téléphone.
                 </p>
               </div>
 
@@ -98,8 +96,8 @@ function handleNeverShow() {
                 <div class="wo-step__num">3</div>
                 <h3 class="wo-step__title">Visitez gratuitement</h3>
                 <p class="wo-step__desc">
-                  Votre <strong>clé physique</strong> vous donne droit à une
-                  <strong>visite gratuite</strong> chez l'agent immobilier de votre choix.
+                  Réservez une <strong>visite physique gratuite</strong>
+                  directement depuis l'application, sans frais d'agence.
                 </p>
               </div>
             </div>
@@ -118,43 +116,8 @@ function handleNeverShow() {
             -->
           </section>
 
-          <!-- Pricing highlight -->
-          <section class="wo-pricing">
-            <div class="wo-pricing__card">
-              <div class="wo-pricing__badge">Pack découverte</div>
-              <div class="wo-pricing__amount">500 <span class="wo-pricing__currency">F CFA</span></div>
-              <ul class="wo-pricing__list">
-                <li>
-                  <svg viewBox="0 0 20 20" width="18" height="18"><path fill="#1DA53F" d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm-1 14.59l-4.3-4.3 1.41-1.41L9 11.76l5.89-5.89 1.41 1.42L9 13.59z"/></svg>
-                  <span><strong>33</strong> clés virtuelles (visionnages vidéo)</span>
-                </li>
-                <li>
-                  <svg viewBox="0 0 20 20" width="18" height="18"><path fill="#1DA53F" d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm-1 14.59l-4.3-4.3 1.41-1.41L9 11.76l5.89-5.89 1.41 1.42L9 13.59z"/></svg>
-                  <span><strong>1</strong> visite physique gratuite</span>
-                </li>
-                <li>
-                  <svg viewBox="0 0 20 20" width="18" height="18"><path fill="#1DA53F" d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm-1 14.59l-4.3-4.3 1.41-1.41L9 11.76l5.89-5.89 1.41 1.42L9 13.59z"/></svg>
-                  <span>Paiement mobile : Orange Money, Wave, MTN</span>
-                </li>
-              </ul>
-            </div>
-          </section>
 
-          <!-- Agents section -->
-          <section class="wo-agents">
-            <div class="wo-agents__icon">
-              <svg viewBox="0 0 48 48" width="36" height="36">
-                <path d="M24 4C14.06 4 6 12.06 6 22c0 5.52 2.52 10.44 6.46 13.72A21.9 21.9 0 0024 42a21.9 21.9 0 0011.54-6.28C39.48 32.44 42 27.52 42 22 42 12.06 33.94 4 24 4z" fill="none" stroke="currentColor" stroke-width="2" />
-                <circle cx="24" cy="18" r="7" fill="none" stroke="#1DA53F" stroke-width="2" />
-                <path d="M12 38c1.5-5 6.5-8.5 12-8.5s10.5 3.5 12 8.5" fill="none" stroke="#1DA53F" stroke-width="2" stroke-linecap="round" />
-              </svg>
-            </div>
-            <h3 class="wo-agents__title">Vous êtes agent immobilier ?</h3>
-            <p class="wo-agents__desc">
-              Publiez vos biens, recevez des clients qualifiés et gagnez <strong>10 F CFA par visionnage</strong>.
-              Inscription gratuite.
-            </p>
-          </section>
+
         </div>
 
         <!-- Footer actions -->
@@ -244,7 +207,7 @@ function handleNeverShow() {
 }
 
 .wo-logo {
-  height: 48px;
+  height: 80px;
   width: auto;
 }
 
@@ -379,100 +342,6 @@ function handleNeverShow() {
   height: 100%;
 }
 
-/* ===== Pricing ===== */
-.wo-pricing {
-  margin-bottom: 24px;
-}
-
-.wo-pricing__card {
-  background: linear-gradient(135deg, var(--green-light), #f0fdf4);
-  border: 1.5px solid var(--green);
-  border-radius: 14px;
-  padding: 24px;
-  text-align: center;
-}
-
-.wo-pricing__badge {
-  display: inline-block;
-  background: var(--green);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  padding: 4px 14px;
-  border-radius: 20px;
-  margin-bottom: 12px;
-}
-
-.wo-pricing__amount {
-  font-size: 40px;
-  font-weight: 800;
-  color: var(--text);
-  line-height: 1.1;
-  margin-bottom: 16px;
-}
-
-.wo-pricing__currency {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-3);
-}
-
-.wo-pricing__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 380px;
-  margin: 0 auto;
-}
-
-.wo-pricing__list li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--text-2);
-  text-align: left;
-}
-
-.wo-pricing__list li svg {
-  flex-shrink: 0;
-}
-
-/* ===== Agents callout ===== */
-.wo-agents {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 24px;
-  text-align: center;
-  margin-bottom: 8px;
-}
-
-.wo-agents__icon {
-  color: var(--text-2);
-  margin-bottom: 8px;
-}
-
-.wo-agents__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 6px;
-}
-
-.wo-agents__desc {
-  font-size: 13px;
-  color: var(--text-3);
-  line-height: 1.5;
-  max-width: 400px;
-  margin: 0 auto;
-}
-
 /* ===== Footer / Actions ===== */
 .wo-footer {
   padding: 16px 32px 20px;
@@ -572,16 +441,12 @@ function handleNeverShow() {
     font-size: 12px;
   }
 
-  .wo-pricing__amount {
-    font-size: 32px;
-  }
-
   .wo-footer {
     padding: 12px 20px 16px;
   }
 
   .wo-logo {
-    height: 40px;
+    height: 64px;
   }
 }
 </style>

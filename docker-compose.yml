@@ -1,0 +1,49 @@
+# ==============================================================================
+#  MonaJent — Docker Compose (développement local uniquement)
+#
+#  Lance les services d'infra pour le dev local.
+#  Le backend et le frontend tournent en natif (venv + npm run dev).
+#
+#  Usage :
+#    docker compose up -d          → démarre postgres + redis
+#    docker compose down           → arrête tout
+#    docker compose down -v        → arrête + supprime les données
+#
+#  En production, chaque service est déployé via Dokploy (Docker Swarm).
+# ==============================================================================
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: monajent
+      POSTGRES_USER: monajent
+      POSTGRES_PASSWORD: monajent_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monajent"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:

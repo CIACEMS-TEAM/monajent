@@ -158,7 +158,7 @@ def process_webhook(payload: dict, headers: dict, raw_body: bytes = b'') -> Paym
         raise InvalidWebhookError("tx_ref manquant dans le webhook.")
 
     try:
-        payment = Payment.objects.select_for_update().get(tx_ref=tx_ref)
+        payment = Payment.objects.get(tx_ref=tx_ref)
     except Payment.DoesNotExist:
         raise PaymentNotFoundError(f"Aucun paiement trouvé pour tx_ref={tx_ref}")
 

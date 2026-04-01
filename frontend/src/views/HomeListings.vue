@@ -15,19 +15,19 @@
       </div>
     </div>
 
-    <!-- Loading (authenticated) -->
-    <div v-if="auth.me && pub.listingsLoading" class="yt-loading">
+    <!-- Loading -->
+    <div v-if="pub.listingsLoading" class="yt-loading">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #1DA53F"></i>
       <span>Chargement des annonces...</span>
     </div>
 
-    <!-- Empty (authenticated, no results) -->
-    <div v-else-if="auth.me && !pub.listingsLoading && pub.listings.length === 0" class="yt-empty">
+    <!-- Empty -->
+    <div v-else-if="!pub.listingsLoading && pub.listings.length === 0" class="yt-empty">
       <i class="pi pi-home" style="font-size: 3rem; color: #ccc"></i>
       <p>Aucune annonce disponible pour le moment.</p>
     </div>
 
-    <!-- Listings Grid (real data when authenticated, mock when not) -->
+    <!-- Listings Grid -->
     <div v-else class="yt-grid">
       <div
         v-for="listing in displayListings"
@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore, type ListingListItem, type PublicListingAgent } from '@/Stores/public'
@@ -183,7 +183,7 @@ function timeAgo(dateStr: string): string {
   return `il y a ${weeks} semaines`
 }
 
-const mockGradients = [
+const placeholderGradients = [
   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
   'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
   'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
@@ -192,25 +192,6 @@ const mockGradients = [
   'linear-gradient(135deg, #c3cfe2 0%, #f5f7fa 100%)',
   'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)',
   'linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%)',
-  'linear-gradient(135deg, #fddb92 0%, #d1fdff 100%)',
-  'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)',
-  'linear-gradient(135deg, #96fbc4 0%, #f9f586 100%)',
-  'linear-gradient(135deg, #ebc0fd 0%, #d9ded8 100%)',
-]
-
-const mockListings: DisplayListing[] = [
-  { id: 1, title: 'Bel appartement 3 pièces avec vue sur la lagune - Cocody Riviera', type: 'LOCATION', price: '250 000 F/mois', conditions: '2 caution + 2 avance', coverImage: null, thumbGradient: mockGradients[0], videosCount: 1, videoDuration: '2:34', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,2k vues', publishedAgo: 'il y a 2 jours' },
-  { id: 2, title: 'Villa duplex 5 chambres avec piscine et jardin - Cocody Angré', type: 'VENTE', price: '85 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[1], videosCount: 2, videoDuration: '4:12', agentName: 'Traoré Properties', agentInitial: 'T', agentColor: '#2d6a4f', agentPhoto: null, agentVerified: true, views: '3,8k vues', publishedAgo: 'il y a 5 jours' },
-  { id: 3, title: 'Studio meublé climatisé - idéal étudiant - Plateau Dokui', type: 'LOCATION', price: '120 000 F/mois', conditions: '1 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[2], videosCount: 1, videoDuration: '1:45', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '876 vues', publishedAgo: 'il y a 1 jour' },
-  { id: 4, title: 'Appartement 4 pièces standing - Marcory Résidentiel', type: 'LOCATION', price: '350 000 F/mois', conditions: '2 caution + 2 avance + 1 agence', coverImage: null, thumbGradient: mockGradients[3], videosCount: 1, videoDuration: '3:08', agentName: 'Diallo & Fils Immo', agentInitial: 'D', agentColor: '#7b2cbf', agentPhoto: null, agentVerified: true, views: '2,1k vues', publishedAgo: 'il y a 3 jours' },
-  { id: 5, title: 'Grande villa 6 pièces avec dépendance - Yopougon Niangon', type: 'VENTE', price: '45 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[4], videosCount: 1, videoDuration: '5:20', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: false, views: '654 vues', publishedAgo: 'il y a 6 jours' },
-  { id: 6, title: 'Bureau open space 120m² climatisé - Plateau centre', type: 'LOCATION', price: '800 000 F/mois', conditions: '', coverImage: null, thumbGradient: mockGradients[5], videosCount: 1, videoDuration: '2:55', agentName: 'Coulibaly Business', agentInitial: 'C', agentColor: '#457b9d', agentPhoto: null, agentVerified: true, views: '432 vues', publishedAgo: 'il y a 4 jours' },
-  { id: 7, title: 'Appartement 2 pièces rénové - Riviera Palmeraie', type: 'LOCATION', price: '180 000 F/mois', conditions: '2 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[6], videosCount: 1, videoDuration: '2:10', agentName: "N'Guessan Habitat", agentInitial: 'N', agentColor: '#606c38', agentPhoto: null, agentVerified: false, views: '1,5k vues', publishedAgo: 'il y a 1 jour' },
-  { id: 8, title: 'Villa moderne 4 chambres avec garage - Riviera Golf', type: 'VENTE', price: '120 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[7], videosCount: 3, videoDuration: '6:45', agentName: 'Bamba Elite Immo', agentInitial: 'B', agentColor: '#9d4edd', agentPhoto: null, agentVerified: true, views: '5,2k vues', publishedAgo: 'il y a 2 jours' },
-  { id: 9, title: 'Magasin 80m² bord de route - Yopougon Maroc', type: 'LOCATION', price: '450 000 F/mois', conditions: '3 caution + 2 avance + 2 agence', coverImage: null, thumbGradient: mockGradients[8], videosCount: 1, videoDuration: '1:58', agentName: 'Ouattara & Co', agentInitial: 'O', agentColor: '#e76f51', agentPhoto: null, agentVerified: false, views: '298 vues', publishedAgo: 'il y a 5 jours' },
-  { id: 10, title: 'Appartement haut standing 5 pièces - Cocody II Plateaux', type: 'VENTE', price: '55 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[9], videosCount: 2, videoDuration: '3:42', agentName: 'Kouamé Immobilier', agentInitial: 'K', agentColor: '#e85d04', agentPhoto: null, agentVerified: true, views: '1,8k vues', publishedAgo: 'il y a 3 jours' },
-  { id: 11, title: 'Studio moderne tout équipé - Marcory Zone 4', type: 'LOCATION', price: '150 000 F/mois', conditions: '1 caution + 1 avance', coverImage: null, thumbGradient: mockGradients[10], videosCount: 1, videoDuration: '2:22', agentName: 'Awa Habitat', agentInitial: 'A', agentColor: '#0077b6', agentPhoto: null, agentVerified: false, views: '721 vues', publishedAgo: 'il y a 2 jours' },
-  { id: 12, title: 'Villa basse 3 chambres avec cour - Yopougon Selmer', type: 'VENTE', price: '28 000 000 F', conditions: '', coverImage: null, thumbGradient: mockGradients[11], videosCount: 1, videoDuration: '3:15', agentName: 'Koné Immobilier CI', agentInitial: 'K', agentColor: '#d62828', agentPhoto: null, agentVerified: true, views: '1,1k vues', publishedAgo: 'il y a 4 jours' },
 ]
 
 function conditionsLabel(item: ListingListItem): string {
@@ -233,7 +214,7 @@ function apiToDisplay(item: ListingListItem): DisplayListing {
     price: formatPrice(item.price),
     conditions: conditionsLabel(item),
     coverImage: cover,
-    thumbGradient: mockGradients[item.id % mockGradients.length],
+    thumbGradient: placeholderGradients[item.id % placeholderGradients.length],
     videosCount: item.videos_count,
     videoDuration: '',
     agentName: item.agent.agency_name || item.agent.username || item.agent.phone,
@@ -246,29 +227,15 @@ function apiToDisplay(item: ListingListItem): DisplayListing {
   }
 }
 
-const filteredMock = computed(() => {
-  if (activeChip.value === 'all') return mockListings
-  if (activeChip.value === 'LOCATION' || activeChip.value === 'VENTE') {
-    return mockListings.filter(l => l.type === activeChip.value)
-  }
-  return mockListings
-})
-
 const displayListings = computed<DisplayListing[]>(() => {
-  if (!auth.me) return filteredMock.value
   return pub.listings.map(apiToDisplay)
 })
 
 function handleCardClick(id: number) {
-  if (!auth.me) {
-    router.push({ name: 'login', query: { redirect: '/home' } })
-    return
-  }
   router.push({ name: 'public-listing', params: { id } })
 }
 
 async function loadListings() {
-  if (!auth.me) return
   const params: Record<string, string> = {}
   if (activeChip.value === 'LOCATION' || activeChip.value === 'VENTE') {
     params.listing_type = activeChip.value
@@ -282,15 +249,11 @@ async function loadListings() {
 
 function selectChip(value: string) {
   activeChip.value = value
-  if (auth.me) loadListings()
+  loadListings()
 }
 
 onMounted(() => {
-  if (auth.me) loadListings()
-})
-
-watch(() => auth.me, (me) => {
-  if (me) loadListings()
+  loadListings()
 })
 </script>
 
