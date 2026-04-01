@@ -80,22 +80,19 @@ const statusOptions = computed(() => {
 })
 const canPublish = computed(() => {
   if (isEdit.value && agent.currentListing) {
-    return agent.currentListing.images.length >= 1 && agent.currentListing.videos.length >= 1
+    return agent.currentListing.images.length >= 1
   }
-  return pendingImages.value.length >= 1 && !!pendingVideo.value
+  return pendingImages.value.length >= 1
+})
+
+const hasVideo = computed(() => {
+  if (isEdit.value && agent.currentListing) return agent.currentListing.videos.length >= 1
+  return !!pendingVideo.value
 })
 
 const publishBlockReason = computed(() => {
   if (canPublish.value) return ''
-  const missing: string[] = []
-  if (isEdit.value && agent.currentListing) {
-    if (agent.currentListing.images.length < 1) missing.push('1 photo')
-    if (agent.currentListing.videos.length < 1) missing.push('1 vidéo')
-  } else {
-    if (pendingImages.value.length < 1) missing.push('1 photo')
-    if (!pendingVideo.value) missing.push('1 vidéo')
-  }
-  return `Ajoutez au moins ${missing.join(' et ')} pour publier`
+  return 'Ajoutez au moins 1 photo pour publier'
 })
 
 const conditionsSummary = computed(() => {
@@ -839,46 +836,52 @@ async function doSubmit(targetStatus: string) {
 
     <template #footer>
       <div class="lf__footer">
-        <Button label="Annuler" severity="secondary" text @click="close" :disabled="saving" />
-        <div class="lf__footer-right">
-          <Button
-            label="Enregistrer en brouillon"
-            icon="pi pi-save"
-            severity="secondary"
-            outlined
-            :loading="saving && savingAs === 'draft'"
-            :disabled="saving"
-            @click="submitDraft"
-          />
-          <span v-if="!agent.isVerified" class="lf__publish-wrap" title="Veuillez vérifier votre identité pour publier">
+        <div v-if="canPublish && !hasVideo" class="lf__footer-novideo">
+          <i class="pi pi-info-circle"></i>
+          <span>Sans vidéo, l'annonce sera visible gratuitement (photos uniquement). Vous pourrez ajouter une vidéo plus tard pour générer des revenus.</span>
+        </div>
+        <div class="lf__footer-actions">
+          <Button label="Annuler" severity="secondary" text @click="close" :disabled="saving" />
+          <div class="lf__footer-right">
             <Button
-              label="Publier l'annonce"
-              icon="pi pi-send"
-              severity="success"
-              disabled
-              class="lf__publish-btn--disabled"
+              label="Enregistrer en brouillon"
+              icon="pi pi-save"
+              severity="secondary"
+              outlined
+              :loading="saving && savingAs === 'draft'"
+              :disabled="saving"
+              @click="submitDraft"
             />
-            <span class="lf__publish-badge">KYC requis</span>
-          </span>
-          <span v-else-if="!canPublish" class="lf__publish-wrap" :title="publishBlockReason">
+            <span v-if="!agent.isVerified" class="lf__publish-wrap" title="Veuillez vérifier votre identité pour publier">
+              <Button
+                label="Publier l'annonce"
+                icon="pi pi-send"
+                severity="success"
+                disabled
+                class="lf__publish-btn--disabled"
+              />
+              <span class="lf__publish-badge">KYC requis</span>
+            </span>
+            <span v-else-if="!canPublish" class="lf__publish-wrap" :title="publishBlockReason">
+              <Button
+                label="Publier l'annonce"
+                icon="pi pi-send"
+                severity="success"
+                disabled
+                class="lf__publish-btn--disabled"
+              />
+              <span class="lf__publish-badge lf__publish-badge--media">{{ publishBlockReason }}</span>
+            </span>
             <Button
-              label="Publier l'annonce"
-              icon="pi pi-send"
+              v-else
+              :label="hasVideo ? 'Publier l\'annonce' : 'Publier (photos uniquement)'"
+              :icon="hasVideo ? 'pi pi-send' : 'pi pi-images'"
               severity="success"
-              disabled
-              class="lf__publish-btn--disabled"
+              :loading="saving && savingAs === 'publish'"
+              :disabled="saving"
+              @click="submitPublish"
             />
-            <span class="lf__publish-badge lf__publish-badge--media">{{ publishBlockReason }}</span>
-          </span>
-          <Button
-            v-else
-            label="Publier l'annonce"
-            icon="pi pi-send"
-            severity="success"
-            :loading="saving && savingAs === 'publish'"
-            :disabled="saving"
-            @click="submitPublish"
-          />
+          </div>
         </div>
       </div>
     </template>
@@ -1334,10 +1337,28 @@ async function doSubmit(targetStatus: string) {
 
 .lf__footer {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.lf__footer-novideo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #FFF7ED;
+  border: 1px solid #FDBA74;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #9A3412;
+  line-height: 1.4;
+}
+.lf__footer-novideo i { color: #F59E0B; flex-shrink: 0; }
+.lf__footer-actions {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  width: 100%;
 }
 .lf__footer-right {
   display: flex;
