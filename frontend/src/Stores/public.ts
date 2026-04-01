@@ -174,7 +174,7 @@ export const usePublicStore = defineStore('public', {
         if (this.virtualKeys > 0) this.virtualKeys--
 
         if (this.listing) {
-          const vid = this.listing.videos.find(v => v.access_key === accessKey)
+          const vid = (this.listing.videos ?? []).find(v => v.access_key === accessKey)
           if (vid) vid.views_count++
           this.listing.views_count++
         }

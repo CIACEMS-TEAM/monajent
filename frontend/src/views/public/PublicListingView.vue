@@ -162,12 +162,11 @@ function photoModalNext() {
 }
 
 const descriptionTruncated = computed(() => {
-  if (!pub.listing?.description) return ''
-  return pub.listing.description.length > 200
-    ? pub.listing.description.slice(0, 200) + '...'
-    : pub.listing.description
+  const desc = pub.listing?.description
+  if (!desc || typeof desc !== 'string') return ''
+  return desc.length > 200 ? desc.slice(0, 200) + '...' : desc
 })
-const needsTruncation = computed(() => (pub.listing?.description?.length ?? 0) > 200)
+const needsTruncation = computed(() => (typeof pub.listing?.description === 'string' ? pub.listing.description.length : 0) > 200)
 const showToggle = computed(() => needsTruncation.value || (pub.listing?.amenities?.length ?? 0) > 0 || pub.listing?.address)
 
 const hasVideos = computed(() => (pub.listing?.videos?.length ?? 0) > 0)
@@ -190,7 +189,7 @@ async function loadOtherListings() {
     if (activeChip.value === 'LOCATION' || activeChip.value === 'VENTE') params.listing_type = activeChip.value
     else if (activeChip.value !== 'all') params.city = activeChip.value
     await pub.fetchListings(params)
-    otherListings.value = pub.listings.filter(l => l.id !== listingId.value).slice(0, 20)
+    otherListings.value = (pub.listings ?? []).filter(l => l.id !== listingId.value).slice(0, 20)
   } catch (_) {}
 }
 
@@ -274,6 +273,7 @@ async function submitVisitRequest() {
 }
 
 function formatSlotTime(t: string) {
+  if (!t) return ''
   return t.slice(0, 5)
 }
 
@@ -738,9 +738,9 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
           <template v-if="pub.listing.description">
             <p class="yw-desc__text">{{ descExpanded ? pub.listing.description : descriptionTruncated }}</p>
           </template>
-          <template v-if="descExpanded && pub.listing.amenities.length">
+          <template v-if="descExpanded && pub.listing.amenities?.length">
             <div class="yw-desc__sub">Commodités</div>
-            <div class="yw-desc__tags"><span v-for="(a, i) in pub.listing.amenities" :key="i" class="yw-desc__tag"><i class="pi pi-check"></i> {{ a }}</span></div>
+            <div class="yw-desc__tags"><span v-for="(a, i) in (pub.listing.amenities ?? [])" :key="i" class="yw-desc__tag"><i class="pi pi-check"></i> {{ a }}</span></div>
           </template>
           <template v-if="descExpanded && pub.listing.address">
             <div class="yw-desc__sub">Adresse</div>
@@ -750,14 +750,14 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
         </div>
 
         <!-- Videos PPV -->
-        <section v-if="pub.listing.videos.length > 1" class="yw-vids">
+        <section v-if="(pub.listing.videos?.length ?? 0) > 1" class="yw-vids">
           <div class="yw-vids__head">
-            <h2 class="yw-vids__title"><i class="pi pi-video"></i> {{ pub.listing.videos.length }} vidéo{{ pub.listing.videos.length > 1 ? 's' : '' }}</h2>
+            <h2 class="yw-vids__title"><i class="pi pi-video"></i> {{ pub.listing.videos?.length ?? 0 }} vidéo{{ (pub.listing.videos?.length ?? 0) > 1 ? 's' : '' }}</h2>
             <span class="yw-ppv">Visite virtuelle</span>
           </div>
           <p class="yw-vids__hint"><i class="pi pi-info-circle"></i> Cliquez pour voir un aperçu gratuit de chaque vidéo.</p>
           <div class="yw-vids__grid">
-            <div v-for="vid in pub.listing.videos" :key="vid.id" :id="`video-${vid.access_key}`" class="yw-vcard" :class="{ 'yw-vcard--hl': highlightVideoKey === vid.access_key }">
+            <div v-for="vid in (pub.listing.videos ?? [])" :key="vid.id" :id="`video-${vid.access_key}`" class="yw-vcard" :class="{ 'yw-vcard--hl': highlightVideoKey === vid.access_key }">
 
               <!-- Vidéo DÉBLOQUÉE — player complet -->
               <div v-if="pub.getUnlockedUrl(vid.access_key)" class="yw-vcard__player" @contextmenu="preventContextMenu">
