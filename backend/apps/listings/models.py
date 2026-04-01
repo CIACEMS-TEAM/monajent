@@ -238,7 +238,7 @@ class Video(models.Model):
 
     # Anti-fraude couche 2 : hash perceptuel (copies modifiées)
     perceptual_hash = models.CharField(
-        'Hash perceptuel', max_length=16, blank=True, db_index=True,
+        'Hash perceptuel', max_length=18, blank=True, db_index=True,
         help_text='Hash perceptuel 64-bit (hex) via VideoHash — détection de copies visuellement similaires.',
     )
 

@@ -128,7 +128,7 @@ def compute_perceptual_hash(file: UploadedFile) -> str:
         file.seek(0)
 
         vh = VideoHash(path=tmp.name)
-        return vh.hash_hex
+        return vh.hash_hex.removeprefix('0x')
     except Exception as exc:
         logger.warning("Erreur calcul hash perceptuel : %s", exc)
         return ''
