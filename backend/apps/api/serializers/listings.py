@@ -92,11 +92,13 @@ class ListingListSerializer(serializers.ModelSerializer):
     """
     Serializer compact pour les listes d'annonces (recherche publique + agent).
     Inclut l'agent (mini) et la première image comme couverture.
+    agent_note est renvoyé uniquement si l'utilisateur est le propriétaire.
     """
     agent = AgentMiniSerializer(read_only=True)
     cover_image = serializers.SerializerMethodField()
     videos_count = serializers.SerializerMethodField()
     days_remaining = serializers.SerializerMethodField()
+    agent_note = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
@@ -108,9 +110,15 @@ class ListingListSerializer(serializers.ModelSerializer):
             'views_count', 'favorites_count', 'reports_count',
             'agent', 'cover_image', 'videos_count',
             'published_at', 'expires_at', 'days_remaining',
-            'created_at',
+            'agent_note', 'created_at',
         ]
         read_only_fields = fields
+
+    def get_agent_note(self, obj) -> str | None:
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user == obj.agent:
+            return obj.agent_note
+        return None
 
     def get_cover_image(self, obj) -> str | None:
         first = obj.images.first()
@@ -191,7 +199,7 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
             'deposit_months', 'advance_months', 'agency_fee_months',
-            'other_conditions',
+            'other_conditions', 'agent_note',
             'views_count', 'favorites_count', 'reports_count',
             'published_at', 'expires_at', 'days_remaining',
             'images', 'videos',
@@ -262,7 +270,7 @@ class ListingCreateSerializer(serializers.ModelSerializer):
             'price', 'rooms', 'bedrooms', 'bathrooms', 'surface_m2',
             'furnishing', 'amenities',
             'deposit_months', 'advance_months', 'agency_fee_months',
-            'other_conditions',
+            'other_conditions', 'agent_note',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

@@ -127,9 +127,10 @@ export const usePublicStore = defineStore('public', {
     async fetchListings(params?: Record<string, string>) {
       this.listingsLoading = true
       try {
-        const { data } = await http.get<ListingListItem[]>('/api/listings/', { params })
-        this.listings = data
-        return data
+        const { data } = await http.get('/api/listings/', { params })
+        const list = Array.isArray(data) ? data : (data.results ?? [])
+        this.listings = list
+        return list
       } finally {
         this.listingsLoading = false
       }

@@ -55,6 +55,7 @@ const form = reactive<ListingCreatePayload>({
   advance_months: null,
   agency_fee_months: null,
   other_conditions: '',
+  agent_note: '',
 })
 
 // Fichiers en attente (mode création)
@@ -142,6 +143,7 @@ function resetForm() {
   form.advance_months = null
   form.agency_fee_months = null
   form.other_conditions = ''
+  form.agent_note = ''
   amenityInput.value = ''
   serverError.value = ''
   savingStep.value = ''
@@ -177,6 +179,7 @@ watch(() => props.visible, async (open) => {
       form.advance_months = data.advance_months ?? null
       form.agency_fee_months = data.agency_fee_months ?? null
       form.other_conditions = data.other_conditions || ''
+      form.agent_note = data.agent_note || ''
     } catch (_) {
       toast.error('Impossible de charger l\'annonce')
       close()
@@ -578,6 +581,15 @@ async function doSubmit(targetStatus: string) {
               </Tag>
             </div>
           </section>
+
+          <section class="lf__section lf__section--note">
+            <h2 class="lf__section-title">
+              <i class="pi pi-lock" style="font-size: 13px; color: #6366f1"></i>
+              Note privée
+            </h2>
+            <p class="lf__section-hint">Visible uniquement par vous. Notez ici des informations particulières sur ce bien (contacts propriétaire, état des lieux, remarques...).</p>
+            <Textarea v-model="form.agent_note" rows="4" placeholder="Ex : Propriétaire joignable uniquement le matin, clé chez le gardien lot 12, appartement au 3e sans ascenseur..." fluid autoResize :disabled="saving" />
+          </section>
         </div>
 
         <!-- Colonne droite -->
@@ -962,6 +974,15 @@ async function doSubmit(targetStatus: string) {
 }
 .req { color: #dc2626; }
 
+.lf__section--note {
+  border-color: rgba(99,102,241,.2);
+  background: rgba(99,102,241,.03);
+}
+.lf__section--note .lf__section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .lf__section-hint {
   font-size: 12px;
   color: #888;

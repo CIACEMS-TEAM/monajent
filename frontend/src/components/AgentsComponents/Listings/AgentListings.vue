@@ -35,6 +35,32 @@ const shareVisible = ref(false)
 const shareListingId = ref<number | null>(null)
 const showKycModal = ref(false)
 
+const noteVisible = ref(false)
+const noteTarget = ref<ListingListItem | null>(null)
+const noteText = ref('')
+const noteSaving = ref(false)
+
+function openNote(item: ListingListItem) {
+  noteTarget.value = item
+  noteText.value = item.agent_note || ''
+  noteVisible.value = true
+}
+
+async function saveNote() {
+  if (!noteTarget.value) return
+  noteSaving.value = true
+  try {
+    await agent.updateListing(noteTarget.value.id, { agent_note: noteText.value })
+    noteTarget.value.agent_note = noteText.value
+    toast.success('Note enregistrée')
+    noteVisible.value = false
+  } catch {
+    toast.error('Erreur lors de la sauvegarde')
+  } finally {
+    noteSaving.value = false
+  }
+}
+
 onMounted(async () => {
   try { await agent.fetchListings() } catch (_) {}
 })
@@ -387,6 +413,10 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
             <Button icon="pi pi-eye" severity="info" text rounded size="small" title="Voir" @click="openDetail(data.id)" />
             <Button icon="pi pi-share-alt" severity="success" text rounded size="small" title="Partager" @click="openShare(data.id)" />
             <Button icon="pi pi-pencil" severity="secondary" text rounded size="small" title="Modifier" @click="openEdit(data.id)" />
+            <span class="lstg__note-btn-wrap">
+              <Button icon="pi pi-file-edit" :severity="data.agent_note ? 'warn' : 'secondary'" text rounded size="small" title="Note privée" @click="openNote(data)" />
+              <span v-if="data.agent_note" class="lstg__note-dot"></span>
+            </span>
             <Button icon="pi pi-trash" severity="danger" text rounded size="small" title="Supprimer" @click="deleteTarget = data" />
           </div>
         </template>
@@ -428,6 +458,37 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
       v-model:visible="shareVisible"
       :listingId="shareListingId"
     />
+
+    <!-- Note Dialog -->
+    <Dialog
+      :visible="noteVisible"
+      @update:visible="(v: boolean) => { if (!v) noteVisible = false }"
+      header="Note privée"
+      :modal="true"
+      :closable="true"
+      :style="{ width: '520px' }"
+    >
+      <div class="lstg__note-dialog">
+        <div class="lstg__note-dialog-header">
+          <i class="pi pi-lock" style="color: #6366f1"></i>
+          <span>Cette note est visible uniquement par vous.</span>
+        </div>
+        <p v-if="noteTarget" class="lstg__note-listing-name">
+          {{ noteTarget.title }}
+        </p>
+        <textarea
+          v-model="noteText"
+          class="lstg__note-textarea"
+          rows="6"
+          placeholder="Informations particulières sur ce bien : contacts propriétaire, état des lieux, remarques..."
+          :disabled="noteSaving"
+        ></textarea>
+      </div>
+      <template #footer>
+        <Button label="Annuler" severity="secondary" text @click="noteVisible = false" :disabled="noteSaving" />
+        <Button label="Enregistrer" icon="pi pi-check" severity="success" :loading="noteSaving" @click="saveNote" />
+      </template>
+    </Dialog>
 
     <!-- KYC Required Modal -->
     <Dialog
@@ -655,6 +716,57 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
   align-items: center;
   gap: 4px;
 }
+.lstg__note-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.lstg__note-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+.lstg__note-dialog { display: flex; flex-direction: column; gap: 12px; }
+.lstg__note-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6366f1;
+  background: rgba(99,102,241,.06);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.lstg__note-listing-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #272727;
+  margin: 0;
+}
+.lstg__note-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0f0f0f;
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+  transition: border-color 0.15s;
+}
+.lstg__note-textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+.lstg__note-textarea::placeholder { color: #9ca3af; }
 .lstg__publish-btn { font-size: 12px !important; padding: 4px 10px !important; }
 .lstg__unpublish-btn { font-size: 12px !important; padding: 4px 10px !important; }
 

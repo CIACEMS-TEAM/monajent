@@ -105,6 +105,12 @@ class Listing(models.Model):
         help_text='Conditions supplémentaires en texte libre.',
     )
 
+    # ── Note privée agent ──────────────────────────────────────
+    agent_note = models.TextField(
+        'Note privée', blank=True,
+        help_text='Notes internes de l\'agent (non visible par les clients).',
+    )
+
     # ── Commodités (JSON list) ────────────────────────────────
     amenities = models.JSONField(
         'Commodités', default=list, blank=True,

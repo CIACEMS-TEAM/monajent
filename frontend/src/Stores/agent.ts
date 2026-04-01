@@ -127,6 +127,7 @@ export interface Listing {
   advance_months: number | null
   agency_fee_months: number | null
   other_conditions: string
+  agent_note: string
   views_count: number
   favorites_count: number
   reports_count: number
@@ -159,6 +160,7 @@ export interface ListingListItem {
   views_count: number
   favorites_count: number
   reports_count: number
+  agent_note: string | null
   agent: ListingAgent
   cover_image: string | null
   videos_count: number
@@ -189,6 +191,7 @@ export interface ListingCreatePayload {
   advance_months?: number | null
   agency_fee_months?: number | null
   other_conditions?: string
+  agent_note?: string
 }
 
 // ─── Types : Wallet (alignées sur le backend) ───────────────
@@ -486,8 +489,8 @@ export const useAgentStore = defineStore('agent', {
       this.listingsLoading = true
       this.listingsError = ''
       try {
-        const { data } = await http.get<ListingListItem[]>('/api/agent/listings/')
-        this.listings = data
+        const { data } = await http.get('/api/agent/listings/')
+        this.listings = Array.isArray(data) ? data : (data.results ?? [])
       } catch (e: any) {
         this.listingsError = e?.response?.data?.detail || 'Erreur chargement annonces'
         throw e
@@ -616,8 +619,8 @@ export const useAgentStore = defineStore('agent', {
     async fetchWalletEntries(params?: { source?: string; entry_type?: string }) {
       this.walletEntriesLoading = true
       try {
-        const { data } = await http.get<WalletEntry[]>('/api/agent/wallet/entries/', { params })
-        this.walletEntries = data
+        const { data } = await http.get('/api/agent/wallet/entries/', { params })
+        this.walletEntries = Array.isArray(data) ? data : (data.results ?? [])
       } finally {
         this.walletEntriesLoading = false
       }
@@ -626,8 +629,8 @@ export const useAgentStore = defineStore('agent', {
     async fetchWithdrawals() {
       this.withdrawalsLoading = true
       try {
-        const { data } = await http.get<Withdrawal[]>('/api/agent/wallet/withdrawals/')
-        this.withdrawals = data
+        const { data } = await http.get('/api/agent/wallet/withdrawals/')
+        this.withdrawals = Array.isArray(data) ? data : (data.results ?? [])
       } finally {
         this.withdrawalsLoading = false
       }
@@ -658,8 +661,8 @@ export const useAgentStore = defineStore('agent', {
     async fetchVisits() {
       this.visitsLoading = true
       try {
-        const { data } = await http.get<Visit[]>('/api/agent/visits/')
-        this.visits = data
+        const { data } = await http.get('/api/agent/visits/')
+        this.visits = Array.isArray(data) ? data : (data.results ?? [])
       } finally {
         this.visitsLoading = false
       }
@@ -694,8 +697,8 @@ export const useAgentStore = defineStore('agent', {
     async fetchAvailability() {
       this.availabilitySlotsLoading = true
       try {
-        const { data } = await http.get<AvailabilitySlot[]>('/api/agent/availability/')
-        this.availabilitySlots = data
+        const { data } = await http.get('/api/agent/availability/')
+        this.availabilitySlots = Array.isArray(data) ? data : (data.results ?? [])
       } finally {
         this.availabilitySlotsLoading = false
       }

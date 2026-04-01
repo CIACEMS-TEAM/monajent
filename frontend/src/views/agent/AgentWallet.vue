@@ -159,7 +159,7 @@ const methods = [
           <div v-else-if="agent.walletEntries.length === 0" class="wlt__empty">Aucun mouvement pour le moment</div>
           <div v-else class="wlt__entries">
             <div v-for="entry in agent.walletEntries" :key="entry.id" class="wlt__entry">
-              <div class="wlt__entry-icon" :class="entry.entry_type.toLowerCase()">
+              <div class="wlt__entry-icon" :class="(entry.entry_type || '').toLowerCase()">
                 <svg v-if="entry.entry_type === 'CREDIT'" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7 14l5-5 5 5H7z"/></svg>
                 <svg v-else viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M7 10l5 5 5-5H7z"/></svg>
               </div>
@@ -167,7 +167,7 @@ const methods = [
                 <span class="wlt__entry-label">{{ entry.label || entry.source_label }}</span>
                 <span class="wlt__entry-date">{{ new Date(entry.created_at).toLocaleDateString('fr-FR') }}</span>
               </div>
-              <span class="wlt__entry-amount" :class="entry.entry_type.toLowerCase()">
+              <span class="wlt__entry-amount" :class="(entry.entry_type || '').toLowerCase()">
                 {{ entry.entry_type === 'CREDIT' ? '+' : '-' }}{{ formatPrice(entry.amount) }}
               </span>
             </div>

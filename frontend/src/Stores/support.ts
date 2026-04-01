@@ -60,8 +60,8 @@ export const useSupportStore = defineStore('support', {
       try {
         const params: Record<string, string> = {}
         if (statusFilter) params.status = statusFilter
-        const { data } = await http.get<SupportTicketList[]>('/api/support/tickets/', { params })
-        this.tickets = data
+        const { data } = await http.get('/api/support/tickets/', { params })
+        this.tickets = Array.isArray(data) ? data : (data.results ?? [])
       } catch (e: any) {
         this.ticketsError = e?.response?.data?.detail || 'Erreur chargement tickets'
         throw e
