@@ -28,20 +28,25 @@ docker compose up -d
 cd backend && source venv/bin/activate && python manage.py runserver
 
 ```
-## BUILD PROD ###
-# Workflow production (Dokploy)
+## BUILD PROD (Dokploy / images Docker)
 
+À lancer **depuis le dossier `monajent/`** (là où se trouvent `docker-compose.build.yml` et le `.env` lu par Compose).
 
-```
-# Build
-VITE_API_BASE_URL=https://api.monajent.com \
-    VITE_PAYSTACK_PUBLIC_KEY=pk_live_26c2d6a1d9a134672175eec45142fca68e7052f9 \
-      docker buildx bake -f docker-compose.build.yml \
-        --builder cloud-ciacems-ciacems-builder --push
+```bash
+export VITE_API_BASE_URL=https://api.monajent.com
+export VITE_PAYSTACK_PUBLIC_KEY=pk_live_26c2d6a1d9a134672175eec45142fca68e7052f9   # clé publique Paystack (dashboard)
 
-# Deploy → Dokploy tire l'image et injecte les variables via son UI
-
+docker buildx bake -f docker-compose.build.yml \
+  --builder cloud-ciacems-ciacems-builder \
+  --push
 ```
 
-SECRET_KEY=<générer avec python3 -c "import secrets;print(secrets.token_urlsafe(50))">
-## CHARTE GRAPHIQUE 
+Ne **pas** mettre de scripts shell (`curl`, blocs multi-lignes) dans le fichier **`.env`** : voir explication ci-dessous. Tests API externes (ex. Gemini) : script à part ou variables `KEY=value` uniquement.
+
+`SECRET_KEY` Django (Dokploy / serveur, ne pas commiter) :
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+## CHARTE GRAPHIQUE

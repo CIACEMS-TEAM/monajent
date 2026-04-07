@@ -115,10 +115,21 @@ class AgentListingListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/agent/listings/     Mes annonces (actives + inactives)
     POST /api/agent/listings/     Créer une annonce (tout agent, mais INACTIF si pas KYC)
+
+    Throttle : GET utilise agent_listing_read (dashboard / actualisations fréquentes) ;
+    POST seul utilise listing_create (quota création d'annonces).
     """
     serializer_class = ListingListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent]
-    throttle_scope = 'listing_create'
+
+    def get_throttles(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return super().get_throttles()
+        if self.request.method == 'GET':
+            self.throttle_scope = 'agent_listing_read'
+        else:
+            self.throttle_scope = 'listing_create'
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -155,6 +166,15 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AgentListingDetailSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent, IsListingOwner]
     lookup_field = 'pk'
+
+    def get_throttles(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return super().get_throttles()
+        if self.request.method == 'GET':
+            self.throttle_scope = 'agent_listing_read'
+        else:
+            self.throttle_scope = 'agent_listing_mutate'
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):
@@ -204,6 +224,7 @@ class AgentListingBulkActionView(APIView):
     Body: { "ids": [1, 2, 3], "action": "activate" | "deactivate" | "delete" }
     """
     permission_classes = [permissions.IsAuthenticated, IsAgent]
+    throttle_scope = 'agent_listing_mutate'
 
     def post(self, request):
         ids = request.data.get('ids', [])
@@ -253,6 +274,7 @@ class AgentListingRenewView(APIView):
     Renouvelle une annonce expirée ou inactive pour 7 jours. KYC requis.
     """
     permission_classes = [permissions.IsAuthenticated, IsVerifiedAgent]
+    throttle_scope = 'agent_listing_mutate'
 
     def post(self, request, pk):
         listing = get_object_or_404(Listing, pk=pk, agent=request.user)

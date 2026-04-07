@@ -148,3 +148,24 @@ Voici le **bilan complet de maturité de la plateforme MonaJent** pour le MVP/Pr
 ---
 
 **Conclusion** : Côté fonctionnel, **la plateforme est complète pour le MVP** (24/24 features agent + client). Ce qui reste est purement **infra/DevOps** (Docker, Nginx, CI/CD, logging, Sentry) et **le payout Paystack** pour les agents. Avec 3-5 jours de travail ciblé, MonaJent peut être en production.
+
+
+
+
+GEMINI AI:
+GEMINI_API_URL="https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+curl $GEMINI_API_URL \
+  -H 'Content-Type: application/json' \
+  -H 'X-goog-api-key: AIzaSyBYH1z1e4eYpDNFxzQfsDHl6WcRAPcV1qc' \
+  -X POST \
+  -d '{
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "Explain how AI works in a few words"
+          }
+        ]
+      }
+    ]
+  }'

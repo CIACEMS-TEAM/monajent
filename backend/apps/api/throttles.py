@@ -4,6 +4,11 @@ Throttles métier — Monajent
 Limitations de débit pour les endpoints métier.
 Les scopes sont définis ici et les taux dans settings.DEFAULT_THROTTLE_RATES.
 
+Scopes listings agent (dashboard) :
+  - agent_listing_read   : GET liste / détail — quota large (actualisations)
+  - agent_listing_mutate : PATCH, DELETE, bulk, renew — modifs groupées
+  - listing_create       : POST nouvelle annonce uniquement
+
 Usage dans une vue :
     throttle_classes = [ListingCreateThrottle]
   ou

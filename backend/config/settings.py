@@ -174,14 +174,17 @@ REST_FRAMEWORK = {
         'password_reset_request': '3/min',
         'password_reset_verify': '6/min',
         'password_reset_finalize': '6/min',
-        'listing_create': '30/hour',
-        'listing_search': '60/min',
-        'video_view': '120/hour',
-        'video_upload': '20/hour',
+        # Annonces : lecture agent (dashboard, détail) — découplée de la création
+        'agent_listing_read': '400/min',
+        'agent_listing_mutate': '180/min',
+        'listing_create': '120/hour',
+        'listing_search': '120/min',
+        'video_view': '200/hour',
+        'video_upload': '40/hour',
         'pack_purchase': '10/hour',
         'visit_request': '10/hour',
         'wallet_withdraw': '5/hour',
-        'favorite_toggle': '120/hour',
+        'favorite_toggle': '300/hour',
     },
 }
 
