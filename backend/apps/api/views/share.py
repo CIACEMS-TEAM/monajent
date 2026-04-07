@@ -47,6 +47,7 @@ class ListingShareOGView(APIView):
             raise Http404
 
         spa_url = f"{FRONTEND_URL}/home/annonce/{listing.slug}"
+        share_url = f"{FRONTEND_URL}/share/{listing.slug}/"
 
         is_bot = BOT_PATTERN.search(request.META.get('HTTP_USER_AGENT', ''))
         if not is_bot:
@@ -90,7 +91,7 @@ class ListingShareOGView(APIView):
 <meta property="og:site_name" content="MonaJent">
 <meta property="og:title" content="{_esc(og_title)}">
 <meta property="og:description" content="{_esc(og_description)}">
-<meta property="og:url" content="{_esc(spa_url)}">
+<meta property="og:url" content="{_esc(share_url)}">
 <meta property="og:image" content="{_esc(og_image)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -101,10 +102,9 @@ class ListingShareOGView(APIView):
 <meta name="twitter:description" content="{_esc(og_description)}">
 <meta name="twitter:image" content="{_esc(og_image)}">
 
-<meta http-equiv="refresh" content="0;url={_esc(spa_url)}">
 </head>
 <body>
-<p>Redirection vers <a href="{_esc(spa_url)}">{_esc(og_title)}</a>…</p>
+<p><a href="{_esc(spa_url)}">Voir l'annonce sur MonaJent</a></p>
 </body>
 </html>"""
         return HttpResponse(html, content_type='text/html; charset=utf-8')

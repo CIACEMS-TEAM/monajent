@@ -93,6 +93,7 @@ http.interceptors.response.use(
 )
 
 function forceLogout(store: ReturnType<typeof useAuthStore>) {
+  store.clearSessionMaintenance()
   store.accessToken = ''
   store.me = null
   refreshFailed = false
