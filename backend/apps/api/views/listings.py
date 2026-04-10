@@ -23,6 +23,7 @@ Agent (CRUD) :
 
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status, filters
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -53,6 +54,12 @@ from ..serializers.listings import (
 # ═══════════════════════════════════════════════════════════════
 
 
+class PublicListingPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 200
+
+
 class PublicListingListView(generics.ListAPIView):
     """
     GET /api/listings/
@@ -62,6 +69,7 @@ class PublicListingListView(generics.ListAPIView):
     serializer_class = ListingListSerializer
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'listing_search'
+    pagination_class = PublicListingPagination
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
@@ -121,6 +129,7 @@ class AgentListingListCreateView(generics.ListCreateAPIView):
     """
     serializer_class = ListingListSerializer
     permission_classes = [permissions.IsAuthenticated, IsAgent]
+    pagination_class = None
 
     def get_throttles(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -191,10 +200,10 @@ class AgentListingDetailView(generics.RetrieveUpdateDestroyAPIView):
                     "Votre identité doit être vérifiée (KYC) avant de pouvoir publier une annonce."
                 )
             listing = self.get_object()
-            if listing.images.count() < 1:
+            if listing.images.count() < 1 and listing.videos.count() < 1:
                 from rest_framework.exceptions import ValidationError
                 raise ValidationError(
-                    "Pour publier, votre annonce doit contenir au moins 1 photo."
+                    "Pour publier, votre annonce doit contenir au moins 1 photo ou 1 vidéo."
                 )
         serializer.save()
 
@@ -245,17 +254,21 @@ class AgentListingBulkActionView(APIView):
                     {'detail': 'Vérification KYC requise pour activer des annonces.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            from django.db.models import Count
+            from django.db.models import Count, Q
+            inactif_qs = qs.filter(status__in=[Listing.Status.INACTIF])
             eligible = (
-                qs.filter(status__in=[Listing.Status.INACTIF])
-                .annotate(img_count=Count('images'))
-                .filter(img_count__gte=1)
+                inactif_qs
+                .annotate(
+                    img_count=Count('images'),
+                    vid_count=Count('videos'),
+                )
+                .filter(Q(img_count__gte=1) | Q(vid_count__gte=1))
             )
-            skipped = qs.filter(status__in=[Listing.Status.INACTIF]).count() - eligible.count()
+            skipped = inactif_qs.count() - eligible.count()
             count = Listing.objects.filter(pk__in=eligible.values_list('pk', flat=True)).update(status=Listing.Status.ACTIF)
             msg = f'{count} annonce(s) activée(s).'
             if skipped:
-                msg += f' {skipped} annonce(s) ignorée(s) (photo manquante).'
+                msg += f' {skipped} annonce(s) ignorée(s) (photo ou vidéo manquante).'
             return Response({'detail': msg})
         elif action == 'deactivate':
             count = qs.filter(status=Listing.Status.ACTIF).update(status=Listing.Status.INACTIF)

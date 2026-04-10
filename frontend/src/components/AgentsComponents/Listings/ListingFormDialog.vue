@@ -147,8 +147,13 @@ const statusOptions = computed(() => {
 })
 const canPublish = computed(() => {
   if (isEdit.value && agent.currentListing) {
-    return agent.currentListing.images.length >= 1
+    return agent.currentListing.images.length >= 1 || agent.currentListing.videos.length >= 1
   }
+  return pendingImages.value.length >= 1 || !!pendingVideo.value
+})
+
+const hasImages = computed(() => {
+  if (isEdit.value && agent.currentListing) return agent.currentListing.images.length >= 1
   return pendingImages.value.length >= 1
 })
 
@@ -159,7 +164,7 @@ const hasVideo = computed(() => {
 
 const publishBlockReason = computed(() => {
   if (canPublish.value) return ''
-  return 'Ajoutez au moins 1 photo pour publier'
+  return 'Ajoutez au moins 1 photo ou 1 vidéo pour publier'
 })
 
 const conditionsSummary = computed(() => {
@@ -1027,6 +1032,10 @@ async function doSubmit(targetStatus: string) {
           <i class="pi pi-info-circle"></i>
           <span>Sans vidéo, l'annonce sera visible gratuitement (photos uniquement). Vous pourrez ajouter une vidéo plus tard pour générer des revenus.</span>
         </div>
+        <div v-if="canPublish && hasVideo && !hasImages" class="lf__footer-novideo">
+          <i class="pi pi-info-circle"></i>
+          <span>Sans photo, la miniature de votre vidéo sera utilisée comme couverture dans les listes. Vous pourrez ajouter des photos plus tard.</span>
+        </div>
         <div class="lf__footer-actions">
           <Button label="Annuler" severity="secondary" text @click="close" :disabled="saving" />
           <div class="lf__footer-right">
@@ -1061,7 +1070,7 @@ async function doSubmit(targetStatus: string) {
             </span>
             <Button
               v-else
-              :label="hasVideo ? 'Publier l\'annonce' : 'Publier (photos uniquement)'"
+              :label="hasVideo && hasImages ? 'Publier l\'annonce' : hasVideo ? 'Publier (vidéo uniquement)' : 'Publier (photos uniquement)'"
               :icon="hasVideo ? 'pi pi-send' : 'pi pi-images'"
               severity="success"
               :loading="saving && savingAs === 'publish'"

@@ -220,39 +220,46 @@ def approve_withdrawal(
     admin_user,
     transaction_ref: str = '',
     admin_note: str = '',
+    auto_payout: bool = False,
 ) -> WithdrawalRequest:
     """
     L'admin approuve le retrait.
-    Exécute le payout via le payment gateway puis met à jour total_withdrawn.
+
+    Par défaut (auto_payout=False) : approbation manuelle sans appel API.
+    L'admin effectue le virement manuellement puis valide ici avec la
+    référence de transaction.
+
+    Si auto_payout=True : tente le payout via le payment gateway configuré.
     """
     if withdrawal.status != WithdrawalRequest.Status.PENDING:
         raise WithdrawalAlreadyProcessedError(
             f"Ce retrait est déjà en statut « {withdrawal.get_status_display()} »."
         )
 
-    # Exécuter le payout via le gateway
-    from apps.core.services.payment import execute_payout
+    final_tx_ref = transaction_ref
 
-    payout_result = execute_payout(
-        amount=withdrawal.amount,
-        currency='XOF',
-        phone_number=withdrawal.phone_number,
-        method=withdrawal.method,
-        description=f"Retrait Monajent #{withdrawal.pk} — {withdrawal.wallet.agent.phone}",
-    )
+    if auto_payout:
+        from apps.core.services.payment import execute_payout
 
-    payout_tx_ref = payout_result.get('provider_tx_id', '')
-    final_tx_ref = transaction_ref or payout_tx_ref
-
-    if not payout_result.get('success', False):
-        logger.warning(
-            "Payout échoué pour withdrawal #%s : %s",
-            withdrawal.pk, payout_result.get('message', ''),
+        payout_result = execute_payout(
+            amount=withdrawal.amount,
+            currency='XOF',
+            phone_number=withdrawal.phone_number,
+            method=withdrawal.method,
+            description=f"Retrait Monajent #{withdrawal.pk} — {withdrawal.wallet.agent.phone}",
         )
-        raise WithdrawalError(
-            f"Le payout a échoué : {payout_result.get('message', 'Erreur inconnue')}. "
-            "Le retrait reste en attente."
-        )
+
+        if not payout_result.get('success', False):
+            logger.warning(
+                "Payout échoué pour withdrawal #%s : %s",
+                withdrawal.pk, payout_result.get('message', ''),
+            )
+            raise WithdrawalError(
+                f"Le payout a échoué : {payout_result.get('message', 'Erreur inconnue')}. "
+                "Le retrait reste en attente."
+            )
+
+        final_tx_ref = transaction_ref or payout_result.get('provider_tx_id', '')
 
     with transaction.atomic():
         withdrawal.status = WithdrawalRequest.Status.COMPLETED
@@ -273,9 +280,10 @@ def approve_withdrawal(
             total_withdrawn=F('total_withdrawn') + withdrawal.amount,
         )
 
+    mode = "auto-payout" if auto_payout else "manuel"
     logger.info(
-        "Withdrawal #%s approuvé : %s XOF → %s (%s) ref=%s",
-        withdrawal.pk, withdrawal.amount,
+        "Withdrawal #%s approuvé (%s) : %s XOF → %s (%s) ref=%s",
+        withdrawal.pk, mode, withdrawal.amount,
         withdrawal.phone_number, withdrawal.method, final_tx_ref,
     )
 

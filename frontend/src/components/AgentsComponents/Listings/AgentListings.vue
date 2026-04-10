@@ -327,7 +327,7 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
       class="lstg__datatable"
       :pt="{ root: { style: 'border: none' } }"
     >
-      <Column header="" style="width: 50px">
+      <Column header="" style="width: 40px">
         <template #header>
           <input type="checkbox" :checked="selectedIds.length === filtered.length && filtered.length > 0" @change="toggleSelectAll" class="lstg__checkbox" />
         </template>
@@ -335,7 +335,8 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
           <input type="checkbox" :checked="selectedIds.includes(data.id)" @change="toggleSelect(data.id)" class="lstg__checkbox" />
         </template>
       </Column>
-      <Column header="Annonce" :sortable="false" style="min-width: 260px">
+
+      <Column header="Annonce" :sortable="false" style="min-width: 280px">
         <template #body="{ data }">
           <div class="lstg__cell-title" @click="openDetail(data.id)" style="cursor: pointer">
             <div class="lstg__thumb">
@@ -345,88 +346,61 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
             <div class="lstg__cell-text">
               <span class="lstg__cell-name lstg__cell-name--link">{{ data.title }}</span>
               <span class="lstg__cell-sub">{{ data.city }}<template v-if="data.neighborhood"> — {{ data.neighborhood }}</template></span>
+              <div class="lstg__cell-tags">
+                <Tag :value="typeLabel(data.listing_type)" :severity="data.listing_type === 'LOCATION' ? 'info' : 'warn'" class="lstg__mini-tag" />
+                <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" class="lstg__mini-tag" />
+                <button v-if="data.agent_note" class="lstg__cell-note" @click.stop="openNote(data)" title="Note privée">
+                  <i class="pi pi-file-edit"></i>
+                </button>
+              </div>
             </div>
           </div>
         </template>
       </Column>
 
-      <Column header="Type" field="listing_type" :sortable="true" style="width: 100px">
+      <Column header="Prix" field="price" :sortable="true" style="width: 130px">
         <template #body="{ data }">
-          <Tag :value="typeLabel(data.listing_type)" :severity="data.listing_type === 'LOCATION' ? 'info' : 'warn'" />
+          <span class="lstg__cell-price">{{ formatPrice(data.price) }}</span>
         </template>
       </Column>
 
-      <Column header="Statut" field="status" :sortable="true" style="width: 100px">
-        <template #body="{ data }">
-          <Tag :value="statusLabel(data.status)" :severity="statusSeverity(data.status)" />
-        </template>
-      </Column>
-
-      <Column header="Prix" field="price" :sortable="true" style="width: 150px">
-        <template #body="{ data }">
-          {{ formatPrice(data.price) }}
-        </template>
-      </Column>
-
-      <Column header="Expire" field="days_remaining" :sortable="true" style="width: 110px">
+      <Column header="Expire" field="days_remaining" :sortable="true" style="width: 90px">
         <template #body="{ data }">
           <Tag
             v-if="data.expires_at"
             :value="expiryLabel(data)"
             :severity="expirySeverity(data.days_remaining)"
             :icon="data.days_remaining <= 2 ? 'pi pi-clock' : ''"
+            class="lstg__mini-tag"
           />
           <span v-else class="lstg__no-expiry">—</span>
         </template>
       </Column>
 
-      <Column header="Vidéos" field="videos_count" :sortable="true" style="width: 70px; text-align: center">
+      <Column header="Stats" :sortable="false" style="width: 130px">
         <template #body="{ data }">
-          <span class="lstg__video-count">
-            <i class="pi pi-video"></i> {{ data.videos_count }}
-          </span>
+          <div class="lstg__cell-stats">
+            <span class="lstg__stat-item" title="Vidéos"><i class="pi pi-video"></i> {{ data.videos_count }}</span>
+            <span class="lstg__stat-item" title="Vues"><i class="pi pi-eye"></i> {{ data.views_count }}</span>
+            <span class="lstg__stat-item" :class="{ 'lstg__stat-item--heart': data.favorites_count > 0 }" title="Favoris"><i class="pi pi-heart"></i> {{ data.favorites_count }}</span>
+            <span v-if="data.reports_count > 0" class="lstg__stat-item lstg__stat-item--danger" title="Signalements"><i class="pi pi-flag"></i> {{ data.reports_count }}</span>
+          </div>
         </template>
       </Column>
 
-      <Column header="Vues" field="views_count" :sortable="true" style="width: 70px; text-align: center">
+      <Column header="Date" field="created_at" :sortable="true" style="width: 90px">
         <template #body="{ data }">
-          {{ data.views_count }}
+          <span class="lstg__cell-date">{{ new Date(data.created_at).toLocaleDateString('fr-FR') }}</span>
         </template>
       </Column>
 
-      <Column header="Favoris" field="favorites_count" :sortable="true" style="width: 80px; text-align: center">
-        <template #body="{ data }">
-          <span class="lstg__fav-count" :class="{ 'lstg__fav-count--active': data.favorites_count > 0 }">
-            <i class="pi pi-heart"></i> {{ data.favorites_count }}
-          </span>
-        </template>
-      </Column>
-
-      <Column header="Signalements" field="reports_count" :sortable="true" style="width: 100px; text-align: center">
-        <template #body="{ data }">
-          <Tag v-if="data.reports_count > 0" :value="`${data.reports_count}`" severity="danger" icon="pi pi-flag" />
-          <span v-else class="lstg__no-reports">0</span>
-        </template>
-      </Column>
-
-      <Column header="Date" field="created_at" :sortable="true" style="width: 100px">
-        <template #body="{ data }">
-          {{ new Date(data.created_at).toLocaleDateString('fr-FR') }}
-        </template>
-      </Column>
-
-      <Column header="Actions" style="width: 240px">
+      <Column header="Actions" style="width: 180px">
         <template #body="{ data }">
           <div class="lstg__actions">
             <Button v-if="data.status === 'INACTIF'" label="Publier" icon="pi pi-send" severity="success" size="small" :loading="toggling === data.id" @click="doPublish(data)" class="lstg__publish-btn" />
             <Button v-if="data.status === 'ACTIF'" label="Retirer" icon="pi pi-eye-slash" severity="secondary" size="small" outlined :loading="toggling === data.id" @click="doUnpublish(data)" class="lstg__unpublish-btn" />
-            <Button icon="pi pi-eye" severity="info" text rounded size="small" title="Voir" @click="openDetail(data.id)" />
             <Button icon="pi pi-share-alt" severity="success" text rounded size="small" title="Partager" @click="openShare(data.id)" />
             <Button icon="pi pi-pencil" severity="secondary" text rounded size="small" title="Modifier" @click="openEdit(data.id)" />
-            <span class="lstg__note-btn-wrap">
-              <Button icon="pi pi-file-edit" :severity="data.agent_note ? 'warn' : 'secondary'" text rounded size="small" title="Note privée" @click="openNote(data)" />
-              <span v-if="data.agent_note" class="lstg__note-dot"></span>
-            </span>
             <Button icon="pi pi-trash" severity="danger" text rounded size="small" title="Supprimer" @click="deleteTarget = data" />
           </div>
         </template>
@@ -761,26 +735,66 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
   font-size: 12px;
   color: #606060;
 }
-
+.lstg__cell-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+}
+.lstg__mini-tag {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
+  line-height: 1.3 !important;
+}
+.lstg__cell-note {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background 0.15s;
+}
+.lstg__cell-note:hover {
+  background: rgba(245, 158, 11, 0.25);
+}
+.lstg__cell-price {
+  font-weight: 600;
+  color: #0F0F0F;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.lstg__cell-date {
+  font-size: 12px;
+  color: #606060;
+}
+.lstg__cell-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.lstg__stat-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
+}
+.lstg__stat-item i { font-size: 11px; }
+.lstg__stat-item--heart { color: #ef4444; font-weight: 600; }
+.lstg__stat-item--heart i { color: #ef4444; }
+.lstg__stat-item--danger { color: #dc2626; font-weight: 600; }
+.lstg__stat-item--danger i { color: #dc2626; }
 
 .lstg__no-expiry {
   color: #aaa;
 }
-
-.lstg__video-count {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  color: #606060;
-}
-.lstg__fav-count {
-  display: flex; align-items: center; justify-content: center;
-  gap: 4px; color: #ccc; font-size: 13px;
-}
-.lstg__fav-count--active { color: #ef4444; font-weight: 600; }
-.lstg__fav-count--active i { color: #ef4444; }
-.lstg__no-reports { color: #ccc; font-size: 13px; }
 
 .lstg__actions {
   display: flex;

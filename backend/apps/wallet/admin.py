@@ -1,12 +1,34 @@
+from django import forms
 from django.contrib import admin
 from django.utils import timezone
 
-from .models import Wallet, WalletEntry, PlatformRevenue, WithdrawalRequest
+from .models import Wallet, WalletEntry, PlatformRevenue, WithdrawalRequest, PIN_LENGTH
 from apps.core.services.withdrawal import (
     approve_withdrawal,
     reject_withdrawal,
     WithdrawalAlreadyProcessedError,
 )
+
+
+class WalletAdminForm(forms.ModelForm):
+    new_pin = forms.CharField(
+        label='Nouveau code PIN',
+        max_length=PIN_LENGTH,
+        min_length=PIN_LENGTH,
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': '4 chiffres', 'size': 6}),
+        help_text='Laisser vide pour ne pas modifier. Saisir 4 chiffres pour définir/réinitialiser le PIN.',
+    )
+
+    class Meta:
+        model = Wallet
+        fields = '__all__'
+
+    def clean_new_pin(self):
+        pin = self.cleaned_data.get('new_pin', '').strip()
+        if pin and (len(pin) != PIN_LENGTH or not pin.isdigit()):
+            raise forms.ValidationError(f'Le PIN doit contenir exactement {PIN_LENGTH} chiffres.')
+        return pin
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -28,6 +50,8 @@ class WalletEntryInline(admin.TabularInline):
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
+    form = WalletAdminForm
+
     list_display = (
         'id', 'agent_phone', 'balance', 'total_earned',
         'total_withdrawn', 'can_withdraw_display', 'has_pin_display',
@@ -37,7 +61,10 @@ class WalletAdmin(admin.ModelAdmin):
     search_fields = ('agent__phone', 'agent__username')
     list_select_related = ('agent',)
     raw_id_fields = ('agent',)
-    readonly_fields = ('balance', 'total_earned', 'total_withdrawn', 'created_at', 'updated_at')
+    readonly_fields = (
+        'balance', 'total_earned', 'total_withdrawn',
+        'has_pin_display', 'created_at', 'updated_at',
+    )
     ordering = ('-updated_at',)
     inlines = [WalletEntryInline]
 
@@ -48,10 +75,22 @@ class WalletAdmin(admin.ModelAdmin):
         ('Solde', {
             'fields': ('balance', 'total_earned', 'total_withdrawn'),
         }),
+        ('Sécurité PIN', {
+            'fields': ('has_pin_display', 'new_pin'),
+            'description': 'Le code PIN est requis pour chaque demande de retrait. '
+                           'Il est stocké sous forme hashée (jamais en clair).',
+        }),
         ('Dates', {
             'fields': ('created_at', 'updated_at'),
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        new_pin = form.cleaned_data.get('new_pin', '').strip()
+        if new_pin:
+            obj.set_pin(new_pin)
+            self.message_user(request, f"Code PIN mis à jour pour {obj.agent.phone}.")
 
     @admin.display(description='Tél. agent', ordering='agent__phone')
     def agent_phone(self, obj):
@@ -146,6 +185,8 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
         }),
         ('Traitement admin', {
             'fields': ('transaction_ref', 'admin_note', 'processed_by', 'processed_at'),
+            'description': 'Renseignez la référence de transaction après avoir effectué '
+                           'le virement manuellement, puis approuvez.',
         }),
         ('Liens', {
             'fields': ('wallet_entry',),
@@ -159,9 +200,9 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
     def agent_phone(self, obj):
         return obj.wallet.agent.phone
 
-    # ── Actions d'admin ────────────────────────────────────
+    # ── Actions d'admin (approbation manuelle, sans appel API) ──
 
-    @admin.action(description="Approuver les retraits sélectionnés")
+    @admin.action(description="✅ Approuver les retraits (manuel — sans appel API)")
     def action_approve(self, request, queryset):
         approved = 0
         errors = 0
@@ -170,7 +211,8 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
                 approve_withdrawal(
                     withdrawal,
                     admin_user=request.user,
-                    admin_note=f"Approuvé en masse via admin par {request.user}",
+                    admin_note=f"Approuvé manuellement via admin par {request.user}",
+                    auto_payout=False,
                 )
                 approved += 1
             except WithdrawalAlreadyProcessedError:
@@ -178,11 +220,11 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
 
         self.message_user(
             request,
-            f"{approved} retrait(s) approuvé(s). {errors} erreur(s)."
-            if errors else f"{approved} retrait(s) approuvé(s).",
+            f"{approved} retrait(s) approuvé(s) (virement manuel). {errors} erreur(s)."
+            if errors else f"{approved} retrait(s) approuvé(s) (virement manuel).",
         )
 
-    @admin.action(description="Rejeter les retraits sélectionnés")
+    @admin.action(description="❌ Rejeter les retraits (montant restauré)")
     def action_reject(self, request, queryset):
         rejected = 0
         errors = 0
@@ -191,7 +233,7 @@ class WithdrawalRequestAdmin(admin.ModelAdmin):
                 reject_withdrawal(
                     withdrawal,
                     admin_user=request.user,
-                    admin_note=f"Rejeté en masse via admin par {request.user}",
+                    admin_note=f"Rejeté via admin par {request.user}",
                 )
                 rejected += 1
             except WithdrawalAlreadyProcessedError:

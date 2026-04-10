@@ -1,11 +1,12 @@
-# Contexte session — MonaJent : IA, OG Share, Recherche
-## Dernière mise à jour : 8 avril 2026 (session 2)
+# Contexte session — MonaJent : IA, OG Share, Recherche, UX Mobile, PWA
+## Dernière mise à jour : 8 avril 2026 (session 3)
 
 Ce document résume TOUT ce qui a été réalisé dans les sessions de travail. Il sert de contexte pour un LLM reprenant le travail.
 
 ### Sessions
 - **Session 1** (7 avril 2026) : Refactorisation IA Strategy Pattern + OG Share v1 + Pitch business
 - **Session 2** (8 avril 2026) : Fix WhatsApp OG v2 + Fix recherche IA + Analyse TikTok
+- **Session 3** (8 avril 2026) : Responsivité mobile, assistants vocaux Mona, onboarding, PWA
 
 ---
 
@@ -291,14 +292,26 @@ Pour réduire le bruit en prod : passer le log level httpx/httpcore à `WARNING`
 |---------|---------|--------|
 | `frontend/nginx.conf` | S2 | MODIFIÉ — `^~` pour `/share/` (empêche interception .jpg par regex) |
 | `frontend/src/components/AgentsComponents/Listings/ShareDialog.vue` | S2 | MODIFIÉ — URL sur propre ligne + hint multi-contact WhatsApp |
-| `frontend/src/views/public/PublicListingView.vue` | S2 | MODIFIÉ — shareText enrichi (type + quartier + URL seule sur sa ligne) |
+| `frontend/src/views/public/PublicListingView.vue` | S2+S3 | MODIFIÉ — shareText enrichi (S2) + layout mobile suggestions en dessous + padding (S3) |
+| `frontend/index.html` | S3 | MODIFIÉ — Meta PWA, manifest link, apple-touch-icon, enregistrement SW |
+| `frontend/src/views/HomePage.vue` | S3 | MODIFIÉ — Import MonaSearch/OnboardingTour/PwaInstallPrompt, data-tour attrs, onboarding logic, activeBottomTab, handleBottomNavProfile mobile |
+| `frontend/src/views/client/ClientDashboard.vue` | S3 | MODIFIÉ — Liens rapides, déconnexion, avatar profil, grille responsive |
+| `frontend/src/components/WelcomeOverlay.vue` | S3 | MODIFIÉ — Émet `closed` pour déclencher l'onboarding |
+| `frontend/src/components/MonaSearch.vue` | S3 | CRÉÉ — Recherche vocale IA client (FAB + panel + invite bubble + son 30s) |
+| `frontend/src/components/MonaAssistant.vue` | S3 | CRÉÉ — Saisie vocale IA agent (FAB + panel + greeting adaptatif) |
+| `frontend/src/components/OnboardingTour.vue` | S3 | CRÉÉ — Tour guidé 4 étapes (spotlight adaptatif desktop/mobile) |
+| `frontend/src/components/PwaInstallPrompt.vue` | S3 | CRÉÉ — Banner d'installation PWA (Android + iOS) |
+| `frontend/public/manifest.webmanifest` | S3 | CRÉÉ — Manifeste PWA (standalone, portrait, shortcuts) |
+| `frontend/public/sw.js` | S3 | CRÉÉ — Service Worker (cache-first assets, network-first pages) |
+| `frontend/public/pwa-icon-*.png` | S3 | CRÉÉ — 8 icônes PWA (72→512) + 1 maskable + 1 apple-touch-icon |
+| `frontend/src/assets/media/discord-sounds.mp3` | S3 | CRÉÉ — Son notification pour la bulle d'invitation Mona |
 
 ### Racine — Fichiers créés
 
 | Fichier | Session | Action |
 |---------|---------|--------|
 | `PITCH_MONAJENT.md` | S1 | CRÉÉ — Pitch + business model (588 lignes) |
-| `CONTEXTE_SESSION_IA.md` | S1+S2 | CRÉÉ puis mis à jour — Ce fichier |
+| `CONTEXTE_SESSION_IA.md` | S1+S2+S3 | CRÉÉ puis mis à jour — Ce fichier |
 | `search_tiktokshare.md` | S2 | CRÉÉ — Rapport deep research Gemini sur TikTok (rejeté) |
 
 ### .env — Variables ajoutées
@@ -380,25 +393,221 @@ TikTok placé dans **Horizon 2027**. Les ressources restent concentrées sur Wha
 
 ---
 
+## 8. Session 3 — Responsivité mobile, Mona IA vocale, Onboarding, PWA (8 avril 2026)
+
+### 8a. Responsivité mobile des vues client (TERMINÉ)
+
+**Problème** : Sur mobile, le bouton profil utilisateur ne fonctionnait pas, les pages client étaient inaccessibles, et les vidéos suggestions s'affichaient au-dessus du détail d'annonce (mauvais UX).
+
+**Corrections** :
+
+| Fichier | Modification |
+|---------|-------------|
+| `HomePage.vue` | `handleBottomNavProfile()` : sur mobile (≤768px), redirige directement vers `/home/dashboard` au lieu d'ouvrir un dropdown caché. Ajout de `activeBottomTab` computed pour l'état actif dynamique de la bottom nav. Avatar vert restauré dans l'onglet "Vous". |
+| `ClientDashboard.vue` | Ajout liens rapides vers toutes les pages client (profil, support), bouton de déconnexion, avatar cliquable vers profil, grille responsive 2 colonnes sur mobile |
+| `PublicListingView.vue` | Suppression de `order: -1` sur `.yw-right` en mobile → les suggestions vidéo s'affichent EN DESSOUS du détail (comme YouTube). Padding ajusté pour écrans ≤640px |
+
+### 8b. Assistants vocaux Mona — MonaSearch + MonaAssistant (TERMINÉ)
+
+Deux composants créés pour l'interaction vocale avec l'IA :
+
+| Composant | Rôle | Utilisé dans |
+|-----------|------|-------------|
+| `MonaSearch.vue` | Recherche vocale IA pour les clients. FAB vert en bas à droite → panel avec phases welcome/recording/review/analyzing/done | `HomePage.vue` (vue publique) |
+| `MonaAssistant.vue` | Saisie vocale pour créer des annonces agent. Même pattern de phases, mais l'analyse extrait les champs du formulaire | `AgentLayout.vue` (dashboard agent) |
+
+**Fonctionnement** :
+1. Phase `welcome` : message de bienvenue + bouton micro
+2. Phase `recording` : écoute via `SpeechRecognition` API, affichage temps réel du transcript
+3. Phase `review` : l'utilisateur relit/édite le texte, puis clique "Rechercher" ou "Analyser"
+4. Phase `analyzing` : appel API IA → animation blocs + loupe/éclair
+5. Phase `done` : résultats affichés (nombre d'annonces trouvées ou champs extraits)
+
+**Fix speech-to-text Android Chrome** :
+Sur Android Chrome (testé sur Techno Spark 40 Pro+), `SpeechRecognition` avec `continuous: true` causait des répétitions infinies et des arrêts automatiques.
+
+Solution implémentée dans les deux composants :
+- `r.continuous = !isMobile()` — désactivé sur mobile
+- `baseTranscript` — accumule le texte finalisé entre les redémarrages de session
+- `onresult` — reconstruit le transcript depuis `i=0` (pas `event.resultIndex`) pour éviter les doublons
+- `onend` — redémarre automatiquement la reconnaissance sur mobile (simule continuous)
+- `silenceTimer` (3.5s) — arrête l'écoute après un silence prolongé sur mobile
+- Cleanup dans `stopRecording()`, `reset()`, `onBeforeUnmount()`
+
+**Animation d'analyse** (phase `analyzing`) :
+Le spinner circulaire simple a été remplacé par une grille de 9 blocs animés (shuffle, rotation, opacité décalée) avec une icône centrale :
+- MonaSearch : loupe verte qui se déplace sur la grille
+- MonaAssistant : éclair vert
+
+**Icône FAB** :
+Le FAB de MonaSearch utilise une bulle de chat blanche avec des sparkles verts (remplace l'ancien design confus avec cercle vert + loupe + M).
+
+### 8c. Bulle d'invitation Mona + Son de notification (TERMINÉ)
+
+**Comportement** :
+- À chaque visite (après que l'onboarding soit terminé), une bulle blanche apparaît au-dessus du FAB après 1.5s
+- Le son `discord-sounds.mp3` joue à chaque apparition (volume 50%)
+- La bulle disparaît automatiquement après 5s
+- Un `setInterval` de 30 secondes relance la bulle + son tant que l'utilisateur n'a pas ouvert l'assistant
+- Dès que l'utilisateur ouvre le panel Mona, la boucle est définitivement arrêtée (`clearInviteLoop()`)
+- Garde de sécurité : si la route n'est pas `/home*`, la boucle est stoppée (empêche le son de jouer sur le dashboard agent en PWA)
+- Cliquer sur la bulle ouvre directement le panel Mona
+
+**Salutations adaptées à l'heure** (`getGreeting()`) :
+| Heure | Salutation |
+|-------|-----------|
+| 5h - 11h59 | "Bonjour" |
+| 12h - 17h59 | "Bon après-midi" |
+| 18h - 4h59 | "Bonsoir" |
+
+Appliquée dans : bulle d'invitation (texte), synthèse vocale à l'ouverture du panel (MonaSearch + MonaAssistant), texte de bienvenue affiché (MonaAssistant).
+
+### 8d. Onboarding Tour guidé (TERMINÉ)
+
+**Composant** : `OnboardingTour.vue` — Tour guidé en 4 étapes avec spotlight et tooltips.
+
+**Flux** :
+1. L'utilisateur ferme le `WelcomeOverlay` (existant) → `@closed` est émis
+2. `HomePage.vue` écoute l'événement et affiche `OnboardingTour` (si pas déjà complété)
+3. Si le welcome a déjà été vu (sessionStorage/localStorage) mais l'onboarding pas terminé → se lance automatiquement après 800ms
+4. Completion stockée dans `localStorage('monajent_onboarding_done')`
+
+**Les 4 étapes** :
+
+| # | Titre | Cible (mobile) | Cible (desktop) | Description |
+|---|-------|----------------|-----------------|-------------|
+| 1 | Les annonces en vidéo | _(centré, pas de spotlight)_ | _(centré)_ | Parcourez les biens en vidéo |
+| 2 | Votre navigation | `[data-tour="nav"]` (bottom nav) | `[data-tour="sidebar"]` (sidebar) | Accueil, packs, favoris, espace perso |
+| 3 | Les Packs de clés | `[data-tour="packs"]` (tab packs) | `[data-tour="sidebar-packs"]` (sidebar item) | Clés pour visites gratuites |
+| 4 | Mona — Assistante IA | `[data-tour="mona"]` (FAB) | `[data-tour="mona"]` (FAB) | Recherche vocale IA |
+
+**Sélecteurs adaptatifs** : chaque étape a un tableau de sélecteurs (`selectors`). `findVisibleEl()` teste chaque sélecteur et ne retient que le premier élément **réellement visible** (`width > 0 && height > 0`). Sur desktop, la bottom nav est cachée (display:none) → fallback sur la sidebar. Sur mobile, la sidebar est cachée → fallback sur la bottom nav.
+
+**Positionnement intelligent du tooltip** :
+- Cible haute et à gauche (sidebar desktop) → tooltip à droite
+- Cible en bas (bottom nav, FAB) → tooltip au-dessus
+- Pas de cible → tooltip centré dans la page
+
+**Blocage des clics extérieurs** : l'utilisateur DOIT cliquer "Suivant" ou "Passer" — cliquer en dehors du tooltip ne fait rien.
+
+**Spotlight** : `box-shadow: 0 0 0 9999px rgba(0,0,0,0.65)` sur un div positionné sur l'élément ciblé, avec `transition: all 0.4s` pour un mouvement fluide entre les étapes.
+
+### 8e. PWA — Progressive Web App (TERMINÉ)
+
+**Architecture** (implémentée manuellement, sans `vite-plugin-pwa` — réseau indisponible lors de l'installation) :
+
+| Fichier | Rôle |
+|---------|------|
+| `public/manifest.webmanifest` | Manifeste PWA : `display: standalone`, `theme_color: #1DA53F`, `start_url: /home`, raccourcis Accueil + Favoris |
+| `public/sw.js` | Service Worker : cache-first pour assets statiques, network-first pour pages HTML, ignore `/api/*` |
+| `public/pwa-icon-{72,96,128,144,152,192,384,512}.png` | Icônes PWA toutes tailles (générées via Pillow depuis `logo_monajent_sf.png` 500x500) |
+| `public/pwa-icon-maskable-512x512.png` | Icône maskable Android (logo centré à 70% sur fond blanc) |
+| `public/apple-touch-icon-180x180.png` | Icône spécifique iOS |
+| `src/components/PwaInstallPrompt.vue` | Banner d'installation avec bouton |
+
+**Meta tags ajoutés dans `index.html`** :
+```html
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1DA53F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MonaJent">
+<meta name="mobile-web-app-capable" content="yes">
+```
+
+**Enregistrement du Service Worker** (dans `index.html`) :
+```html
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {})
+    })
+  }
+</script>
+```
+
+**Service Worker — Stratégies de cache** :
+- `GET /api/*` → Ignoré (toujours réseau)
+- Assets (`.js`, `.css`, `.png`, `.webp`, `.woff2`, etc.) → **Cache-first** : sert depuis le cache, télécharge en background
+- Pages HTML → **Network-first** : essaie le réseau, fallback sur le cache si hors-ligne
+- Nettoyage : supprime les anciens caches lors de l'activation d'une nouvelle version
+
+**PwaInstallPrompt.vue — Bouton d'installation** :
+- **Android/Chrome/Edge** : intercepte `beforeinstallprompt`, affiche un banner avec bouton vert "Installer l'application" → déclenche le prompt natif
+- **iOS Safari** : détecte l'appareil, affiche les instructions "Appuyez sur Partager → Sur l'écran d'accueil"
+- Ne s'affiche PAS si l'app est déjà installée (`display-mode: standalone`)
+- Mémorise le refus pendant 7 jours (`localStorage`)
+- Responsive : au-dessus de la bottom nav sur mobile, en bas à droite sur desktop
+
+**Pré-requis prod** : Le SW nécessite HTTPS. Sur `monajent.com` c'est déjà le cas.
+
+### 8f. Fichiers créés/modifiés — Session 3
+
+**Composants frontend créés** :
+
+| Fichier | Lignes | Rôle |
+|---------|--------|------|
+| `src/components/MonaSearch.vue` | ~1141 | Recherche vocale IA client (FAB + panel + invite bubble + son) |
+| `src/components/MonaAssistant.vue` | ~978 | Saisie vocale IA agent (FAB + panel) |
+| `src/components/OnboardingTour.vue` | ~345 | Tour guidé 4 étapes avec spotlight adaptatif |
+| `src/components/PwaInstallPrompt.vue` | ~160 | Banner d'installation PWA (Android + iOS) |
+
+**Fichiers frontend modifiés** :
+
+| Fichier | Modifications principales |
+|---------|--------------------------|
+| `index.html` | Meta PWA, manifest link, apple-touch-icon, enregistrement SW |
+| `src/views/HomePage.vue` | Import MonaSearch, OnboardingTour, PwaInstallPrompt. `data-tour` sur bottom nav + sidebar. `onWelcomeClosed()`, `showOnboarding` logic. `activeBottomTab`, `handleBottomNavProfile()` mobile. |
+| `src/views/client/ClientDashboard.vue` | Liens rapides, bouton déconnexion, avatar profil, grille responsive |
+| `src/views/public/PublicListingView.vue` | Layout mobile corrigé (suggestions en dessous), padding ajusté |
+| `src/components/WelcomeOverlay.vue` | `defineEmits(['closed'])`, émet sur handleUnderstood/handleNeverShow |
+
+**Assets PWA créés** (`frontend/public/`) :
+
+`pwa-icon-72x72.png`, `pwa-icon-96x96.png`, `pwa-icon-128x128.png`, `pwa-icon-144x144.png`, `pwa-icon-152x152.png`, `pwa-icon-192x192.png`, `pwa-icon-384x384.png`, `pwa-icon-512x512.png`, `pwa-icon-maskable-512x512.png`, `apple-touch-icon-180x180.png`, `manifest.webmanifest`, `sw.js`
+
+**Audio** : `src/assets/media/discord-sounds.mp3` — son de notification pour la bulle Mona
+
+### 8g. Bug fix — Son Mona sur dashboard agent en PWA
+
+**Problème** : Sur Techno Spark 40 en PWA, le son discord jouait toutes les 30s sur le dashboard agent (mais sans bulle visible).
+
+**Cause** : Le PWA a `start_url: /home`. Quand un agent ouvre l'app, HomePage.vue se monte brièvement (timer démarré), puis la guard redirige vers `/agent`. Par une race condition, l'interval pouvait survivre au démontage.
+
+**Fix** : Ajout d'une garde dans `showInviteBubble()` :
+```js
+if (!route.path.startsWith('/home')) { clearInviteLoop(); return }
+```
+Si le composant est actif mais la route n'est pas `/home*`, la boucle est définitivement stoppée.
+
+---
+
 ## 6. Ce qui reste à faire (suggestions)
 
 ### Technique — URGENT (déploiement)
-- [ ] **Déployer en prod** : rebuild frontend (nginx.conf) + backend (share.py, prompts, listings)
+- [ ] **Déployer en prod** : rebuild frontend + backend (tout ce qui a changé en sessions 1-3)
 - [ ] **Tester les aperçus WhatsApp** avec un lien JAMAIS partagé auparavant (cache WhatsApp = 7 jours)
 - [ ] **Tester la recherche Mona** : vérifier que "Angré", "Cocody", etc. trouvent bien les annonces existantes
+- [ ] **Tester la PWA** : vérifier l'installation sur Android Chrome + iOS Safari en prod (nécessite HTTPS)
+- [ ] **Tester le speech-to-text** : vérifier sur Android Chrome, Samsung Internet, iOS Safari
 - [ ] `BACKEND_BASE_URL` n'est plus nécessaire pour les URLs OG (utilise `FRONTEND_URL` maintenant), mais le garder pour d'autres usages éventuels
 
 ### Technique — Court terme
 - [ ] Allonger l'expiration des annonces de 7 à 30 jours (phase de lancement)
 - [ ] Permettre la publication SANS KYC (KYC différé après 3 annonces) pour réduire la friction
 - [ ] Ajouter le partage **Telegram** (bouton dans ShareDialog + PublicListingView)
+- [ ] Améliorer le Service Worker : pré-cacher les annonces favorites pour consultation hors-ligne
+- [ ] Ajouter des screenshots au manifest.webmanifest pour un install prompt plus riche sur Android
 
 ### Technique — Moyen terme
 - [ ] Notifications push (FCM) pour agents et clients
 - [ ] Packs variés (500 / 2 000 / 5 000 FCFA)
 - [ ] Gamification agents (badges, classement, top agents)
-- [ ] PWA (Progressive Web App) pour l'installation mobile
-- [ ] Mode hors-ligne pour la consultation d'annonces favorites
+- [x] ~~PWA (Progressive Web App) pour l'installation mobile~~ ✅ Session 3
+- [x] ~~Responsivité mobile des vues client~~ ✅ Session 3
+- [x] ~~Assistants vocaux Mona (MonaSearch + MonaAssistant)~~ ✅ Session 3
+- [x] ~~Onboarding tour pour les nouveaux utilisateurs~~ ✅ Session 3
+- [ ] Mode hors-ligne complet pour la consultation d'annonces favorites
 - [ ] TikTok (Horizon 2027 — voir section 5b)
 
 ### Business — Immédiat

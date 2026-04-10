@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useAgentStore } from '@/Stores/agent'
+import logoOm from '@/assets/icons/logo_om.png'
+import logoWave from '@/assets/icons/logo_wave.png'
+import logoMtn from '@/assets/icons/logo_mtn.png'
 
 const agent = useAgentStore()
 const toast = useToast()
@@ -72,9 +75,9 @@ function statusLabel(s: string) {
 function statusClass(s: string) { return s.toLowerCase() }
 
 const methods = [
-  { value: 'ORANGE_MONEY', label: 'Orange Money' },
-  { value: 'WAVE', label: 'Wave' },
-  { value: 'MTN', label: 'MTN Money' },
+  { value: 'ORANGE_MONEY', label: 'Orange Money', logo: logoOm },
+  { value: 'WAVE', label: 'Wave', logo: logoWave },
+  { value: 'MTN', label: 'MTN Money', logo: logoMtn },
 ]
 </script>
 
@@ -217,7 +220,8 @@ const methods = [
               :class="{ active: withdrawForm.method === m.value }"
             >
               <input type="radio" v-model="withdrawForm.method" :value="m.value" />
-              <span>{{ m.label }}</span>
+              <img :src="m.logo" :alt="m.label" class="wlt__method-logo" />
+              <span class="wlt__method-label">{{ m.label }}</span>
             </label>
           </div>
         </div>
@@ -481,19 +485,38 @@ const methods = [
 .wlt__modal-methods { display: flex; gap: 10px; flex-wrap: wrap; }
 .wlt__method {
   flex: 1;
-  min-width: 100px;
-  padding: 10px 14px;
-  border: 1px solid #E0E0E0;
-  border-radius: 10px;
+  min-width: 90px;
+  padding: 12px 10px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  transition: border-color .15s;
+  gap: 6px;
+  transition: border-color .15s, background .15s, box-shadow .15s;
 }
-.wlt__method.active { border-color: #1DA53F; background: rgba(29,165,63,.04); }
+.wlt__method:hover { border-color: #c4c4c4; }
+.wlt__method.active {
+  border-color: #1DA53F;
+  background: rgba(29,165,63,.04);
+  box-shadow: 0 0 0 3px rgba(29,165,63,.1);
+}
 .wlt__method input { display: none; }
+.wlt__method-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.wlt__method-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.2;
+}
+.wlt__method.active .wlt__method-label { color: #166534; font-weight: 600; }
 
 .wlt__modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
 .wlt__modal-btn {
