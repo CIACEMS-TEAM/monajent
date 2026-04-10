@@ -2,7 +2,10 @@
   <div class="yt-app" :class="{ 'sidebar-open': sidebarOpen }">
 
     <!-- ===== WELCOME OVERLAY (first visit) ===== -->
-    <WelcomeOverlay />
+    <WelcomeOverlay @closed="onWelcomeClosed" />
+
+    <!-- ===== ONBOARDING TOUR ===== -->
+    <OnboardingTour v-if="showOnboarding" @done="showOnboarding = false" />
 
     <!-- ===== HEADER ===== -->
     <header class="yt-header">
@@ -139,7 +142,7 @@
     </div>
 
     <!-- ===== SIDEBAR ===== -->
-    <aside class="yt-sidebar">
+    <aside class="yt-sidebar" data-tour="sidebar">
       <nav class="yt-sidebar__nav">
         <router-link to="/home" class="yt-sidebar__item active">
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -194,7 +197,7 @@
           <span class="yt-sidebar__label">Favoris</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/packs')">
+        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" data-tour="sidebar-packs" @click.prevent="navigateAuth('/home/packs')">
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -317,16 +320,22 @@
       </div>
     </div>
 
+    <!-- ===== MONA SEARCH (IA) ===== -->
+    <MonaSearch />
+
+    <!-- ===== PWA INSTALL PROMPT ===== -->
+    <PwaInstallPrompt />
+
     <!-- ===== MOBILE BOTTOM NAV ===== -->
-    <nav class="yt-bottomnav">
-      <router-link to="/home" class="yt-bottomnav__item" exact-active-class="active">
+    <nav class="yt-bottomnav" data-tour="nav">
+      <router-link to="/home" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'home' }">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path fill="currentColor" d="M4 21V10.08l8-6.96 8 6.96V21h-6v-6h-4v6H4z" />
         </svg>
         <span>Accueil</span>
       </router-link>
 
-      <a href="#" class="yt-bottomnav__item" @click.prevent="navigateAuth('/home/packs')">
+      <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'packs' }" data-tour="packs" @click.prevent="navigateAuth('/home/packs')">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path
             fill="currentColor"
@@ -336,7 +345,7 @@
         <span>Packs</span>
       </a>
 
-      <a href="#" class="yt-bottomnav__item" @click.prevent="navigateAuth('/home/favorites')">
+      <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'favorites' }" @click.prevent="navigateAuth('/home/favorites')">
         <svg viewBox="0 0 24 24" width="24" height="24">
           <path
             fill="currentColor"
@@ -349,10 +358,11 @@
       <a
         href="#"
         class="yt-bottomnav__item"
+        :class="{ active: activeBottomTab === 'you' }"
         @click.prevent="handleBottomNavProfile"
       >
         <template v-if="auth.me">
-          <div class="yt-bottomnav__avatar" :style="{ backgroundColor: 'var(--green)' }">
+          <div class="yt-bottomnav__avatar" :class="{ 'yt-bottomnav__avatar--active': activeBottomTab === 'you' }" :style="{ backgroundColor: 'var(--green)' }">
             {{ userInitial }}
           </div>
         </template>
@@ -372,22 +382,27 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore } from '@/Stores/public'
 import WelcomeOverlay from '@/components/WelcomeOverlay.vue'
+import OnboardingTour from '@/components/OnboardingTour.vue'
+import MonaSearch from '@/components/MonaSearch.vue'
+import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
 import keyVirtImg from '@/assets/icons/key_virt.png'
 import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const auth = useAuthStore()
 const pub = usePublicStore()
 const router = useRouter()
+const route = useRoute()
 const sidebarOpen = ref(false)
 const mobileSearchOpen = ref(false)
 const mobileSearchInput = ref<HTMLInputElement | null>(null)
 const searchQuery = ref('')
 const showLoginModal = ref(false)
 const userMenuOpen = ref(false)
+const showOnboarding = ref(false)
 
 function fetchClientData() {
   if (auth.me?.role === 'CLIENT') {
@@ -405,9 +420,20 @@ function closeUserMenu(e: MouseEvent) {
   if (!wrapper) userMenuOpen.value = false
 }
 
+function onWelcomeClosed() {
+  if (!localStorage.getItem('monajent_onboarding_done')) {
+    setTimeout(() => { showOnboarding.value = true }, 400)
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', closeUserMenu)
   fetchClientData()
+  const welcomeSeen = localStorage.getItem('monajent_welcome_dismissed') || sessionStorage.getItem('monajent_welcome_seen')
+  const onboardingDone = localStorage.getItem('monajent_onboarding_done')
+  if (welcomeSeen && !onboardingDone) {
+    setTimeout(() => { showOnboarding.value = true }, 800)
+  }
 })
 onUnmounted(() => document.removeEventListener('click', closeUserMenu))
 
@@ -416,6 +442,17 @@ watch(() => auth.me, () => fetchClientData())
 const userInitial = computed(() => {
   if (!auth.me) return ''
   return (auth.me.username?.[0] ?? auth.me.phone?.[0] ?? 'U').toUpperCase()
+})
+
+const activeBottomTab = computed(() => {
+  const path = route.path
+  if (path === '/home/packs') return 'packs'
+  if (path === '/home/favorites') return 'favorites'
+  if (path.startsWith('/home/dashboard') || path.startsWith('/home/profile') ||
+      path.startsWith('/home/history') || path.startsWith('/home/visits') ||
+      path.startsWith('/home/payments') || path.startsWith('/home/reports') ||
+      path.startsWith('/home/support')) return 'you'
+  return 'home'
 })
 
 function handleSearch() {
@@ -451,6 +488,10 @@ async function handleLogout() {
 function handleBottomNavProfile() {
   if (!auth.me) {
     router.push({ name: 'login' })
+    return
+  }
+  if (window.innerWidth <= 768) {
+    router.push({ name: 'client-dashboard' })
     return
   }
   userMenuOpen.value = !userMenuOpen.value
@@ -1215,6 +1256,10 @@ function handleBottomNavProfile() {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: box-shadow 0.15s;
+}
+.yt-bottomnav__avatar--active {
+  box-shadow: 0 0 0 2px var(--text-primary);
 }
 
 /* ===== RESPONSIVE ===== */

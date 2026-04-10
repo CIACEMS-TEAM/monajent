@@ -361,6 +361,9 @@ export const useAgentStore = defineStore('agent', {
     dateSlots: [] as DateSlot[],
     dateSlotsLoading: false,
 
+    // IA Mona — données pré-remplies par l'assistante vocale
+    aiPrefillData: null as Record<string, unknown> | null,
+
     // Dashboard & Analytics (API réelle)
     dashboard: null as DashboardData | null,
     dashboardLoading: false,
@@ -512,6 +515,15 @@ export const useAgentStore = defineStore('agent', {
       } finally {
         this.currentListingLoading = false
       }
+    },
+
+    /** Pré-remplissage formulaire annonce via Gemini (texte libre). */
+    async extractListingFromAi(text: string) {
+      const { data } = await http.post<{ data: Record<string, unknown> }>(
+        '/api/ai/extract-listing/',
+        { text },
+      )
+      return data.data
     },
 
     async createListing(payload: ListingCreatePayload) {
@@ -797,6 +809,7 @@ export const useAgentStore = defineStore('agent', {
       this.dashboard = null
       this.analytics = null
       this.dailyStats = []
+      this.aiPrefillData = null
     },
   },
 })

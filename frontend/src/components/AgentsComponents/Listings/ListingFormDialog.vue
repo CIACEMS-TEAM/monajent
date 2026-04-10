@@ -63,6 +63,73 @@ const pendingImages = ref<File[]>([])
 const pendingVideo = ref<File | null>(null)
 
 const amenityInput = ref('')
+const aiPasteText = ref('')
+const aiExtracting = ref(false)
+const aiMissingFields = ref<string[]>([])
+const aiListening = ref(false)
+const aiInterim = ref('')
+let aiRecognition: any = null
+
+function toggleFormVoice() {
+  if (aiListening.value) {
+    try { aiRecognition?.stop() } catch { /* */ }
+    aiRecognition = null
+    aiInterim.value = ''
+    aiListening.value = false
+    return
+  }
+  const w = window as any
+  const SR = w.SpeechRecognition || w.webkitSpeechRecognition
+  if (!SR) {
+    toast.error('Reconnaissance vocale non supportée par ce navigateur.')
+    return
+  }
+  const r = new SR()
+  r.lang = 'fr-FR'
+  r.continuous = true
+  r.interimResults = true
+
+  r.onresult = (ev: any) => {
+    let finalPart = ''
+    let interimPart = ''
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) {
+        finalPart += ev.results[i][0].transcript
+      } else {
+        interimPart += ev.results[i][0].transcript
+      }
+    }
+    if (finalPart) {
+      aiPasteText.value = (aiPasteText.value + ' ' + finalPart).trim()
+    }
+    aiInterim.value = interimPart
+  }
+
+  r.onerror = (e: any) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return
+    toast.error('Erreur micro : ' + e.error)
+    aiListening.value = false
+  }
+
+  r.onend = () => {
+    aiInterim.value = ''
+    if (aiListening.value) {
+      if (!aiPasteText.value.trim()) {
+        try { r.start() } catch { aiListening.value = false }
+      } else {
+        aiListening.value = false
+      }
+    }
+  }
+
+  aiRecognition = r
+  aiListening.value = true
+  try { r.start() } catch {
+    aiListening.value = false
+    toast.error('Impossible d\'activer le microphone.')
+  }
+}
+
 const typeOptions = [
   { label: 'Location', value: 'LOCATION' },
   { label: 'Vente', value: 'VENTE' },
@@ -146,8 +213,42 @@ function resetForm() {
   savingStep.value = ''
   pendingImages.value = []
   pendingVideo.value = null
+  aiPasteText.value = ''
+  aiMissingFields.value = []
+  aiListening.value = false
+  aiInterim.value = ''
+  if (aiRecognition) { try { aiRecognition.stop() } catch { /* */ } aiRecognition = null }
   resetVideoCheck()
   agent.currentListing = null
+}
+
+function applyPrefill(d: Record<string, unknown>) {
+  if (typeof d.title === 'string' && d.title.trim()) form.title = d.title.trim()
+  if (typeof d.description === 'string') form.description = d.description
+  if (d.listing_type === 'LOCATION' || d.listing_type === 'VENTE') form.listing_type = d.listing_type
+  if (typeof d.city === 'string' && d.city.trim()) form.city = d.city.trim()
+  if (typeof d.neighborhood === 'string') form.neighborhood = d.neighborhood
+  if (typeof d.address === 'string') form.address = d.address
+  const lat = numOrNull(d.latitude)
+  const lng = numOrNull(d.longitude)
+  if (lat !== null && lng !== null) {
+    form.latitude = lat
+    form.longitude = lng
+  }
+  const price = numOrNull(d.price)
+  if (price !== null && price > 0) form.price = price
+  form.rooms = numOrNull(d.rooms)
+  form.bedrooms = numOrNull(d.bedrooms)
+  form.bathrooms = numOrNull(d.bathrooms)
+  form.surface_m2 = numOrNull(d.surface_m2)
+  const fur = d.furnishing
+  if (fur === '' || fur === 'FURNISHED' || fur === 'UNFURNISHED' || fur === 'SEMI_FURNISHED') form.furnishing = fur as string
+  if (Array.isArray(d.amenities)) form.amenities = d.amenities.filter((x): x is string => typeof x === 'string')
+  form.deposit_months = numOrNull(d.deposit_months)
+  form.advance_months = numOrNull(d.advance_months)
+  form.agency_fee_months = numOrNull(d.agency_fee_months)
+  if (typeof d.other_conditions === 'string') form.other_conditions = d.other_conditions
+  aiMissingFields.value = Array.isArray(d.missing_fields) ? d.missing_fields as string[] : []
 }
 
 watch(() => props.visible, async (open) => {
@@ -184,6 +285,11 @@ watch(() => props.visible, async (open) => {
     loading.value = false
   } else {
     resetForm()
+    if (agent.aiPrefillData) {
+      applyPrefill(agent.aiPrefillData)
+      agent.aiPrefillData = null
+      toast.success('Champs pré-remplis par Mona — vérifiez et complétez.')
+    }
   }
 })
 
@@ -197,6 +303,31 @@ function addAmenity() {
     form.amenities!.push(val)
   }
   amenityInput.value = ''
+}
+
+function numOrNull(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+async function applyAiExtract() {
+  const t = aiPasteText.value.trim()
+  if (!t) {
+    toast.warning('Décrivez le bien à voix haute ou collez un message.')
+    return
+  }
+  aiExtracting.value = true
+  try {
+    const d = await agent.extractListingFromAi(t)
+    applyPrefill(d)
+    toast.success('Champs pré-remplis — vérifiez et complétez le formulaire.')
+  } catch (e: any) {
+    const msg = e?.response?.data?.detail
+    toast.error(typeof msg === 'string' ? msg : 'Mona rencontre un problème temporaire. Réessayez.')
+  } finally {
+    aiExtracting.value = false
+  }
 }
 
 function removeAmenity(idx: number) {
@@ -505,6 +636,62 @@ async function doSubmit(targetStatus: string) {
 
       <Message v-if="serverError" severity="error" :closable="true" @close="serverError = ''">
         {{ serverError }}
+      </Message>
+
+      <section v-if="!isEdit" class="lf__section lf__section--ai">
+        <h2 class="lf__section-title">
+          <svg viewBox="0 0 24 24" width="16" height="16" style="flex-shrink:0"><circle cx="12" cy="12" r="11" fill="#1DA53F"/><text x="12" y="15.5" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="system-ui">M</text></svg>
+          Mona — Pré-remplissage IA
+        </h2>
+        <p class="lf__section-hint">Décrivez votre bien à voix haute ou tapez la description. Mona remplit le formulaire pour vous.</p>
+
+        <div class="lf__ai-row">
+          <button
+            type="button"
+            class="lf__ai-voice-btn"
+            :class="{ 'lf__ai-voice-btn--on': aiListening }"
+            :disabled="saving || aiExtracting"
+            @click="toggleFormVoice"
+          >
+            <i class="pi" :class="aiListening ? 'pi-stop' : 'pi-microphone'" />
+            <span>{{ aiListening ? 'Arrêter' : 'Parler' }}</span>
+          </button>
+
+          <div class="lf__ai-input-wrap">
+            <Textarea
+              v-model="aiPasteText"
+              rows="2"
+              placeholder="Ex : 3 pièces Faya 250k/mois, 2+2+1, climatisé…"
+              fluid
+              :disabled="saving || aiExtracting || aiListening"
+              class="lf__ai-textarea"
+            />
+            <div v-if="aiListening && aiInterim" class="lf__ai-interim">{{ aiInterim }}</div>
+          </div>
+        </div>
+
+        <div class="lf__ai-actions">
+          <Button
+            type="button"
+            label="Analyser le texte"
+            icon="pi pi-bolt"
+            severity="secondary"
+            size="small"
+            :loading="aiExtracting"
+            :disabled="saving || !aiPasteText.trim() || aiListening"
+            @click="applyAiExtract"
+          />
+        </div>
+      </section>
+
+      <Message v-if="aiMissingFields.length" severity="warn" :closable="true" @close="aiMissingFields = []" class="lf__ai-missing">
+        <template #default>
+          <div>
+            <strong>Champs non détectés dans votre message :</strong>
+            <span class="lf__ai-missing-list">{{ aiMissingFields.join(', ') }}</span>
+            <br />Complétez-les manuellement ci-dessous si nécessaire, ou laissez vide.
+          </div>
+        </template>
       </Message>
 
       <div class="lf__columns">
@@ -990,6 +1177,89 @@ async function doSubmit(targetStatus: string) {
   font-size: 12px;
   color: #888;
   margin: -8px 0 14px;
+}
+
+.lf__section--ai {
+  border-color: rgba(29, 165, 63, 0.28);
+  background: rgba(29, 165, 63, 0.05);
+  margin-bottom: 16px;
+}
+.lf__section--ai .lf__section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lf__ai-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.lf__ai-voice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 2px solid #1da53f;
+  background: #fff;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+.lf__ai-voice-btn i { font-size: 20px; }
+.lf__ai-voice-btn:hover:not(:disabled) {
+  background: rgba(29, 165, 63, 0.08);
+}
+.lf__ai-voice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lf__ai-voice-btn--on {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+  animation: lf-voice-pulse 1.5s infinite;
+}
+.lf__ai-voice-btn--on:hover:not(:disabled) {
+  background: #b91c1c;
+}
+@keyframes lf-voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,.35); }
+  50% { box-shadow: 0 0 0 10px rgba(220,38,38,0); }
+}
+.lf__ai-input-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.lf__ai-interim {
+  font-size: 12px;
+  color: #1DA53F;
+  font-style: italic;
+  margin-top: 4px;
+  padding: 0 2px;
+}
+.lf__ai-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.lf__ai-textarea {
+  margin-top: 0;
+}
+.lf__ai-missing {
+  margin-bottom: 16px;
+}
+.lf__ai-missing-list {
+  color: #92400e;
+  font-weight: 500;
 }
 
 .lf__conditions-summary {

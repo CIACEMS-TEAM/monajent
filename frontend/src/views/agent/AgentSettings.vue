@@ -1194,6 +1194,22 @@ async function submitChangePin() {
 .stg__modal-btn.confirm { background: #1DA53F; color: #fff; }
 .stg__modal-btn.confirm:hover:not(:disabled) { background: #178A33; }
 
+@media (max-width: 768px) {
+  .stg__title { font-size: 20px; }
+  .stg__tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .stg__tabs::-webkit-scrollbar { display: none; }
+  .stg__tab { padding: 10px 14px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+  .stg__card { padding: 16px; }
+  .stg__card-title { font-size: 15px; }
+  .stg__kyc-badge { flex-direction: column; text-align: center; font-size: 14px; padding: 12px; }
+  .stg__kyc-slots { grid-template-columns: 1fr; }
+  .stg__info-row { flex-direction: column; gap: 2px; }
+  .stg__info-label { font-size: 12px; }
+}
 @media (max-width: 600px) {
   .stg__field-row { grid-template-columns: 1fr; }
   .stg__photo-row { flex-direction: column; text-align: center; }

@@ -15,6 +15,7 @@
       </div>
     </div>
 
+
     <!-- Loading -->
     <div v-if="pub.listingsLoading" class="yt-loading">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem; color: #1DA53F"></i>
@@ -124,6 +125,8 @@ async function toggleFavorite(e: Event, listingId: number) {
 }
 
 const activeChip = ref('all')
+
+
 
 const chips = [
   { label: 'Tous', value: 'all' },

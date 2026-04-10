@@ -185,6 +185,8 @@ REST_FRAMEWORK = {
         'visit_request': '10/hour',
         'wallet_withdraw': '5/hour',
         'favorite_toggle': '300/hour',
+        'ai_extract_listing': '45/hour',
+        'ai_search_intent': '25/min',
     },
 }
 
@@ -210,6 +212,20 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localho
 CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['http://localhost:5173'])
 
 FRONTEND_URL = env('FRONTEND_URL', default=CORS_ALLOWED_ORIGINS[0] if CORS_ALLOWED_ORIGINS else 'http://localhost:5173')
+BACKEND_BASE_URL = env('BACKEND_BASE_URL', default='')
+
+# ── AI Providers ─────────────────────────────────────────────────────────────
+# Groq (primaire — 1000 RPD gratuit, ultra-rapide)
+GROQ_API_KEY = env('GROQ_API_KEY', default='')
+GROQ_MODEL = env('GROQ_MODEL', default='llama-3.3-70b-versatile')
+GROQ_API_URL = env('GROQ_API_URL', default='https://api.groq.com/openai/v1')
+# DeepSeek (secondaire — pas de rate limit, ~0.28$/M tokens)
+DEEPSEEK_API_KEY = env('DEEPSEEK_API_KEY', default='')
+DEEPSEEK_MODEL = env('DEEPSEEK_MODEL', default='deepseek-chat')
+DEEPSEEK_API_URL = env('DEEPSEEK_API_URL', default='https://api.deepseek.com')
+# Gemini (fallback — 20 RPD free tier)
+GEMINI_API_KEY = env('GEMINI_API_KEY', default='')
+GEMINI_MODEL = env('GEMINI_MODEL', default='gemini-3-flash-preview')
 
 # ── Cookies sécurité ─────────────────────────────────────────────────────────
 AUTH_COOKIE_SAMESITE = env('AUTH_COOKIE_SAMESITE', default='Lax')

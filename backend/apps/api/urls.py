@@ -102,12 +102,14 @@ from .views.support import (
     SupportTicketCloseView,
 )
 from .views.sitemap import SitemapXMLView
-from .views.share import ListingShareOGView
+from .views.share import ListingShareOGView, ListingShareImageView
+from .views.ai import ExtractListingAIView, SearchIntentAIView
 
 urlpatterns = [
     # ── SEO / Partage social ──────────────────────────────────
     path('sitemap.xml', SitemapXMLView.as_view(), name='sitemap-xml'),
     path('share/<slug:slug>/', ListingShareOGView.as_view(), name='listing-share-og'),
+    path('share/<slug:slug>/image.jpg', ListingShareImageView.as_view(), name='listing-share-image'),
 
     # ── Auth ──────────────────────────────────────────────────
     path('auth/register/client', RegisterClientView.as_view()),
@@ -122,6 +124,10 @@ urlpatterns = [
     path('auth/password/reset/verify', PasswordResetVerifyView.as_view()),
     path('auth/password/reset/finalize', PasswordResetFinalizeView.as_view()),
     path('auth/password/change', PasswordChangeView.as_view()),
+
+    # ── IA (Gemini) ───────────────────────────────────────────
+    path('ai/extract-listing/', ExtractListingAIView.as_view(), name='ai-extract-listing'),
+    path('ai/search-intent/', SearchIntentAIView.as_view(), name='ai-search-intent'),
 
     # ── Listings publics (recherche / détail) ─────────────────
     path('listings/', PublicListingListView.as_view(), name='listing-list'),

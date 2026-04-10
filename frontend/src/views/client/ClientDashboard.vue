@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useClientStore } from '@/Stores/client'
+import { useAuthStore } from '@/Stores/auth'
 import keyVirtImg from '@/assets/icons/key_virt.png'
 import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const client = useClientStore()
+const auth = useAuthStore()
+const router = useRouter()
 
 onMounted(() => {
   client.fetchDashboard()
@@ -12,6 +16,11 @@ onMounted(() => {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+async function handleLogout() {
+  await auth.logout()
+  router.push({ name: 'home' })
 }
 </script>
 
@@ -25,15 +34,18 @@ function formatDate(iso: string) {
     <template v-else-if="client.dashboard">
       <!-- Welcome -->
       <div class="cd__welcome">
-        <div class="cd__welcome-avatar">
+        <router-link to="/home/profile" class="cd__welcome-avatar">
           {{ (client.dashboard.username || client.dashboard.phone).charAt(0).toUpperCase() }}
-        </div>
-        <div>
+        </router-link>
+        <div class="cd__welcome-text">
           <h1 class="cd__welcome-name">
             Bonjour {{ client.dashboard.username || client.dashboard.phone }}
           </h1>
           <p class="cd__welcome-since">Membre depuis le {{ formatDate(client.dashboard.member_since) }}</p>
         </div>
+        <router-link to="/home/profile" class="cd__welcome-edit" title="Mon profil">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#fff" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </router-link>
       </div>
 
       <!-- KPI Cards -->
@@ -127,6 +139,14 @@ function formatDate(iso: string) {
             <i class="pi pi-flag"></i>
             <span>Signalements</span>
           </router-link>
+          <router-link to="/home/profile" class="cd__quick-link">
+            <i class="pi pi-user"></i>
+            <span>Mon profil</span>
+          </router-link>
+          <router-link to="/home/support" class="cd__quick-link">
+            <i class="pi pi-question-circle"></i>
+            <span>Aide & Support</span>
+          </router-link>
         </div>
       </div>
 
@@ -148,6 +168,12 @@ function formatDate(iso: string) {
           </div>
         </div>
       </div>
+
+      <!-- Logout (visible surtout sur mobile comme point d'accès principal) -->
+      <button class="cd__logout" @click="handleLogout">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        <span>Se déconnecter</span>
+      </button>
     </template>
   </div>
 </template>
@@ -178,9 +204,20 @@ function formatDate(iso: string) {
   background: rgba(255,255,255,0.2);
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; font-weight: 700; flex-shrink: 0;
+  text-decoration: none; color: #fff;
+  transition: background 0.15s;
 }
+.cd__welcome-avatar:hover { background: rgba(255,255,255,0.3); }
+.cd__welcome-text { flex: 1; min-width: 0; }
 .cd__welcome-name { font-size: 20px; font-weight: 700; margin: 0; }
 .cd__welcome-since { font-size: 13px; opacity: 0.85; margin: 2px 0 0; }
+.cd__welcome-edit {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  flex-shrink: 0; transition: background 0.15s;
+}
+.cd__welcome-edit:hover { background: rgba(255,255,255,0.3); }
 
 /* KPI */
 .cd__kpis {
@@ -247,15 +284,35 @@ function formatDate(iso: string) {
   display: block; font-size: 12px; color: #888; margin-top: 4px;
 }
 
+/* Logout */
+.cd__logout {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 14px; margin-bottom: 32px;
+  border: 1px solid #e5e5e5; border-radius: 12px;
+  background: #fff; color: #d32f2f;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s;
+}
+.cd__logout:hover { background: #fef2f2; border-color: #fecaca; }
+
 @media (max-width: 768px) {
   .cd__kpis { grid-template-columns: repeat(2, 1fr); }
   .cd__quick-grid { grid-template-columns: repeat(2, 1fr); }
   .cd__stats-row { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 480px) {
-  .cd__kpis { grid-template-columns: 1fr; }
-  .cd__quick-grid { grid-template-columns: 1fr; }
-  .cd__stats-row { grid-template-columns: 1fr; }
+  .cd { padding: 0 12px; }
+  .cd__kpis { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cd__kpi { padding: 12px 10px; gap: 8px; }
+  .cd__kpi-val { font-size: 20px; }
+  .cd__kpi-icon img { width: 28px; height: 28px; }
+  .cd__kpi-icon--svg { width: 28px; height: 28px; }
+  .cd__kpi-icon--svg svg { width: 22px; height: 22px; }
+  .cd__quick-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .cd__quick-link { padding: 12px; font-size: 13px; }
+  .cd__stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cd__stat-item { padding: 12px 6px; }
+  .cd__stat-val { font-size: 22px; }
   .cd__welcome { padding: 16px; }
   .cd__welcome-name { font-size: 17px; }
 }

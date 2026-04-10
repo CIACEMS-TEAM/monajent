@@ -244,7 +244,7 @@ const methods = [
 </template>
 
 <style scoped>
-.wlt { max-width: 1000px; }
+.wlt { max-width: 1000px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
 .wlt__title { font-size: 24px; font-weight: 700; color: #0F0F0F; margin-bottom: 24px; }
 .wlt__loading { padding: 48px 0; text-align: center; color: #606060; }
 
@@ -325,6 +325,8 @@ const methods = [
   grid-template-columns: 1.3fr 1fr;
   gap: 24px;
   margin-top: 12px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .wlt__section {
@@ -332,6 +334,9 @@ const methods = [
   border: 1px solid #E0E0E0;
   border-radius: 12px;
   padding: 20px;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 .wlt__section-title { font-size: 16px; font-weight: 600; color: #0F0F0F; margin-bottom: 16px; }
 
@@ -381,8 +386,9 @@ const methods = [
   border-bottom: 1px solid #f2f2f2;
 }
 .wlt__withdrawal:last-child { border-bottom: none; }
+.wlt__withdrawal-info { flex: 1; min-width: 0; overflow: hidden; }
 .wlt__withdrawal-amount { font-weight: 600; color: #0F0F0F; display: block; }
-.wlt__withdrawal-method { font-size: 13px; color: #606060; display: block; }
+.wlt__withdrawal-method { font-size: 13px; color: #606060; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wlt__withdrawal-date { font-size: 12px; color: #606060; }
 
 .wlt__withdrawal-badge {
@@ -505,11 +511,182 @@ const methods = [
 .wlt__modal-btn.confirm:hover:not(:disabled) { background: #178A33; }
 
 @media (max-width: 768px) {
-  .wlt__kpi-row { grid-template-columns: 1fr; }
-  .wlt__kpi-value { font-size: 20px; }
-  .wlt__withdraw-btn { position: static; margin-top: 12px; }
-  .wlt__kpi--balance { flex-wrap: wrap; }
-  .wlt__grid { grid-template-columns: 1fr; }
+  .wlt {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .wlt__title { font-size: 18px; margin-bottom: 16px; }
+
+  /* KPI */
+  .wlt__kpi-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .wlt__kpi {
+    padding: 14px;
+    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .wlt__kpi--balance {
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+  }
+  .wlt__kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+  .wlt__kpi-icon svg { width: 20px; height: 20px; }
+  .wlt__kpi-body { flex: 1; min-width: 0; overflow: hidden; }
+  .wlt__kpi-label { font-size: 11px; margin-bottom: 2px; }
+  .wlt__kpi-value { font-size: 20px; word-break: break-word; }
+  .wlt__kpi-sub { font-size: 10px; }
+  .wlt__withdraw-btn {
+    position: static;
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+  }
+
+  .wlt__pending-alert {
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+
+  /* Grid: 1 column, no overflow */
+  .wlt__grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  /* Sections */
+  .wlt__section {
+    padding: 14px;
+    border-radius: 12px;
+    overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .wlt__section-title { font-size: 14px; margin-bottom: 12px; }
+
+  /* Filters */
+  .wlt__filters {
+    gap: 6px;
+    flex-direction: column;
+  }
+  .wlt__filter-select {
+    width: 100%;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  .wlt__filter-clear {
+    align-self: flex-start;
+    padding: 4px 0;
+  }
+
+  /* Entries - fix overflow */
+  .wlt__entries {
+    overflow: hidden;
+    min-width: 0;
+  }
+  .wlt__entry {
+    padding: 10px 0;
+    gap: 8px;
+    min-width: 0;
+  }
+  .wlt__entry-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .wlt__entry-icon svg { width: 16px; height: 16px; }
+  .wlt__entry-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .wlt__entry-label {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 100%;
+  }
+  .wlt__entry-date { font-size: 11px; }
+  .wlt__entry-amount {
+    font-size: 12px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  /* Withdrawals - fix overflow */
+  .wlt__withdrawals {
+    overflow: hidden;
+    min-width: 0;
+  }
+  .wlt__withdrawal {
+    gap: 8px;
+    padding: 10px 0;
+    min-width: 0;
+  }
+  .wlt__withdrawal-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .wlt__withdrawal-amount {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wlt__withdrawal-method {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wlt__withdrawal-date { font-size: 11px; }
+  .wlt__withdrawal-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+    flex-shrink: 0;
+  }
+
+  /* Modal */
+  .wlt__modal {
+    padding: 20px;
+    border-radius: 14px;
+    max-width: calc(100vw - 32px);
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+  .wlt__modal-title { font-size: 17px; }
+  .wlt__modal-sub { font-size: 13px; margin-bottom: 18px; }
   .wlt__modal-methods { flex-direction: column; }
+  .wlt__modal-actions { flex-direction: column-reverse; gap: 8px; }
+  .wlt__modal-btn { width: 100%; text-align: center; justify-content: center; }
+}
+
+@media (max-width: 400px) {
+  .wlt__kpi-value { font-size: 18px; }
+  .wlt__section { padding: 10px; }
+  .wlt__entry-label { font-size: 11px; }
+  .wlt__entry-amount { font-size: 11px; }
 }
 </style>

@@ -74,7 +74,7 @@ class PublicListingListView(generics.ListAPIView):
         'price': ['gte', 'lte'],
         'surface_m2': ['gte', 'lte'],
     }
-    search_fields = ['title', 'description', 'city', 'neighborhood']
+    search_fields = ['title', 'description', 'city', 'neighborhood', 'address']
     ordering_fields = ['price', 'created_at', 'views_count']
     ordering = ['-created_at']
 

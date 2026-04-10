@@ -5,6 +5,7 @@ import { useAuthStore } from '@/Stores/auth'
 import { useAgentStore } from '@/Stores/agent'
 import { useNotificationStore } from '@/Stores/notifications'
 import logoIconUrl from '@/assets/icons/logo_icone_header.webp'
+import MonaAssistant from '@/components/MonaAssistant.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -20,6 +21,33 @@ const isMobile = ref(false)
 const searchQuery = ref('')
 const mobileSearchOpen = ref(false)
 
+// PWA install prompt
+const isStandalone = ref(false)
+const deferredPrompt = ref<any>(null)
+const pwaInstallDismissed = ref(false)
+
+const showPwaInstall = computed(() =>
+  isMobile.value && !isStandalone.value && !!deferredPrompt.value && !pwaInstallDismissed.value
+)
+
+function onBeforeInstallPrompt(e: Event) {
+  e.preventDefault()
+  deferredPrompt.value = e
+}
+
+async function installPwa() {
+  if (!deferredPrompt.value) return
+  deferredPrompt.value.prompt()
+  const { outcome } = await deferredPrompt.value.userChoice
+  if (outcome === 'accepted') {
+    deferredPrompt.value = null
+  }
+}
+
+function dismissPwaInstall() {
+  pwaInstallDismissed.value = true
+}
+
 function checkMobile() {
   isMobile.value = window.innerWidth < 1024
   if (isMobile.value) sidebarOpen.value = false
@@ -29,6 +57,14 @@ function checkMobile() {
 onMounted(async () => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+
+  isStandalone.value =
+    window.matchMedia('(display-mode: standalone)').matches
+    || (window.navigator as any).standalone === true
+
+  window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+  window.addEventListener('appinstalled', () => { deferredPrompt.value = null })
+
   if (!agent.profile) {
     try { await agent.fetchProfile() } catch (_) {}
   }
@@ -37,6 +73,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', checkMobile)
+  window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
   notifStore.stopPolling()
 })
 
@@ -116,6 +153,12 @@ function handleNotifClick(n: import('@/Stores/notifications').NotificationItem) 
   }
 }
 
+const monaAssistantRef = ref<InstanceType<typeof MonaAssistant> | null>(null)
+
+function openMonaFromNav() {
+  monaAssistantRef.value?.toggle()
+}
+
 function closePopupsOnClickOutside(e: MouseEvent) {
   const target = e.target as HTMLElement
   if (profileOpen.value && !target.closest('.agt-profile-menu')) {
@@ -130,7 +173,26 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 </script>
 
 <template>
-  <div class="agt-app" :class="{ 'sidebar-open': sidebarOpen && !isMobile, 'sidebar-collapsed': !sidebarOpen && !isMobile }">
+  <div class="agt-app" :class="{ 'sidebar-open': sidebarOpen && !isMobile, 'sidebar-collapsed': !sidebarOpen && !isMobile, 'has-pwa-banner': showPwaInstall }">
+    <!-- PWA Install Banner (mobile browser only) -->
+    <Transition name="pwa-banner">
+      <div v-if="showPwaInstall" class="agt-pwa-banner">
+        <div class="agt-pwa-banner__content">
+          <img :src="logoIconUrl" alt="" class="agt-pwa-banner__icon" />
+          <span class="agt-pwa-banner__text">Installer MonaJent</span>
+        </div>
+        <div class="agt-pwa-banner__actions">
+          <button class="agt-pwa-banner__install" @click="installPwa">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Installer
+          </button>
+          <button class="agt-pwa-banner__close" @click="dismissPwaInstall" aria-label="Fermer">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+      </div>
+    </Transition>
+
     <!-- HEADER -->
     <header class="agt-header">
       <div class="agt-header__start">
@@ -257,6 +319,17 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 
     <!-- SIDEBAR -->
     <aside class="agt-sidebar" :class="{ 'mobile-open': mobileMenuOpen }">
+      <!-- Mobile sidebar header with logo + close -->
+      <div v-if="isMobile" class="agt-sidebar__mobile-header">
+        <router-link to="/agent" class="agt-sidebar__mobile-logo" @click="closeMobile">
+          <img :src="logoIconUrl" alt="MonaJent" class="agt-sidebar__mobile-logo-img" />
+          <span class="agt-sidebar__mobile-logo-text">Studio</span>
+        </router-link>
+        <button class="agt-sidebar__close-btn" @click="closeMobile" aria-label="Fermer le menu">
+          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+
       <div class="agt-sidebar__profile" v-if="sidebarOpen || mobileMenuOpen">
         <div class="agt-avatar-wrap">
           <div class="agt-sidebar__avatar" :class="{ 'has-photo': agent.profilePhoto }">
@@ -323,6 +396,35 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
     <main class="agt-main">
       <router-view />
     </main>
+
+    <!-- Mona — Assistante IA (FAB hidden on mobile via CSS, bottom nav button opens it) -->
+    <MonaAssistant ref="monaAssistantRef" />
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav v-if="isMobile" class="agt-bnav">
+      <router-link to="/agent" class="agt-bnav__item" :class="{ active: route.path === '/agent' }">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>Accueil</span>
+      </router-link>
+      <router-link to="/agent/listings" class="agt-bnav__item" :class="{ active: route.path.startsWith('/agent/listings') }">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+        <span>Annonces</span>
+      </router-link>
+      <button class="agt-bnav__mona" @click="openMonaFromNav" aria-label="Mona - Créer une annonce vocale">
+        <div class="agt-bnav__mona-btn">
+          <svg viewBox="0 0 24 24" width="26" height="26"><path fill="#fff" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 00-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08a6.993 6.993 0 005.91-5.78c.1-.6-.39-1.14-1-1.14z"/></svg>
+        </div>
+        <span>Mona</span>
+      </button>
+      <router-link to="/agent/wallet" class="agt-bnav__item" :class="{ active: route.path.startsWith('/agent/wallet') }">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 00-2 2v8a2 2 0 002 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        <span>Revenus</span>
+      </router-link>
+      <button class="agt-bnav__item" :class="{ active: mobileMenuOpen }" @click="toggleSidebar">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        <span>Menu</span>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -803,26 +905,280 @@ onBeforeUnmount(() => document.removeEventListener('click', closePopupsOnClickOu
 }
 .sidebar-open .agt-main { margin-left: var(--sidebar-w); }
 
+/* ====== MOBILE SIDEBAR HEADER ====== */
+.agt-sidebar__mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.agt-sidebar__mobile-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.agt-sidebar__mobile-logo-img {
+  height: 32px;
+  width: auto;
+}
+.agt-sidebar__mobile-logo-text {
+  font-family: Roboto, 'Noto Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: #272727;
+  letter-spacing: -0.2px;
+}
+.agt-sidebar__close-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text3);
+  transition: background .15s;
+}
+.agt-sidebar__close-btn:hover { background: #f2f2f2; }
+
+/* ====== PWA INSTALL BANNER ====== */
+.agt-pwa-banner {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .agt-pwa-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    padding: 0 12px;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-bottom: 1px solid #bbf7d0;
+    z-index: 101;
+    gap: 8px;
+  }
+  .agt-pwa-banner__content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .agt-pwa-banner__icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .agt-pwa-banner__text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #166534;
+    white-space: nowrap;
+  }
+  .agt-pwa-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .agt-pwa-banner__install {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 14px;
+    background: #1DA53F;
+    color: #fff;
+    border: none;
+    border-radius: 18px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .agt-pwa-banner__install:hover { background: #178A33; }
+  .agt-pwa-banner__close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    border-radius: 50%;
+    transition: background .15s;
+  }
+  .agt-pwa-banner__close:hover { background: rgba(0,0,0,.06); }
+
+  .has-pwa-banner .agt-header {
+    top: 44px;
+  }
+  .has-pwa-banner .agt-main {
+    margin-top: calc(var(--header-h) + 44px);
+  }
+  .has-pwa-banner .agt-sidebar {
+    top: 0;
+  }
+}
+
+.pwa-banner-enter-active { transition: all .3s ease-out; }
+.pwa-banner-leave-active { transition: all .2s ease-in; }
+.pwa-banner-enter-from,
+.pwa-banner-leave-to {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
 /* ====== MOBILE ====== */
 @media (max-width: 1023px) {
+  .agt-header {
+    padding: 0 12px;
+    gap: 0;
+    justify-content: space-between;
+  }
+  .agt-header__start {
+    flex: 0 0 auto;
+  }
   .agt-header__center { display: none; }
   .agt-header__mobile-search { display: flex; }
   .agt-header__create-text { display: none; }
-  .agt-header__create { padding: 0 10px; }
+  .agt-header__create {
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    justify-content: center;
+    background: var(--green);
+  }
+  .agt-header__create svg { color: #fff; }
+  .agt-header__end {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
   .agt-header__studio { font-size: 18px; }
   .agt-header__icon { height: 30px; }
+  .agt-header__hamburger { display: none; }
 
   .agt-sidebar {
-    width: var(--sidebar-w);
+    top: 0;
+    width: 85vw;
+    max-width: 320px;
     transform: translateX(-100%);
-    transition: transform .25s ease;
-    z-index: 151;
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    z-index: 200;
   }
   .agt-sidebar.mobile-open { transform: translateX(0); }
 
+  .agt-overlay { z-index: 199; }
+
   .agt-main {
     margin-left: 0;
-    padding: 16px;
+    padding: 16px 12px 88px;
+    overflow-x: hidden;
+    max-width: 100vw;
+    box-sizing: border-box;
   }
+
+  .agt-sidebar__label { display: inline !important; }
+  .agt-sidebar__footer { display: flex !important; flex-direction: column; }
+}
+
+@media (max-width: 480px) {
+  .agt-header { padding: 0 10px; }
+  .agt-header__end { gap: 2px; }
+  .agt-main { padding: 12px 10px 88px; }
+  .agt-header__bell { width: 34px; height: 34px; }
+  .agt-header__avatar { width: 30px; height: 30px; }
+}
+
+/* ====== BOTTOM NAV ====== */
+.agt-bnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #fff;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 0 4px 6px;
+  z-index: 150;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.06);
+}
+
+.agt-bnav__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: #9CA3AF;
+  font-size: 10px;
+  font-weight: 500;
+  min-width: 56px;
+  transition: color .15s;
+}
+.agt-bnav__item.active {
+  color: var(--green);
+}
+.agt-bnav__item.active svg {
+  color: var(--green);
+}
+.agt-bnav__item span {
+  line-height: 1.2;
+}
+
+.agt-bnav__mona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: -22px;
+  position: relative;
+}
+.agt-bnav__mona-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1DA53F 0%, #16913A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(29,165,63,.35);
+  transition: transform .15s, box-shadow .15s;
+}
+.agt-bnav__mona-btn:active {
+  transform: scale(0.92);
+}
+.agt-bnav__mona span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  line-height: 1;
+}
+
+@media (max-width: 360px) {
+  .agt-bnav__item { min-width: 48px; font-size: 9px; }
+  .agt-bnav__mona-btn { width: 48px; height: 48px; }
 }
 </style>

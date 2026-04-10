@@ -66,8 +66,8 @@ const shareText = computed(() => {
   const price = Number(listing.value.price).toLocaleString('fr-FR') + ' F CFA'
   const type = listing.value.listing_type === 'LOCATION' ? 'Location' : 'Vente'
   let text = `${listing.value.title}\n${type} — ${price}\n${listing.value.city}`
-  if (listing.value.neighborhood) text += ` — ${listing.value.neighborhood}`
-  text += `\n\n*VISITE GRATUITE!*\n\nVoir l'annonce : ${shareUrl.value}`
+  if (listing.value.neighborhood) text += `, ${listing.value.neighborhood}`
+  text += `\n\n*VISITE GRATUITE!*\n\n${shareUrl.value}`
   return text
 })
 
@@ -180,6 +180,10 @@ function selectVideo(key: string | null) {
       <p class="sd__hint">
         <i class="pi pi-info-circle"></i>
         Plus vous partagez, plus vos vidéos sont visionnées et plus vous gagnez de revenus !
+      </p>
+      <p class="sd__hint sd__hint--wa">
+        <i class="pi pi-whatsapp"></i>
+        Pour que l'aperçu avec image s'affiche sur WhatsApp, envoyez à <strong>un seul contact à la fois</strong>.
       </p>
     </div>
 
@@ -316,4 +320,10 @@ function selectVideo(key: string | null) {
   align-items: center;
   gap: 8px;
 }
+.sd__hint + .sd__hint { margin-top: 6px; }
+.sd__hint--wa {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.sd__hint--wa strong { font-weight: 600; }
 </style>

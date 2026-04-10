@@ -138,6 +138,18 @@ export const usePublicStore = defineStore('public', {
       }
     },
 
+    /** Interprète une phrase (ex. voix) en filtres pour GET /api/listings/. */
+    async fetchSearchIntent(text: string) {
+      const { data } = await http.post<{
+        data: {
+          query_params?: Record<string, unknown>
+          search?: string | null
+          ordering?: string | null
+        }
+      }>('/api/ai/search-intent/', { text })
+      return data.data
+    },
+
     async fetchPublicListing(slug: string) {
       this.listingLoading = true
       try {

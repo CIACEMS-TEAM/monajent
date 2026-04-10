@@ -134,26 +134,52 @@ function statusClass(s: string) {
           <h2 class="db-card__title">Vos annonces</h2>
           <router-link to="/agent/listings" class="db-link">Voir tout</router-link>
         </div>
-        <div v-if="agent.listings.length > 0" class="db-table">
-          <div class="db-table__head">
-            <span class="db-table__col db-table__col--name">Annonce</span>
-            <span class="db-table__col">Statut</span>
-            <span class="db-table__col">Date</span>
-            <span class="db-table__col">Vues</span>
-            <span class="db-table__col">Vidéos</span>
+        <div v-if="agent.listings.length > 0">
+          <!-- Desktop table -->
+          <div class="db-table db-table--desktop">
+            <div class="db-table__head">
+              <span class="db-table__col db-table__col--name">Annonce</span>
+              <span class="db-table__col">Statut</span>
+              <span class="db-table__col">Date</span>
+              <span class="db-table__col">Vues</span>
+              <span class="db-table__col">Vidéos</span>
+            </div>
+            <div v-for="l in agent.listings.slice(0, 5)" :key="l.id" class="db-table__row">
+              <span class="db-table__col db-table__col--name">
+                <div class="db-table__thumb">
+                  <img v-if="l.cover_image" :src="mediaUrl(l.cover_image)!" :alt="l.title" />
+                  <svg v-else viewBox="0 0 24 24" width="12" height="12"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                </div>
+                {{ l.title }}
+              </span>
+              <span class="db-table__col"><span class="db-badge" :class="statusClass(l.status)">{{ statusLabel(l.status) }}</span></span>
+              <span class="db-table__col">{{ new Date(l.created_at).toLocaleDateString('fr-FR') }}</span>
+              <span class="db-table__col">{{ l.views_count }}</span>
+              <span class="db-table__col">{{ l.videos_count }}</span>
+            </div>
           </div>
-          <div v-for="l in agent.listings.slice(0, 5)" :key="l.id" class="db-table__row">
-            <span class="db-table__col db-table__col--name">
-              <div class="db-table__thumb">
+          <!-- Mobile cards -->
+          <div class="db-mcards">
+            <router-link
+              v-for="l in agent.listings.slice(0, 5)"
+              :key="l.id"
+              :to="'/agent/listings'"
+              class="db-mcard"
+            >
+              <div class="db-mcard__img">
                 <img v-if="l.cover_image" :src="mediaUrl(l.cover_image)!" :alt="l.title" />
-                <svg v-else viewBox="0 0 24 24" width="12" height="12"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                <svg v-else viewBox="0 0 24 24" width="20" height="20"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
               </div>
-              {{ l.title }}
-            </span>
-            <span class="db-table__col"><span class="db-badge" :class="statusClass(l.status)">{{ statusLabel(l.status) }}</span></span>
-            <span class="db-table__col">{{ new Date(l.created_at).toLocaleDateString('fr-FR') }}</span>
-            <span class="db-table__col">{{ l.views_count }}</span>
-            <span class="db-table__col">{{ l.videos_count }}</span>
+              <div class="db-mcard__body">
+                <span class="db-mcard__name">{{ l.title }}</span>
+                <div class="db-mcard__row">
+                  <span class="db-badge" :class="statusClass(l.status)">{{ statusLabel(l.status) }}</span>
+                  <span class="db-mcard__stat"><i class="pi pi-eye" style="font-size:11px"></i> {{ l.views_count }}</span>
+                  <span class="db-mcard__stat"><i class="pi pi-video" style="font-size:11px"></i> {{ l.videos_count }}</span>
+                </div>
+                <span class="db-mcard__date">{{ new Date(l.created_at).toLocaleDateString('fr-FR') }}</span>
+              </div>
+            </router-link>
           </div>
         </div>
         <p v-else class="db-empty">Aucune annonce</p>
@@ -163,7 +189,7 @@ function statusClass(s: string) {
 </template>
 
 <style scoped>
-.db { width: 100%; }
+.db { width: 100%; max-width: 100%; overflow-x: hidden; box-sizing: border-box; }
 .db-title { font-size: 22px; font-weight: 700; color: #0f0f0f; margin: 0 0 20px; display: flex; align-items: center; gap: 8px; }
 .db-title__badge { flex-shrink: 0; }
 .db-loading { padding: 48px 0; text-align: center; color: #606060; }
@@ -305,20 +331,114 @@ function statusClass(s: string) {
 .db-badge.draft { background: #f2f2f2; color: #606060; }
 .db-badge.expired { background: #fef2f2; color: #dc2626; }
 
+/* ===== MOBILE CARDS for listings ===== */
+.db-mcards { display: none; }
+
+.db-mcard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f2f2f2;
+  text-decoration: none;
+  color: inherit;
+  transition: background .1s;
+}
+.db-mcard:last-child { border-bottom: none; }
+.db-mcard:active { background: #f8f8f8; }
+
+.db-mcard__img {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.db-mcard__img img { width: 100%; height: 100%; object-fit: cover; }
+
+.db-mcard__body { flex: 1; min-width: 0; }
+.db-mcard__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f0f0f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.db-mcard__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.db-mcard__stat {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #606060;
+}
+.db-mcard__date {
+  font-size: 11px;
+  color: #909090;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .db-top { grid-template-columns: 1fr 1fr; }
   .db-top > :last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 768px) {
-  .db-top { grid-template-columns: 1fr; }
-  .db-visits { flex-direction: column; text-align: center; }
+  .db-top { grid-template-columns: 1fr; gap: 12px; }
+  .db-title { font-size: 18px; margin-bottom: 16px; }
+  .db-visits { flex-direction: column; text-align: center; padding: 14px; }
   .db-visits__left { flex-direction: column; align-items: center; }
-  .db-wallet { flex-direction: column; gap: 10px; }
-  .db-table__head, .db-table__row { grid-template-columns: 2fr 1fr 1fr; }
-  .db-table__head .db-table__col:nth-child(4),
-  .db-table__head .db-table__col:nth-child(5),
-  .db-table__row .db-table__col:nth-child(4),
-  .db-table__row .db-table__col:nth-child(5) { display: none; }
+  .db-visits__count { font-size: 22px; }
+  .db-visits__text { font-size: 13px; }
+  .db-visits__btn { font-size: 12px; padding: 8px 16px; }
+
+  .db-card {
+    padding: 14px;
+    overflow: hidden;
+  }
+  .db-card--full { margin-bottom: 12px; }
+  .db-card__title { font-size: 14px; margin-bottom: 10px; }
+
+  .db-perf__thumb { height: 140px; border-radius: 10px; }
+  .db-perf__stats { gap: 0; justify-content: space-between; }
+  .db-perf__val { font-size: 14px; }
+  .db-perf__lbl { font-size: 10px; }
+
+  .db-analytics__row { gap: 0; justify-content: space-between; }
+  .db-analytics__val { font-size: 18px; }
+  .db-analytics__lbl { font-size: 10px; }
+
+  .db-wallet {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .db-wallet__lbl { font-size: 11px; }
+  .db-wallet__amount { font-size: 20px; }
+  .db-wallet__amount--total { font-size: 16px; }
+  .db-wallet__amount--withdrawn { font-size: 16px; }
+
+  .db-table--desktop { display: none; }
+  .db-mcards { display: flex; flex-direction: column; }
+
+  .db-popular__name { font-size: 11px; }
+  .db-popular__thumb { width: 32px; height: 22px; }
+}
+
+@media (max-width: 400px) {
+  .db-card { padding: 12px; }
+  .db-perf__thumb { height: 120px; }
+  .db-wallet__amount { font-size: 18px; }
+  .db-perf__stats { flex-wrap: wrap; gap: 8px; }
 }
 </style>

@@ -1,0 +1,39 @@
+{
+  "name": "MonaJent — Immobilier en Côte d'Ivoire",
+  "short_name": "MonaJent",
+  "description": "Trouvez votre bien immobilier en vidéo et visitez gratuitement. Location et vente à Abidjan et environs.",
+  "start_url": "/home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1DA53F",
+  "lang": "fr",
+  "categories": ["business", "lifestyle"],
+  "icons": [
+    { "src": "/pwa-icon-72x72.png",   "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-96x96.png",   "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-128x128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-152x152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Accueil",
+      "short_name": "Accueil",
+      "url": "/home",
+      "icons": [{ "src": "/pwa-icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Mes Favoris",
+      "short_name": "Favoris",
+      "url": "/home/favorites",
+      "icons": [{ "src": "/pwa-icon-96x96.png", "sizes": "96x96" }]
+    }
+  ]
+}

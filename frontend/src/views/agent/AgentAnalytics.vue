@@ -146,23 +146,44 @@ const maxReportCount = computed(() =>
       <!-- Top content -->
       <section class="anl__top">
         <h2 class="anl__section-title">Top annonces par vues</h2>
-        <div v-if="data.top_listings.length > 0" class="anl__top-table">
-          <div class="anl__top-head">
-            <span class="anl__top-col anl__top-col--title">Annonce</span>
-            <span class="anl__top-col">Vues</span>
-            <span class="anl__top-col">Favoris</span>
-            <span class="anl__top-col">Taux conv.</span>
+        <div v-if="data.top_listings.length > 0">
+          <!-- Desktop table -->
+          <div class="anl__top-table anl__top-table--desktop">
+            <div class="anl__top-head">
+              <span class="anl__top-col anl__top-col--title">Annonce</span>
+              <span class="anl__top-col">Vues</span>
+              <span class="anl__top-col">Favoris</span>
+              <span class="anl__top-col">Taux conv.</span>
+            </div>
+            <div v-for="l in data.top_listings" :key="l.id" class="anl__top-row">
+              <span class="anl__top-col anl__top-col--title">
+                <div class="anl__top-thumb">
+                  <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+                </div>
+                <span class="anl__top-name">{{ l.title }}</span>
+              </span>
+              <span class="anl__top-col">{{ l.views_count }}</span>
+              <span class="anl__top-col">{{ l.favorites_count }}</span>
+              <span class="anl__top-col">{{ l.views_count > 0 ? ((l.favorites_count / l.views_count) * 100).toFixed(1) + '%' : '—' }}</span>
+            </div>
           </div>
-          <div v-for="l in data.top_listings" :key="l.id" class="anl__top-row">
-            <span class="anl__top-col anl__top-col--title">
-              <div class="anl__top-thumb">
-                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+          <!-- Mobile cards -->
+          <div class="anl__top-cards">
+            <div v-for="l in data.top_listings" :key="l.id" class="anl__top-card">
+              <div class="anl__top-card-left">
+                <div class="anl__top-thumb">
+                  <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#aaa" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+                </div>
+                <div class="anl__top-card-info">
+                  <span class="anl__top-card-name">{{ l.title }}</span>
+                  <div class="anl__top-card-stats">
+                    <span><i class="pi pi-eye" style="font-size:11px"></i> {{ l.views_count }}</span>
+                    <span><i class="pi pi-heart" style="font-size:11px"></i> {{ l.favorites_count }}</span>
+                    <span>{{ l.views_count > 0 ? ((l.favorites_count / l.views_count) * 100).toFixed(1) + '%' : '—' }}</span>
+                  </div>
+                </div>
               </div>
-              <span class="anl__top-name">{{ l.title }}</span>
-            </span>
-            <span class="anl__top-col">{{ l.views_count }}</span>
-            <span class="anl__top-col">{{ l.favorites_count }}</span>
-            <span class="anl__top-col">{{ l.views_count > 0 ? ((l.favorites_count / l.views_count) * 100).toFixed(1) + '%' : '—' }}</span>
+            </div>
           </div>
         </div>
         <p v-else class="anl__empty">Aucune annonce active</p>
@@ -441,13 +462,71 @@ const maxReportCount = computed(() =>
 .anl__avg-label { font-size: 13px; color: #606060; margin-bottom: 4px; }
 .anl__avg-val { font-size: 24px; font-weight: 700; color: #1DA53F; }
 
+/* ====== MOBILE CARDS for top listings ====== */
+.anl__top-cards { display: none; }
+
+.anl__top-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f2f2f2;
+}
+.anl__top-card:last-child { border-bottom: none; }
+.anl__top-card-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.anl__top-card-info { flex: 1; min-width: 0; }
+.anl__top-card-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0F0F0F;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.anl__top-card-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: #606060;
+}
+.anl__top-card-stats span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
 @media (max-width: 900px) {
   .anl__summary { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
-  .anl__summary { grid-template-columns: 1fr; }
+  .anl__title { font-size: 20px; }
+  .anl__summary { grid-template-columns: repeat(2, 1fr); }
+  .anl__summary-val { font-size: 22px; }
+  .anl__summary-card { padding: 14px; }
   .anl__avg { grid-template-columns: 1fr; }
-  .anl__top-head .anl__top-col:nth-child(4),
-  .anl__top-row .anl__top-col:nth-child(4) { display: none; }
+  .anl__avg-val { font-size: 20px; }
+  .anl__chart-section { padding: 14px; }
+  .anl__top { padding: 14px; }
+  .anl__reports-section { padding: 14px; }
+
+  .anl__top-table--desktop { display: none; }
+  .anl__top-cards { display: flex; flex-direction: column; }
+
+  .anl__daterange { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .anl__date-inputs { width: 100%; }
+  .anl__date-field { flex: 1; }
+  .anl__date-field input { width: 100%; }
+}
+@media (max-width: 480px) {
+  .anl__summary { grid-template-columns: 1fr; }
+  .anl__presets { width: 100%; justify-content: space-between; }
 }
 </style>

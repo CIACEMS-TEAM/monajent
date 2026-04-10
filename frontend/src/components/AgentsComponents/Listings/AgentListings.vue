@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAgentStore, type ListingListItem } from '@/Stores/agent'
 import ListingFormDialog from './ListingFormDialog.vue'
@@ -17,6 +17,11 @@ import { useToast } from 'vue-toastification'
 const agent = useAgentStore()
 const toast = useToast()
 const route = useRoute()
+
+const isMobileView = ref(window.innerWidth < 768)
+function onResize() { isMobileView.value = window.innerWidth < 768 }
+onMounted(() => window.addEventListener('resize', onResize))
+onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 const filter = ref('ALL')
 const search = ref((route.query.q as string) || '')
@@ -69,9 +74,13 @@ watch(() => route.query.q, (q) => {
   search.value = (q as string) || ''
 })
 
-watch(() => route.query.action, (action) => {
-  if (action === 'new') openNew()
-}, { immediate: true })
+watch(
+  () => route.query.action + '|' + (route.query._t || ''),
+  () => {
+    if (route.query.action === 'new') openNew()
+  },
+  { immediate: true },
+)
 
 const filtered = computed(() => {
   let list = agent.listings
@@ -304,8 +313,9 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
       <span>Chargement des annonces...</span>
     </div>
 
+    <!-- Desktop: DataTable -->
     <DataTable
-      v-else
+      v-else-if="!isMobileView"
       :value="filtered"
       :paginator="filtered.length > 10"
       :rows="10"
@@ -422,6 +432,67 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
         </template>
       </Column>
     </DataTable>
+
+    <!-- Mobile: Card list -->
+    <template v-else-if="isMobileView && !agent.listingsLoading">
+      <div v-if="filtered.length === 0" class="lstg__empty-mobile">
+        <svg viewBox="0 0 24 24" width="48" height="48"><path fill="#E0E0E0" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5v-9l6 4.5-6 4.5z"/></svg>
+        <p>Aucune annonce dans cette catégorie</p>
+      </div>
+      <div v-else class="lstg__cards">
+        <div
+          v-for="item in filtered"
+          :key="item.id"
+          class="lstg__card"
+          :class="{ 'lstg__card--selected': selectedIds.includes(item.id) }"
+        >
+          <div class="lstg__card-header" @click="openDetail(item.id)">
+            <div class="lstg__card-cover">
+              <img v-if="coverUrl(item)" :src="coverUrl(item)!" alt="" />
+              <svg v-else viewBox="0 0 24 24" width="28" height="28"><path fill="#ccc" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+            </div>
+            <div class="lstg__card-badges">
+              <Tag :value="typeLabel(item.listing_type)" :severity="item.listing_type === 'LOCATION' ? 'info' : 'warn'" />
+              <Tag :value="statusLabel(item.status)" :severity="statusSeverity(item.status)" />
+            </div>
+          </div>
+          <div class="lstg__card-body">
+            <div class="lstg__card-title-row">
+              <input type="checkbox" :checked="selectedIds.includes(item.id)" @change="toggleSelect(item.id)" class="lstg__checkbox" />
+              <h3 class="lstg__card-name" @click="openDetail(item.id)">{{ item.title }}</h3>
+            </div>
+            <div class="lstg__card-location">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="#606060" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+              {{ item.city }}<template v-if="item.neighborhood"> — {{ item.neighborhood }}</template>
+            </div>
+            <div class="lstg__card-price">{{ formatPrice(item.price) }}</div>
+            <div class="lstg__card-meta">
+              <span v-if="item.expires_at" class="lstg__card-meta-item">
+                <i class="pi pi-clock"></i> {{ expiryLabel(item) }}
+              </span>
+              <span class="lstg__card-meta-item"><i class="pi pi-eye"></i> {{ item.views_count }}</span>
+              <span class="lstg__card-meta-item"><i class="pi pi-heart"></i> {{ item.favorites_count }}</span>
+              <span class="lstg__card-meta-item"><i class="pi pi-video"></i> {{ item.videos_count }}</span>
+              <span v-if="item.reports_count > 0" class="lstg__card-meta-item lstg__card-meta-item--danger">
+                <i class="pi pi-flag"></i> {{ item.reports_count }}
+              </span>
+            </div>
+            <div class="lstg__card-date">{{ new Date(item.created_at).toLocaleDateString('fr-FR') }}</div>
+          </div>
+          <div class="lstg__card-actions">
+            <Button v-if="item.status === 'INACTIF'" label="Publier" icon="pi pi-send" severity="success" size="small" :loading="toggling === item.id" @click="doPublish(item)" />
+            <Button v-if="item.status === 'ACTIF'" label="Retirer" icon="pi pi-eye-slash" severity="secondary" size="small" outlined :loading="toggling === item.id" @click="doUnpublish(item)" />
+            <Button icon="pi pi-share-alt" severity="success" text rounded size="small" title="Partager" @click="openShare(item.id)" />
+            <Button icon="pi pi-pencil" severity="secondary" text rounded size="small" title="Modifier" @click="openEdit(item.id)" />
+            <span class="lstg__note-btn-wrap">
+              <Button icon="pi pi-file-edit" :severity="item.agent_note ? 'warn' : 'secondary'" text rounded size="small" title="Note" @click="openNote(item)" />
+              <span v-if="item.agent_note" class="lstg__note-dot"></span>
+            </span>
+            <Button icon="pi pi-trash" severity="danger" text rounded size="small" title="Supprimer" @click="deleteTarget = item" />
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Delete Dialog -->
     <Dialog
@@ -786,10 +857,244 @@ async function doBulk(action: 'activate' | 'deactivate' | 'delete') {
 }
 .lstg__kyc-modal-go:hover { background: #178A33; }
 
+/* ====== MOBILE CARDS ====== */
+.lstg__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lstg__card {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: box-shadow .15s;
+}
+.lstg__card--selected {
+  border-color: #1DA53F;
+  box-shadow: 0 0 0 2px rgba(29,165,63,.15);
+}
+
+.lstg__card-header {
+  position: relative;
+  cursor: pointer;
+}
+.lstg__card-cover {
+  width: 100%;
+  height: 180px;
+  background: #f2f2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.lstg__card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.lstg__card-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.lstg__card-body {
+  padding: 14px;
+}
+.lstg__card-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.lstg__card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0F0F0F;
+  margin: 0;
+  cursor: pointer;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.lstg__card-name:active { color: #1DA53F; }
+
+.lstg__card-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #606060;
+  margin-bottom: 8px;
+}
+
+.lstg__card-price {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1DA53F;
+  margin-bottom: 8px;
+}
+
+.lstg__card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.lstg__card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #606060;
+}
+.lstg__card-meta-item i { font-size: 12px; }
+.lstg__card-meta-item--danger { color: #dc2626; font-weight: 600; }
+
+.lstg__card-date {
+  font-size: 12px;
+  color: #909090;
+}
+
+.lstg__card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border-top: 1px solid #f2f2f2;
+  flex-wrap: wrap;
+}
+
+.lstg__empty-mobile {
+  text-align: center;
+  padding: 48px 16px;
+  color: #606060;
+}
+.lstg__empty-mobile p { margin-top: 12px; font-size: 14px; }
+
 @media (max-width: 768px) {
+  .lstg { overflow-x: hidden; }
   .lstg__thumb { width: 80px; height: 48px; }
-  .lstg__header { flex-direction: column; align-items: flex-start; }
-  .lstg__header-right { flex-direction: column; width: 100%; }
-  .lstg__search-input { width: 100%; }
+
+  .lstg__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .lstg__title { font-size: 18px; }
+  .lstg__header-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+  .lstg__search {
+    width: 100%;
+  }
+  .lstg__search-input {
+    width: 100% !important;
+    height: 42px;
+    border-radius: 12px !important;
+    font-size: 14px;
+    border: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .lstg__search-input:focus {
+    border-color: #1DA53F !important;
+    box-shadow: 0 0 0 3px rgba(29,165,63,.1) !important;
+    background: #fff !important;
+  }
+  .lstg__new-btn {
+    width: 100%;
+    justify-content: center;
+    border-radius: 12px !important;
+    height: 42px;
+    font-size: 14px !important;
+  }
+
+  .lstg__tabs :deep(.p-tabmenu-nav) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 4px;
+    padding: 0 2px 8px;
+  }
+  .lstg__tabs :deep(.p-tabmenu-nav::-webkit-scrollbar) { display: none; }
+  .lstg__tabs :deep(.p-tabmenuitem) { flex-shrink: 0; }
+  .lstg__tabs :deep(.p-tabmenuitem .p-menuitem-link) {
+    padding: 8px 14px;
+    font-size: 13px;
+    border-radius: 20px !important;
+    white-space: nowrap;
+  }
+
+  .lstg__bulk-bar {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+  .lstg__bulk-count { width: 100%; margin-bottom: 4px; }
+  .lstg__bulk-btn { border-radius: 8px; }
+
+  .lstg__card {
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+  }
+  .lstg__card-cover { height: 200px; }
+  .lstg__card-badges {
+    top: 12px;
+    left: 12px;
+  }
+  .lstg__card-body { padding: 14px 16px; }
+  .lstg__card-name {
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .lstg__card-location {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+  .lstg__card-price {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .lstg__card-meta {
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .lstg__card-meta-item {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .lstg__card-date { font-size: 11px; color: #9ca3af; }
+  .lstg__card-actions {
+    padding: 10px 16px;
+    gap: 2px;
+    border-top: 1px solid #f3f4f6;
+  }
+
+  .lstg__kyc-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 14px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .lstg__card-cover { height: 180px; }
+  .lstg__card-body { padding: 12px 14px; }
+  .lstg__card-actions { padding: 8px 14px; }
+  .lstg__card-price { font-size: 15px; }
 }
 </style>

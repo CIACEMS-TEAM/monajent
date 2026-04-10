@@ -5,6 +5,8 @@ import logoUrl from '@/assets/icons/logo_monajent.webp'
 const STORAGE_KEY_PERMANENT = 'monajent_welcome_dismissed'
 const STORAGE_KEY_SESSION = 'monajent_welcome_seen'
 
+const emit = defineEmits<{ (e: 'closed'): void }>()
+
 const visible = ref(false)
 
 onMounted(() => {
@@ -18,11 +20,13 @@ onMounted(() => {
 function handleUnderstood() {
   sessionStorage.setItem(STORAGE_KEY_SESSION, '1')
   visible.value = false
+  emit('closed')
 }
 
 function handleNeverShow() {
   localStorage.setItem(STORAGE_KEY_PERMANENT, '1')
   visible.value = false
+  emit('closed')
 }
 </script>
 

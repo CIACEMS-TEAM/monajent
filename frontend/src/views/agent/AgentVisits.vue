@@ -1022,8 +1022,46 @@ const dayOptions = [
 }
 
 @media (max-width: 768px) {
+  .vis__title { font-size: 20px; }
+
+  .vis__main-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+  }
+  .vis__main-tabs::-webkit-scrollbar { display: none; }
+  .vis__main-tab { padding: 10px 16px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+
+  .vis__tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .vis__tabs::-webkit-scrollbar { display: none; }
+  .vis__tab { padding: 8px 12px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+
+  .vis__card { padding: 14px; }
+  .vis__card-top { flex-direction: column; gap: 10px; }
+  .vis__card-right {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .vis__card-listing { font-size: 15px; }
+  .vis__actions { flex-wrap: wrap; gap: 8px; }
+  .vis__btn { padding: 8px 14px; font-size: 13px; }
+
+  .vis__code-row { flex-wrap: wrap; }
+  .vis__code-input { width: 100%; }
+
   .avail__header { flex-direction: column; align-items: flex-start; }
+  .avail__add-btn { width: 100%; justify-content: center; }
   .avail__time-row { flex-direction: column; gap: 0; }
+  .avail__slot { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+  .avail__slot-actions { width: 100%; justify-content: flex-end; }
+
   .confirm__coords-row { flex-direction: column; gap: 0; }
 }
 </style>

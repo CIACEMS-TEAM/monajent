@@ -531,14 +531,77 @@ onMounted(() => support.fetchTickets())
 
 /* ── Responsive ──────────────────────────── */
 @media (max-width: 640px) {
-  .sp { padding: 20px 12px 32px; }
-  .sp-header { flex-direction: column; gap: 12px; }
-  .sp-header__cta { align-self: stretch; justify-content: center; }
-  .sp-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .sp-stat { padding: 10px 8px; }
+  .sp { padding: 16px 12px 32px; }
+
+  .sp-header { flex-direction: column; gap: 10px; }
+  .sp-header__title { font-size: 20px; }
+  .sp-header__sub { font-size: 13px; }
+  .sp-header__cta {
+    align-self: stretch;
+    justify-content: center;
+    border-radius: 12px;
+    padding: 12px 20px;
+  }
+
+  .sp-stats {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .sp-stat {
+    padding: 10px 6px;
+    border-radius: 10px;
+  }
   .sp-stat__num { font-size: 18px; }
-  .sp-toolbar { flex-direction: column; align-items: stretch; }
+  .sp-stat__label { font-size: 11px; }
+
+  .sp-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .sp-filters {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .sp-filters::-webkit-scrollbar { display: none; }
+  .sp-filter {
+    padding: 7px 12px;
+    font-size: 12px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
   .sp-search { min-width: unset; }
-  .sp-ticket__subject { white-space: normal; }
+  .sp-search__input {
+    padding: 10px 12px 10px 34px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  .sp-ticket {
+    padding: 14px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+  .sp-ticket__subject {
+    white-space: normal;
+    font-size: 14px;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .sp-ticket__row3 { font-size: 11px; }
+  .sp-badge { font-size: 10px; padding: 2px 7px; }
+
+  .sp-empty { padding: 40px 16px; }
+  .sp-empty__title { font-size: 16px; }
+  .sp-empty__text { font-size: 13px; }
+  .sp-empty__cta {
+    border-radius: 12px;
+    padding: 12px 24px;
+  }
 }
 </style>

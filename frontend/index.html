@@ -10,8 +10,15 @@
   <link rel="dns-prefetch" href="https://api.monajent.com">
   <link rel="dns-prefetch" href="https://478a04a0573a507a104004d51faea431.r2.cloudflarestorage.com">
   <link rel="icon" href="/favicon.ico" sizes="32x32 64x64">
-  <link rel="icon" href="/logo_icone_192.png" type="image/png" sizes="192x192">
-  <link rel="apple-touch-icon" href="/logo_icone_192.png">
+  <link rel="icon" href="/pwa-icon-192x192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1DA53F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="MonaJent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="MonaJent">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="MonaJent">
   <meta property="og:title" content="MonaJent — Immobilier en Côte d'Ivoire">
@@ -54,6 +61,13 @@
 <body>
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {})
+      })
+    }
+  </script>
 </body>
 
 </html>

@@ -465,7 +465,10 @@ function spaUrl(): string { return window.location.origin + `/home/annonce/${lis
 function ogUrl(): string { return `${window.location.origin}/share/${listingSlug.value}/` }
 function shareText(): string {
   if (!pub.listing) return ogUrl()
-  return `${pub.listing.title}\n${formatPrice(pub.listing.price)} — ${pub.listing.city}\n\nVisite Gratuite !\n${ogUrl()}`
+  const type = pub.listing.listing_type === 'LOCATION' ? 'Location' : 'Vente'
+  let loc = pub.listing.city || ''
+  if (pub.listing.neighborhood) loc += `, ${pub.listing.neighborhood}`
+  return `${pub.listing.title}\n${type} — ${formatPrice(pub.listing.price)}\n${loc}\n\nVISITE GRATUITE!\n\n${ogUrl()}`
 }
 async function copyLink() {
   try { await navigator.clipboard.writeText(spaUrl()); toast.success('Lien copié !') }
@@ -1746,7 +1749,6 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .yw-grid { grid-template-columns: 1fr; }
-  .yw-right { order: -1; }
   .yw-filters { position: static; }
   .yw-suggestions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
   .yw-sg { min-width: 300px; flex: 1; }
@@ -1754,13 +1756,21 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
 @media (max-width: 640px) {
   .yw-player__frame { border-radius: 0; max-height: 260px; }
-  .yw-title { font-size: 15px; }
+  .yw-title { font-size: 15px; padding: 0 12px; }
+  .yw-meta { padding: 0 12px; }
+  .yw-conditions { margin-left: 12px; margin-right: 12px; }
+  .yw-conditions__other { padding: 0 12px; }
+  .yw-actions { margin: 0 12px; }
+  .yw-agent { margin: 0 12px; }
+  .yw-desc { margin: 10px 12px; }
+  .yw-cta { padding: 0 12px; flex-direction: column; }
+  .yw-cta__btn { min-width: 0; padding: 10px 14px; font-size: 13px; }
   .yw-price { font-size: 15px; }
   .yw-act span { display: none; }
   .yw-act { padding: 5px 8px; }
-  .yw-cta { flex-direction: column; }
-  .yw-cta__btn { min-width: 0; padding: 10px 14px; font-size: 13px; }
+  .yw-vids { padding: 10px 12px 0; }
   .yw-vids__grid { grid-template-columns: 1fr; }
+  .yw-right { padding: 0 12px; }
   .yw-suggestions { flex-direction: column; }
   .yw-sg { min-width: 0; }
   .yw-sg__thumb { width: 130px; height: 73px; }
