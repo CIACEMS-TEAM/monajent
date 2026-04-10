@@ -5,10 +5,12 @@ import { useAgentStore } from '@/Stores/agent'
 import logoOm from '@/assets/icons/logo_om.png'
 import logoWave from '@/assets/icons/logo_wave.png'
 import logoMtn from '@/assets/icons/logo_mtn.png'
+import tutorialVideo from '@/assets/media/MonaJent__Gagnez_de_l_argent.mp4'
 
 const agent = useAgentStore()
 const toast = useToast()
 
+const showTutorial = ref(false)
 const showWithdraw = ref(false)
 const withdrawForm = ref({ amount: '', method: 'ORANGE_MONEY', phone_number: '', pin: '' })
 const withdrawLoading = ref(false)
@@ -84,6 +86,31 @@ const methods = [
 <template>
   <div class="wlt">
     <h1 class="wlt__title">Revenus</h1>
+
+    <!-- Tutoriel vidéo -->
+    <div class="wlt__tuto">
+      <button class="wlt__tuto-cta" @click="showTutorial = !showTutorial">
+        <span class="wlt__tuto-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path fill="#fff" d="M8 5v14l11-7z"/></svg>
+        </span>
+        <span class="wlt__tuto-text">
+          <strong>Comment gagner de l'argent avec vos vidéos ?</strong>
+          <small>Découvrez comment monétiser vos annonces sur MonaJent</small>
+        </span>
+        <i class="pi" :class="showTutorial ? 'pi-chevron-up' : 'pi-chevron-down'" style="color: #fff; font-size: 14px; flex-shrink: 0"></i>
+      </button>
+      <Transition name="wlt-tuto-slide">
+        <div v-if="showTutorial" class="wlt__tuto-player">
+          <video
+            controls
+            playsinline
+            preload="metadata"
+            :src="tutorialVideo"
+            class="wlt__tuto-video"
+          ></video>
+        </div>
+      </Transition>
+    </div>
 
     <!-- Loading -->
     <div v-if="agent.walletLoading && !agent.wallet" class="wlt__loading">
@@ -251,6 +278,68 @@ const methods = [
 .wlt { max-width: 1000px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
 .wlt__title { font-size: 24px; font-weight: 700; color: #0F0F0F; margin-bottom: 24px; }
 .wlt__loading { padding: 48px 0; text-align: center; color: #606060; }
+
+/* Tutoriel vidéo */
+.wlt__tuto {
+  margin-bottom: 20px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(29,165,63,.15);
+}
+.wlt__tuto-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border: none;
+  background: linear-gradient(135deg, #1DA53F 0%, #15803d 60%, #166534 100%);
+  cursor: pointer;
+  text-align: left;
+  transition: filter .15s;
+}
+.wlt__tuto-cta:hover { filter: brightness(1.08); }
+.wlt__tuto-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,.2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: transform .2s;
+}
+.wlt__tuto-cta:hover .wlt__tuto-icon { transform: scale(1.1); }
+.wlt__tuto-text {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.wlt__tuto-text strong {
+  font-size: 14px; color: #fff; line-height: 1.3;
+}
+.wlt__tuto-text small {
+  font-size: 12px; color: rgba(255,255,255,.75); font-weight: 400;
+}
+.wlt__tuto-player {
+  background: #000;
+  overflow: hidden;
+}
+.wlt__tuto-video {
+  width: 100%;
+  max-height: 340px;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+.wlt-tuto-slide-enter-active { transition: all .3s ease; }
+.wlt-tuto-slide-leave-active { transition: all .2s ease; }
+.wlt-tuto-slide-enter-from,
+.wlt-tuto-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+.wlt-tuto-slide-enter-to,
+.wlt-tuto-slide-leave-from {
+  max-height: 400px;
+  opacity: 1;
+}
 
 /* KPI Row */
 .wlt__kpi-row {
@@ -539,6 +628,15 @@ const methods = [
     overflow-x: hidden;
   }
   .wlt__title { font-size: 18px; margin-bottom: 16px; }
+
+  /* Tutoriel */
+  .wlt__tuto { margin-bottom: 14px; border-radius: 12px; }
+  .wlt__tuto-cta { padding: 12px 14px; gap: 10px; }
+  .wlt__tuto-icon { width: 38px; height: 38px; }
+  .wlt__tuto-icon svg { width: 18px; height: 18px; }
+  .wlt__tuto-text strong { font-size: 13px; }
+  .wlt__tuto-text small { font-size: 11px; }
+  .wlt__tuto-video { max-height: 220px; }
 
   /* KPI */
   .wlt__kpi-row {

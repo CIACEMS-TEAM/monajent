@@ -1,5 +1,19 @@
 <template>
   <div>
+    <!-- Search active banner -->
+    <div v-if="activeSearch" class="yt-search-banner">
+      <div class="yt-search-banner__info">
+        <i class="pi pi-search"></i>
+        <span>Résultats pour <strong>« {{ activeSearch }} »</strong></span>
+        <span v-if="!pub.listingsLoading" class="yt-search-banner__count">
+          — {{ pub.listings.length }} annonce{{ pub.listings.length !== 1 ? 's' : '' }}
+        </span>
+      </div>
+      <button class="yt-search-banner__clear" @click="clearSearch">
+        <i class="pi pi-times"></i> Effacer
+      </button>
+    </div>
+
     <!-- Category Chips -->
     <div class="yt-chips-bar">
       <div class="yt-chips-scroll">
@@ -14,7 +28,6 @@
         </button>
       </div>
     </div>
-
 
     <!-- Loading -->
     <div v-if="pub.listingsLoading" class="yt-loading">
@@ -101,8 +114,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore, type ListingListItem, type PublicListingAgent } from '@/Stores/public'
 import { useToast } from 'vue-toastification'
@@ -111,7 +124,10 @@ import { API_BASE } from '@/services/http'
 const auth = useAuthStore()
 const pub = usePublicStore()
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
+
+const activeSearch = computed(() => (route.query.q as string) || '')
 
 async function toggleFavorite(e: Event, listingId: number) {
   e.stopPropagation()
@@ -125,19 +141,29 @@ async function toggleFavorite(e: Event, listingId: number) {
 }
 
 const activeChip = ref('all')
+const knownCities = ref<string[]>([])
 
+function captureAvailableCities(listings: ListingListItem[]) {
+  const countMap = new Map<string, number>()
+  for (const l of listings) {
+    if (l.city) countMap.set(l.city, (countMap.get(l.city) || 0) + 1)
+  }
+  knownCities.value = [...countMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+}
 
-
-const chips = [
-  { label: 'Tous', value: 'all' },
-  { label: 'Location', value: 'LOCATION' },
-  { label: 'Vente', value: 'VENTE' },
-  { label: 'Abidjan', value: 'Abidjan' },
-  { label: 'Cocody', value: 'Cocody' },
-  { label: 'Plateau', value: 'Plateau' },
-  { label: 'Marcory', value: 'Marcory' },
-  { label: 'Yopougon', value: 'Yopougon' },
-]
+const chips = computed(() => {
+  const base: { label: string; value: string }[] = [
+    { label: 'Tous', value: 'all' },
+    { label: 'Location', value: 'LOCATION' },
+    { label: 'Vente', value: 'VENTE' },
+  ]
+  for (const city of knownCities.value) {
+    base.push({ label: city, value: city })
+  }
+  return base
+})
 
 interface DisplayListing {
   id: number
@@ -247,8 +273,13 @@ async function loadListings() {
   } else if (activeChip.value !== 'all') {
     params.city = activeChip.value
   }
+  const q = (route.query.q as string || '').trim()
+  if (q) params.search = q
   try {
     await pub.fetchListings(params)
+    if (activeChip.value === 'all' && !q && knownCities.value.length === 0) {
+      captureAvailableCities(pub.listings)
+    }
   } catch (_) {}
 }
 
@@ -257,12 +288,63 @@ function selectChip(value: string) {
   loadListings()
 }
 
+function clearSearch() {
+  router.replace({ path: '/home', query: {} })
+}
+
+watch(() => route.query.q, () => {
+  loadListings()
+})
+
 onMounted(() => {
   loadListings()
 })
 </script>
 
 <style scoped>
+/* Search banner */
+.yt-search-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  margin-bottom: 0;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+.yt-search-banner__info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #166534;
+  flex-wrap: wrap;
+}
+.yt-search-banner__info i { font-size: 15px; color: #1DA53F; }
+.yt-search-banner__info strong { font-weight: 600; }
+.yt-search-banner__count { font-size: 13px; color: #15803d; }
+.yt-search-banner__clear {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 16px;
+  background: #fff;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.yt-search-banner__clear:hover { background: #fef2f2; }
+.yt-search-banner__clear i { font-size: 11px; }
+
 .yt-chips-bar {
   position: sticky;
   top: 56px;

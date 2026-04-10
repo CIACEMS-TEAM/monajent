@@ -157,6 +157,8 @@ function toggle() {
   open.value = !open.value
 }
 
+defineExpose({ toggle })
+
 function dismiss() {
   stopRecording()
   monaStop()
@@ -292,27 +294,46 @@ function intentToParams(intent: {
   return out
 }
 
+const emptyLocationName = computed(() => {
+  if (resultCount.value > 0) return ''
+  const city = appliedFilters.value.find(f => f.label === 'Ville')
+  const quartier = appliedFilters.value.find(f => f.label === 'Quartier')
+  const keywords = appliedFilters.value.find(f => f.label === 'Mots-clés')
+  if (quartier) return quartier.value
+  if (city) return city.value
+  if (keywords) return keywords.value
+  return ''
+})
+
 function buildDoneSpeech(count: number, filters: { label: string; value: string }[]): string {
   const parts: string[] = []
+  const city = filters.find(f => f.label === 'Ville')
+  const quartier = filters.find(f => f.label === 'Quartier')
+  const type = filters.find(f => f.label === 'Type')
+  const keywords = filters.find(f => f.label === 'Mots-clés')
+  const locationName = quartier?.value || city?.value || keywords?.value || ''
 
   if (count === 0) {
-    parts.push('Aucune annonce ne correspond à vos critères.')
-    parts.push('Essayez d\'élargir votre recherche.')
+    if (locationName) {
+      parts.push(`Malheureusement, il n'y a pas encore de biens immobiliers enregistrés dans la zone « ${locationName} » sur notre plateforme.`)
+      parts.push('Nos agents y ajoutent de nouvelles annonces régulièrement.')
+      parts.push('Vous pouvez essayer une zone proche ou élargir votre recherche.')
+    } else {
+      parts.push('Aucune annonce ne correspond à vos critères pour le moment.')
+      parts.push('Essayez de modifier ou d\'élargir votre recherche.')
+    }
   } else if (count === 1) {
     parts.push('J\'ai trouvé 1 annonce correspondant à vos critères.')
   } else {
     parts.push(`J'ai trouvé ${count} annonces correspondant à vos critères.`)
   }
 
-  const city = filters.find(f => f.label === 'Ville')
-  const type = filters.find(f => f.label === 'Type')
-  if (city && type) {
-    parts.push(`${type.value} à ${city.value}.`)
-  } else if (city) {
-    parts.push(`À ${city.value}.`)
-  }
-
   if (count > 0) {
+    if (city && type) {
+      parts.push(`${type.value} à ${city.value}.`)
+    } else if (city) {
+      parts.push(`À ${city.value}.`)
+    }
     parts.push('Les résultats sont affichés ci-dessous.')
   }
 
@@ -584,9 +605,29 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <p v-if="resultCount === 0" class="ms-done__empty-hint">
-              Essayez d'élargir vos critères ou de modifier votre recherche.
-            </p>
+            <div v-if="resultCount === 0" class="ms-done__empty">
+              <p v-if="emptyLocationName" class="ms-done__empty-main">
+                Il n'y a pas encore de biens immobiliers enregistrés dans la zone <strong>« {{ emptyLocationName }} »</strong> sur notre plateforme.
+              </p>
+              <p v-else class="ms-done__empty-main">
+                Aucune annonce ne correspond à vos critères pour le moment.
+              </p>
+              <div class="ms-done__empty-tips">
+                <p class="ms-done__empty-tip">
+                  <i class="pi pi-map-marker"></i>
+                  <span v-if="emptyLocationName">Essayez une zone proche ou un quartier voisin</span>
+                  <span v-else>Essayez une autre localisation</span>
+                </p>
+                <p class="ms-done__empty-tip">
+                  <i class="pi pi-sliders-h"></i>
+                  <span>Modifiez vos critères (budget, type de bien...)</span>
+                </p>
+                <p class="ms-done__empty-tip">
+                  <i class="pi pi-clock"></i>
+                  <span>De nouvelles annonces sont ajoutées régulièrement</span>
+                </p>
+              </div>
+            </div>
           </div>
 
           <div class="ms-done__actions">
@@ -1039,11 +1080,43 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: #15803d;
 }
-.ms-done__empty-hint {
+.ms-done__empty {
+  margin-top: 4px;
+  text-align: left;
+}
+.ms-done__empty-main {
   font-size: 13px;
-  color: #666;
-  margin: 8px 0 0;
+  color: #555;
+  line-height: 1.5;
+  margin: 0 0 12px;
+  text-align: center;
+}
+.ms-done__empty-main strong {
+  color: #0f0f0f;
+  font-weight: 600;
+}
+.ms-done__empty-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: #f8faf9;
+  border: 1px solid #e8f0eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ms-done__empty-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #555;
+  margin: 0;
   line-height: 1.4;
+}
+.ms-done__empty-tip i {
+  font-size: 13px;
+  color: #1DA53F;
+  flex-shrink: 0;
 }
 .ms-done__actions {
   display: flex;
@@ -1113,29 +1186,22 @@ onBeforeUnmount(() => {
 .ms-invite-leave-to { opacity: 0; transform: translateY(10px) scale(0.95); }
 
 /* ─── MOBILE ───────────────────────────────────────────────── */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
+  .ms-fab {
+    display: none !important;
+  }
+  .ms-invite {
+    bottom: 62px;
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(280px, calc(100vw - 32px));
+  }
   .ms-panel {
     width: calc(100vw - 16px);
     right: 8px;
     bottom: 8px;
     max-height: calc(100vh - 70px);
-  }
-  .ms-fab {
-    bottom: 64px;
-    right: 16px;
-  }
-  .ms-invite {
-    bottom: 130px;
-    right: 16px;
-    max-width: 240px;
-  }
-}
-@media (min-width: 481px) and (max-width: 768px) {
-  .ms-fab {
-    bottom: 64px;
-  }
-  .ms-invite {
-    bottom: 130px;
   }
 }
 </style>

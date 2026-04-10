@@ -82,16 +82,29 @@ const reportReasons = [
   { value: 'OTHER', label: 'Autre' },
 ]
 
-const chips = [
-  { label: 'Tous', value: 'all' },
-  { label: 'Location', value: 'LOCATION' },
-  { label: 'Vente', value: 'VENTE' },
-  { label: 'Abidjan', value: 'Abidjan' },
-  { label: 'Cocody', value: 'Cocody' },
-  { label: 'Plateau', value: 'Plateau' },
-  { label: 'Marcory', value: 'Marcory' },
-  { label: 'Yopougon', value: 'Yopougon' },
-]
+const knownCities = ref<string[]>([])
+
+function captureAvailableCities(listings: ListingListItem[]) {
+  const countMap = new Map<string, number>()
+  for (const l of listings) {
+    if (l.city) countMap.set(l.city, (countMap.get(l.city) || 0) + 1)
+  }
+  knownCities.value = [...countMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+}
+
+const chips = computed(() => {
+  const base: { label: string; value: string }[] = [
+    { label: 'Tous', value: 'all' },
+    { label: 'Location', value: 'LOCATION' },
+    { label: 'Vente', value: 'VENTE' },
+  ]
+  for (const city of knownCities.value) {
+    base.push({ label: city, value: city })
+  }
+  return base
+})
 
 function mediaUrl(url: string | null): string | null {
   if (!url) return null
@@ -190,6 +203,9 @@ async function loadOtherListings() {
     else if (activeChip.value !== 'all') params.city = activeChip.value
     await pub.fetchListings(params)
     otherListings.value = (pub.listings ?? []).filter(l => l.slug !== listingSlug.value).slice(0, 20)
+    if (activeChip.value === 'all' && knownCities.value.length === 0) {
+      captureAvailableCities(pub.listings ?? [])
+    }
   } catch (_) {}
 }
 
@@ -1397,14 +1413,23 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 }
 
 /* ===== RIGHT SIDEBAR ===== */
-.yw-right { min-width: 0; }
+.yw-right {
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
 /* Filters */
 .yw-filters {
   display: flex; flex-wrap: wrap; gap: 6px;
-  padding-bottom: 12px; margin-bottom: 12px;
+  padding: 2px 0 12px; margin-bottom: 0;
   border-bottom: 1px solid #e5e5e5;
-  position: sticky; top: 0; background: #f9f9f9; z-index: 5; padding-top: 2px;
+  background: #f9f9f9; z-index: 5;
+  flex-shrink: 0;
 }
 .yw-filter {
   padding: 5px 10px; border-radius: 6px; border: none;
@@ -1416,7 +1441,15 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 .yw-filter--on:hover { background: #272727; }
 
 /* Suggestions */
-.yw-suggestions { display: flex; flex-direction: column; gap: 8px; }
+.yw-suggestions {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1; overflow-y: auto; padding-top: 12px;
+  scrollbar-width: thin; scrollbar-color: #d4d4d4 transparent;
+}
+.yw-suggestions::-webkit-scrollbar { width: 5px; }
+.yw-suggestions::-webkit-scrollbar-track { background: transparent; }
+.yw-suggestions::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
+.yw-suggestions::-webkit-scrollbar-thumb:hover { background: #b0b0b0; }
 
 .yw-sg {
   display: flex; gap: 8px; cursor: pointer; border-radius: 8px;
@@ -1749,8 +1782,13 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .yw-grid { grid-template-columns: 1fr; }
-  .yw-filters { position: static; }
-  .yw-suggestions { flex-direction: row; flex-wrap: wrap; gap: 8px; }
+  .yw-right {
+    position: static; max-height: none; overflow: visible;
+  }
+  .yw-suggestions {
+    flex-direction: row; flex-wrap: wrap; gap: 8px;
+    max-height: 600px; overflow-y: auto; padding-top: 12px;
+  }
   .yw-sg { min-width: 300px; flex: 1; }
 }
 
@@ -1771,7 +1809,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   .yw-vids { padding: 10px 12px 0; }
   .yw-vids__grid { grid-template-columns: 1fr; }
   .yw-right { padding: 0 12px; }
-  .yw-suggestions { flex-direction: column; }
+  .yw-suggestions { flex-direction: column; max-height: 500px; }
   .yw-sg { min-width: 0; }
   .yw-sg__thumb { width: 130px; height: 73px; }
   .yw-teaser-ov__content { padding: 16px 14px; }

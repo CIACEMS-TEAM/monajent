@@ -321,7 +321,7 @@
     </div>
 
     <!-- ===== MONA SEARCH (IA) ===== -->
-    <MonaSearch />
+    <MonaSearch ref="monaSearchRef" />
 
     <!-- ===== PWA INSTALL PROMPT ===== -->
     <PwaInstallPrompt />
@@ -329,28 +329,32 @@
     <!-- ===== MOBILE BOTTOM NAV ===== -->
     <nav class="yt-bottomnav" data-tour="nav">
       <router-link to="/home" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'home' }">
-        <svg viewBox="0 0 24 24" width="24" height="24">
+        <svg viewBox="0 0 24 24" width="22" height="22">
           <path fill="currentColor" d="M4 21V10.08l8-6.96 8 6.96V21h-6v-6h-4v6H4z" />
         </svg>
         <span>Accueil</span>
       </router-link>
 
       <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'packs' }" data-tour="packs" @click.prevent="navigateAuth('/home/packs')">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path
-            fill="currentColor"
-            d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"
-          />
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path fill="currentColor" d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z" />
         </svg>
         <span>Packs</span>
       </a>
 
+      <button class="yt-bottomnav__mona" @click="openMonaSearch" aria-label="Mona — Recherche vocale IA">
+        <div class="yt-bottomnav__mona-btn">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="#fff"/>
+            <path d="M13.5 7.5l.9-1.9 1.9-.9-1.9-.9-.9-1.9-.9 1.9-1.9.9 1.9.9zm4.3 2.1l-.6 1.3-1.3.6 1.3.6.6 1.3.6-1.3 1.3-.6-1.3-.6zM9.2 7.6L8 10l-2.4 1.2L8 12.4 9.2 14.8l1.2-2.4 2.4-1.2-2.4-1.2z" fill="#1DA53F"/>
+          </svg>
+        </div>
+        <span>Mona</span>
+      </button>
+
       <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'favorites' }" @click.prevent="navigateAuth('/home/favorites')">
-        <svg viewBox="0 0 24 24" width="24" height="24">
-          <path
-            fill="currentColor"
-            d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"
-          />
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <path fill="currentColor" d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" />
         </svg>
         <span>Favoris</span>
       </a>
@@ -367,11 +371,8 @@
           </div>
         </template>
         <template v-else>
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path
-              fill="currentColor"
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM7.07 18.28c.43-.9 3.05-1.78 4.93-1.78s4.51.88 4.93 1.78C15.57 19.36 13.86 20 12 20s-3.57-.64-4.93-1.72zm11.29-1.45c-1.43-1.74-4.9-2.33-6.36-2.33s-4.93.59-6.36 2.33A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 1.82-.62 3.49-1.64 4.83zM12 6c-1.94 0-3.5 1.56-3.5 3.5S10.06 13 12 13s3.5-1.56 3.5-3.5S13.94 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z"
-            />
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM7.07 18.28c.43-.9 3.05-1.78 4.93-1.78s4.51.88 4.93 1.78C15.57 19.36 13.86 20 12 20s-3.57-.64-4.93-1.72zm11.29-1.45c-1.43-1.74-4.9-2.33-6.36-2.33s-4.93.59-6.36 2.33A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 1.82-.62 3.49-1.64 4.83zM12 6c-1.94 0-3.5 1.56-3.5 3.5S10.06 13 12 13s3.5-1.56 3.5-3.5S13.94 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z" />
           </svg>
         </template>
         <span>Vous</span>
@@ -399,7 +400,8 @@ const route = useRoute()
 const sidebarOpen = ref(false)
 const mobileSearchOpen = ref(false)
 const mobileSearchInput = ref<HTMLInputElement | null>(null)
-const searchQuery = ref('')
+const searchQuery = ref((route.query.q as string) || '')
+const monaSearchRef = ref<InstanceType<typeof MonaSearch> | null>(null)
 const showLoginModal = ref(false)
 const userMenuOpen = ref(false)
 const showOnboarding = ref(false)
@@ -413,6 +415,10 @@ function fetchClientData() {
 
 watch(mobileSearchOpen, (open) => {
   if (open) nextTick(() => mobileSearchInput.value?.focus())
+})
+
+watch(() => route.query.q, (q) => {
+  searchQuery.value = (q as string) || ''
 })
 
 function closeUserMenu(e: MouseEvent) {
@@ -463,6 +469,10 @@ function handleSearch() {
 function handleMobileSearch() {
   handleSearch()
   mobileSearchOpen.value = false
+}
+
+function openMonaSearch() {
+  monaSearchRef.value?.toggle()
 }
 
 function navigateAuth(path: string) {
@@ -1246,6 +1256,40 @@ function handleBottomNavProfile() {
   opacity: 0.7;
 }
 
+.yt-bottomnav__mona {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: -22px;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.yt-bottomnav__mona-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1DA53F 0%, #16913A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(29,165,63,.35);
+  transition: transform .15s, box-shadow .15s;
+}
+.yt-bottomnav__mona-btn:active {
+  transform: scale(0.92);
+}
+.yt-bottomnav__mona span {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  line-height: 1;
+}
+
 .yt-bottomnav__avatar {
   width: 24px;
   height: 24px;
@@ -1366,5 +1410,7 @@ function handleBottomNavProfile() {
   .yt-main {
     padding: 0 0 calc(var(--bottomnav-h) + 12px);
   }
+  .yt-bottomnav__item { min-width: 48px; font-size: 9px; }
+  .yt-bottomnav__mona-btn { width: 48px; height: 48px; }
 }
 </style>
