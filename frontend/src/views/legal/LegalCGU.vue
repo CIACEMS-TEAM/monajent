@@ -17,11 +17,12 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
     <main class="legal-content">
       <h1>Conditions Générales d'Utilisation (CGU)</h1>
-      <p class="legal-meta">Dernière mise à jour : 31 mars 2026 — Version 2026-03-31-v1</p>
+      <p class="legal-meta">Dernière mise à jour : 13 avril 2026 — Version 2026-04-13-v2</p>
 
       <section>
         <h2>1. Objet</h2>
-        <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme Monajent, application de mise en relation entre agents immobiliers et utilisateurs à la recherche de biens immobiliers.</p>
+        <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme Monajent, application de mise en relation entre agents immobiliers et utilisateurs à la recherche de biens immobiliers en Côte d'Ivoire.</p>
+        <p>Monajent a pour ambition de <strong>révolutionner la recherche immobilière en Côte d'Ivoire</strong> en offrant un outil moderne et innovant aux agents immobiliers et une expérience unique aux usagers.</p>
       </section>
 
       <section>
@@ -38,20 +39,21 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <h2>3. Accès à la plateforme</h2>
         <p>La plateforme est accessible :</p>
         <ul>
-          <li>aux agents immobiliers souhaitant publier des biens</li>
-          <li>aux utilisateurs (clients) souhaitant consulter des biens</li>
+          <li>aux <strong>agents immobiliers</strong> souhaitant publier et promouvoir des biens</li>
+          <li>aux <strong>utilisateurs (clients)</strong> souhaitant rechercher et consulter des biens</li>
         </ul>
-        <p>L'accès peut nécessiter la création d'un compte.</p>
+        <p>L'inscription est <strong>gratuite</strong> pour les agents comme pour les clients. La consultation des vidéos et photos des annonces nécessite la création d'un compte gratuit.</p>
       </section>
 
       <section>
         <h2>4. Description du service</h2>
         <p>Monajent permet :</p>
         <ul>
-          <li>la publication de vidéos de biens immobiliers</li>
-          <li>l'accès payant à des contenus (vidéos)</li>
+          <li>la publication de vidéos et photos de biens immobiliers par les agents</li>
+          <li>la recherche de biens par intelligence artificielle (assistante Mona)</li>
+          <li>l'accès gratuit aux vidéos et photos pour les utilisateurs connectés</li>
           <li>la mise en relation entre utilisateurs et agents</li>
-          <li>l'organisation de visites physiques gratuites (selon le modèle proposé)</li>
+          <li>la programmation de visites physiques</li>
         </ul>
         <p><strong>Monajent n'est pas une agence immobilière</strong> et n'intervient pas dans la transaction finale entre les parties.</p>
       </section>
@@ -60,9 +62,9 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <h2>5. Inscription des agents</h2>
         <p>Les agents doivent fournir :</p>
         <ul>
-          <li>des informations exactes</li>
+          <li>des informations exactes et vérifiables</li>
           <li>une pièce d'identité valide</li>
-          <li>des contenus authentiques</li>
+          <li>des contenus authentiques représentant des biens réels</li>
         </ul>
         <p>Monajent se réserve le droit de refuser ou suspendre un compte, et de supprimer tout contenu frauduleux.</p>
       </section>
@@ -71,46 +73,49 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <h2>6. Engagement des utilisateurs</h2>
         <p>L'utilisateur s'engage à :</p>
         <ul>
-          <li>utiliser la plateforme de manière légale</li>
-          <li>ne pas frauder ou détourner le service</li>
-          <li>respecter les autres utilisateurs</li>
+          <li>utiliser la plateforme de manière légale et conforme à son objet</li>
+          <li>ne pas frauder, contourner ou détourner le service</li>
+          <li>respecter les autres utilisateurs et les agents</li>
+          <li>ne pas télécharger, copier ou redistribuer les contenus (vidéos, photos) publiés sur la plateforme</li>
         </ul>
       </section>
 
       <section>
-        <h2>7. Paiements</h2>
-        <p>Certains contenus (vidéos) peuvent être accessibles contre paiement. Les paiements donnent accès à :</p>
-        <ul>
-          <li>des vidéos de biens immobiliers</li>
-          <li>des visites physiques gratuites (selon conditions)</li>
-        </ul>
-        <p><strong>Les paiements ne garantissent pas la disponibilité du bien ni la conclusion d'une transaction.</strong></p>
+        <h2>7. Gratuité et évolution du modèle</h2>
+        <p>À la date des présentes CGU, <strong>l'ensemble des services Monajent est accessible gratuitement</strong>, tant pour les agents que pour les utilisateurs. L'inscription, la publication d'annonces, la consultation des vidéos et photos, ainsi que la programmation de visites sont entièrement gratuites.</p>
+        <p>Monajent se réserve le droit de faire évoluer son modèle économique et d'introduire, à l'avenir, des fonctionnalités ou services payants (abonnements premium, options de mise en avant, services à valeur ajoutée, etc.). <strong>Les utilisateurs seront informés de tout changement avant sa mise en application.</strong></p>
+        <p>L'utilisation des services gratuits ne crée aucun droit acquis à la gratuité permanente desdits services.</p>
       </section>
 
       <section>
         <h2>8. Responsabilité</h2>
         <p>Monajent :</p>
         <ul>
-          <li>n'est pas responsable de la véracité totale des biens publiés</li>
+          <li>n'est pas responsable de la véracité des biens publiés par les agents</li>
           <li>n'est pas responsable des transactions entre utilisateurs et agents</li>
-          <li>agit comme plateforme intermédiaire</li>
+          <li>agit comme plateforme intermédiaire de mise en relation</li>
         </ul>
-        <p>Les agents sont seuls responsables des biens qu'ils publient.</p>
+        <p>Les agents sont seuls responsables des biens qu'ils publient et des engagements qu'ils prennent envers les utilisateurs.</p>
       </section>
 
       <section>
-        <h2>9. Suspension / Résiliation</h2>
-        <p>Monajent peut suspendre ou supprimer un compte en cas de fraude, fausse information, ou non-respect des CGU.</p>
+        <h2>9. Propriété intellectuelle</h2>
+        <p>L'ensemble des éléments de la plateforme (design, logo, code, fonctionnalités, assistante IA Mona) est la propriété exclusive de CIACEMS. Les contenus publiés par les agents restent leur propriété, mais ils accordent à Monajent une licence d'utilisation dans le cadre du service.</p>
       </section>
 
       <section>
-        <h2>10. Modification des CGU</h2>
-        <p>Monajent se réserve le droit de modifier les CGU à tout moment. Les utilisateurs seront informés en cas de changement.</p>
+        <h2>10. Suspension / Résiliation</h2>
+        <p>Monajent peut suspendre ou supprimer un compte en cas de fraude, fausse information, abus ou non-respect des CGU.</p>
       </section>
 
       <section>
-        <h2>11. Droit applicable</h2>
-        <p>Les présentes CGU sont régies par le droit ivoirien.</p>
+        <h2>11. Modification des CGU</h2>
+        <p>Monajent se réserve le droit de modifier les présentes CGU à tout moment, notamment pour refléter l'évolution du service et de son modèle économique. Les utilisateurs seront informés de toute modification significative.</p>
+      </section>
+
+      <section>
+        <h2>12. Droit applicable</h2>
+        <p>Les présentes CGU sont régies par le droit ivoirien. Tout litige sera soumis aux juridictions compétentes d'Abidjan.</p>
       </section>
     </main>
   </div>

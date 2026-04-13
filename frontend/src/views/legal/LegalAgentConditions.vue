@@ -17,11 +17,12 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
     <main class="legal-content">
       <h1>Conditions Spécifiques Agents</h1>
-      <p class="legal-meta">Dernière mise à jour : 31 mars 2026 — Version 2026-03-31-v1</p>
+      <p class="legal-meta">Dernière mise à jour : 13 avril 2026 — Version 2026-04-13-v2</p>
 
       <section>
         <h2>1. Objet</h2>
-        <p>Les présentes conditions définissent les règles spécifiques applicables aux agents utilisant la plateforme Monajent pour publier et promouvoir des biens immobiliers.</p>
+        <p>Les présentes conditions définissent les règles spécifiques applicables aux agents immobiliers utilisant la plateforme Monajent pour publier et promouvoir des biens immobiliers.</p>
+        <p>Monajent vise à offrir aux agents un <strong>outil moderne et futuriste</strong> pour optimiser leur travail, gagner en visibilité et offrir une expérience unique à leurs clients.</p>
         <p>Ces conditions s'appliquent en complément des <router-link to="/legal/cgu">Conditions Générales d'Utilisation</router-link> et de la <router-link to="/legal/confidentialite">Politique de Confidentialité</router-link>.</p>
       </section>
 
@@ -41,6 +42,8 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <ul>
           <li>publier uniquement des biens <strong>réels et disponibles</strong></li>
           <li>fournir des informations exactes (prix, localisation, caractéristiques)</li>
+          <li>publier des vidéos et photos authentiques correspondant au bien décrit</li>
+          <li>retirer ou mettre à jour les annonces dès qu'un bien n'est plus disponible</li>
           <li>éviter toute publicité trompeuse</li>
         </ul>
       </section>
@@ -53,24 +56,22 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
           <li>des informations fournies aux utilisateurs</li>
           <li>des relations commerciales avec les clients</li>
         </ul>
-        <p>Monajent ne garantit pas la véracité des contenus publiés par les agents.</p>
+        <p>Monajent ne garantit pas la véracité des contenus publiés par les agents et ne saurait être tenu responsable en cas de litige entre un agent et un utilisateur.</p>
       </section>
 
       <section>
-        <h2>5. Modèle de rémunération</h2>
-        <p>Monajent permet à l'agent de percevoir des revenus sur les consultations de ses contenus.</p>
-        <ul>
-          <li>Chaque vue vidéo génère un revenu pour l'agent</li>
-          <li>Une partie est conservée par la plateforme au titre des frais de service</li>
-        </ul>
-        <p>Les modalités exactes de rémunération peuvent évoluer et seront communiquées aux agents.</p>
+        <h2>5. Gratuité et évolution du modèle</h2>
+        <p>À la date des présentes conditions, <strong>l'utilisation de Monajent est entièrement gratuite pour les agents</strong>. La création de compte, la publication d'annonces (vidéos, photos, descriptions) et l'accès à l'ensemble des fonctionnalités ne font l'objet d'aucun frais.</p>
+        <p>Monajent est actuellement dans une phase de développement stratégique visant à construire un écosystème innovant pour la recherche immobilière en Côte d'Ivoire. Durant cette phase, la priorité est donnée à la qualité du service et à l'expérience utilisateur.</p>
+        <p>Le modèle économique est susceptible d'évoluer. Monajent pourra introduire, à l'avenir, des fonctionnalités premium payantes pour les agents (mise en avant d'annonces, outils d'analyse avancés, services de promotion, système de rémunération sur les vues, etc.). <strong>Les agents seront informés de tout changement avant sa mise en application.</strong></p>
       </section>
 
       <section>
         <h2>6. Visites physiques</h2>
         <p>L'agent s'engage à :</p>
         <ul>
-          <li>assurer les visites physiques programmées via la plateforme</li>
+          <li>assurer les visites programmées via la plateforme dans les délais convenus</li>
+          <li>confirmer ou décliner les demandes de visite dans un délai de 48 heures</li>
           <li>respecter les engagements pris avec les utilisateurs</li>
           <li>se présenter au rendez-vous ou prévenir en cas d'empêchement</li>
         </ul>
@@ -82,8 +83,8 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <ul>
           <li>publier de faux biens ou des annonces trompeuses</li>
           <li>escroquer les utilisateurs de la plateforme</li>
-          <li>détourner les clients hors plateforme de manière abusive</li>
           <li>harceler ou manquer de respect envers les utilisateurs</li>
+          <li>utiliser la plateforme à des fins contraires à son objet</li>
         </ul>
       </section>
 
@@ -93,6 +94,7 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <ul>
           <li>fraude avérée ou tentative de fraude</li>
           <li>plaintes répétées de la part des utilisateurs</li>
+          <li>publication de contenus trompeurs ou frauduleux</li>
           <li>non-respect des présentes conditions</li>
           <li>inactivité prolongée sans justification</li>
         </ul>
@@ -111,7 +113,8 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
       <section>
         <h2>10. Évolution du service</h2>
-        <p>Monajent peut faire évoluer le modèle économique, les fonctionnalités, et les conditions applicables aux agents. Les agents seront informés de tout changement significatif.</p>
+        <p>Monajent est un service en constante évolution. De nouvelles fonctionnalités, outils et services pourront être ajoutés, modifiés ou retirés. Le modèle économique, les conditions d'utilisation et les fonctionnalités applicables aux agents sont susceptibles d'évoluer dans le cadre du développement de la plateforme.</p>
+        <p><strong>Les agents seront informés de tout changement significatif avec un préavis raisonnable.</strong></p>
       </section>
     </main>
   </div>

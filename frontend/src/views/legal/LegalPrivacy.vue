@@ -17,11 +17,12 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
 
     <main class="legal-content">
       <h1>Politique de Confidentialité</h1>
-      <p class="legal-meta">Dernière mise à jour : 31 mars 2026 — Version 2026-03-31-v1</p>
+      <p class="legal-meta">Dernière mise à jour : 13 avril 2026 — Version 2026-04-13-v2</p>
 
       <section>
         <h2>1. Introduction</h2>
         <p>La présente politique de confidentialité décrit la manière dont Monajent collecte, utilise et protège les données personnelles des utilisateurs, conformément à la loi n°2013-450 du 19 juin 2013 relative à la protection des données à caractère personnel en Côte d'Ivoire.</p>
+        <p>Monajent s'engage à protéger la vie privée de ses utilisateurs et à traiter les données personnelles de manière transparente et responsable.</p>
       </section>
 
       <section>
@@ -40,15 +41,18 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <ul>
           <li>Nom et prénom</li>
           <li>Numéro de téléphone</li>
+          <li>Adresse email (optionnelle)</li>
           <li>Zone d'activité</li>
           <li>Pièce d'identité (scan/photo)</li>
-          <li>Contenus publiés (vidéos, photos)</li>
+          <li>Contenus publiés (vidéos, photos, descriptions d'annonces)</li>
         </ul>
         <p><strong>Pour les utilisateurs :</strong></p>
         <ul>
           <li>Numéro de téléphone</li>
-          <li>Informations de navigation</li>
-          <li>Historique d'utilisation</li>
+          <li>Nom d'utilisateur</li>
+          <li>Informations de navigation et préférences de recherche</li>
+          <li>Historique d'utilisation (annonces consultées, favoris)</li>
+          <li>Données vocales traitées localement lors de l'utilisation de l'assistante IA Mona (non stockées sur nos serveurs)</li>
         </ul>
       </section>
 
@@ -56,12 +60,14 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
         <h2>4. Finalité de la collecte</h2>
         <p>Les données sont collectées pour :</p>
         <ul>
+          <li>créer et gérer les comptes utilisateurs</li>
           <li>vérifier l'identité des agents</li>
-          <li>sécuriser la plateforme</li>
-          <li>améliorer les services</li>
-          <li>faciliter la mise en relation</li>
-          <li>gérer les paiements</li>
+          <li>sécuriser la plateforme et prévenir la fraude</li>
+          <li>améliorer les services et l'expérience utilisateur</li>
+          <li>faciliter la mise en relation entre agents et utilisateurs</li>
+          <li>personnaliser les résultats de recherche via l'intelligence artificielle</li>
         </ul>
+        <p>En cas d'introduction future de services payants, les données pourront également être utilisées pour la gestion des transactions. Les utilisateurs en seront informés préalablement.</p>
       </section>
 
       <section>
@@ -70,19 +76,31 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
       </section>
 
       <section>
-        <h2>6. Durée de conservation</h2>
-        <p>Les données sont conservées :</p>
+        <h2>6. Intelligence artificielle et données vocales</h2>
+        <p>L'assistante IA Mona utilise la reconnaissance vocale du navigateur pour faciliter la recherche. Les données vocales sont :</p>
         <ul>
-          <li>pendant la durée d'utilisation du compte</li>
-          <li>ou jusqu'à demande de suppression</li>
+          <li>traitées localement par le navigateur de l'utilisateur</li>
+          <li>converties en texte qui est ensuite envoyé à nos serveurs pour l'analyse de recherche</li>
+          <li><strong>non enregistrées ni stockées</strong> sous forme audio sur nos serveurs</li>
         </ul>
+        <p>Les requêtes textuelles issues de la reconnaissance vocale peuvent être utilisées de manière anonymisée pour améliorer la qualité du service de recherche.</p>
       </section>
 
       <section>
-        <h2>7. Sécurité des données</h2>
+        <h2>7. Durée de conservation</h2>
+        <p>Les données sont conservées :</p>
+        <ul>
+          <li>pendant la durée d'utilisation du compte</li>
+          <li>ou jusqu'à demande de suppression par l'utilisateur</li>
+        </ul>
+        <p>Après suppression du compte, les données personnelles sont effacées dans un délai raisonnable, sauf obligation légale de conservation.</p>
+      </section>
+
+      <section>
+        <h2>8. Sécurité des données</h2>
         <p>Monajent met en œuvre :</p>
         <ul>
-          <li>des mesures techniques de sécurité (chiffrement HTTPS, accès restreints)</li>
+          <li>des mesures techniques de sécurité (chiffrement HTTPS, authentification JWT, accès restreints)</li>
           <li>des systèmes de protection contre les accès non autorisés</li>
           <li>des sauvegardes régulières des données</li>
           <li>une journalisation des accès aux données sensibles</li>
@@ -90,7 +108,7 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
       </section>
 
       <section>
-        <h2>8. Droits des utilisateurs</h2>
+        <h2>9. Droits des utilisateurs</h2>
         <p>Conformément à la loi n°2013-450, vous disposez des droits suivants :</p>
         <ul>
           <li><strong>Droit d'accès</strong> : obtenir confirmation du traitement de vos données</li>
@@ -102,22 +120,28 @@ import logoUrl from '@/assets/icons/logo_monajent_header.webp'
       </section>
 
       <section>
-        <h2>9. Partage des données</h2>
+        <h2>10. Partage des données</h2>
         <p>Les données ne sont pas vendues. Elles peuvent être partagées uniquement avec :</p>
         <ul>
-          <li>des prestataires techniques (hébergement, paiement)</li>
+          <li>des prestataires techniques (hébergement, services d'intelligence artificielle)</li>
           <li>les autorités si la loi l'exige</li>
         </ul>
+        <p>En cas d'introduction future de services de paiement, les données nécessaires pourront être partagées avec les prestataires de paiement concernés, dans le strict cadre de la transaction.</p>
       </section>
 
       <section>
-        <h2>10. Cookies</h2>
-        <p>La plateforme peut utiliser des cookies techniques pour améliorer l'expérience utilisateur et assurer le bon fonctionnement du service.</p>
+        <h2>11. Cookies et stockage local</h2>
+        <p>La plateforme utilise :</p>
+        <ul>
+          <li>des cookies techniques pour assurer le bon fonctionnement du service (authentification, session)</li>
+          <li>le stockage local du navigateur (localStorage) pour mémoriser les préférences utilisateur</li>
+        </ul>
+        <p>Aucun cookie de traçage publicitaire n'est utilisé.</p>
       </section>
 
       <section>
-        <h2>11. Modification de la politique</h2>
-        <p>Cette politique peut être modifiée à tout moment. Les utilisateurs seront informés en cas de changement significatif.</p>
+        <h2>12. Modification de la politique</h2>
+        <p>Cette politique peut être modifiée à tout moment, notamment en cas d'évolution du service ou de son modèle économique. Les utilisateurs seront informés de tout changement significatif.</p>
       </section>
     </main>
   </div>
