@@ -154,14 +154,18 @@ const heroHasImages = computed(() => heroImages.value.length > 0)
 
 function heroPrev() {
   if (!heroHasImages.value) return
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
   heroIdx.value = (heroIdx.value - 1 + heroImages.value.length) % heroImages.value.length
 }
 function heroNext() {
   if (!heroHasImages.value) return
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
   heroIdx.value = (heroIdx.value + 1) % heroImages.value.length
 }
 
 function openPhotoModal(idx: number) {
+  if (!isLoggedIn.value) { showLoginPrompt.value = true; return }
+  pub.registerVisit(listingSlug.value)
   photoModalIdx.value = idx
   showPhotoModal.value = true
 }
@@ -348,19 +352,26 @@ async function launchTeaser(vid: PublicListingVideo) {
   try {
     const data = await pub.fetchTeaser(vid.access_key)
     teaserInfo.value = data
-    teaserSeconds.value = data.teaser_seconds
 
-    if (data.is_agent_owner || data.is_unlocked) {
-      if (data.is_unlocked) {
-        await confirmWatch()
-      } else {
-        teaserStreamUrl.value = data.stream_url
-        teaserPlaying.value = true
-        teaserPaused.value = false
-      }
+    if (data.is_agent_owner) {
+      teaserStreamUrl.value = data.stream_url
+      teaserPlaying.value = true
+      teaserPaused.value = false
       return
     }
 
+    // Freemium : utilisateur connecté → accès complet sans limite
+    if (isLoggedIn.value) {
+      pub.unlockedVideos[vid.access_key] = data.stream_url
+      pub.registerVisit(listingSlug.value)
+      resetTeaser()
+      await nextTick()
+      scrollToVideo(vid.access_key)
+      return
+    }
+
+    // Non connecté → aperçu 10 secondes puis prompt de connexion
+    teaserSeconds.value = 10
     teaserStreamUrl.value = data.stream_url
     teaserPlaying.value = true
     teaserPaused.value = false
@@ -421,15 +432,13 @@ async function teaserUnlock() {
   watchLoading.value = true
   try {
     const result = await pub.watchVideo(activeVideo.value.access_key)
+    pub.registerVisit(listingSlug.value)
     resetTeaser()
-    toast[result.already_watched ? 'info' : 'success'](
-      result.already_watched ? 'Vidéo déjà débloquée' : `Vidéo débloquée ! ${result.pack_remaining} clés restantes`
-    )
+    toast.success('Vidéo débloquée !')
     scrollToVideo(activeVideo.value.access_key)
   } catch (e: any) {
     if (e?.response?.status === 402) {
-      teaserPaused.value = true
-      teaserInfo.value = { ...(teaserInfo.value as TeaserResult), keys_available: 0 }
+      showLoginPrompt.value = true
     } else {
       toast.error(e?.response?.data?.detail || 'Erreur lors du déblocage')
     }
@@ -451,13 +460,12 @@ async function confirmWatch() {
   if (!activeVideo.value) return
   watchLoading.value = true
   try {
-    const result = await pub.watchVideo(activeVideo.value.access_key)
+    await pub.watchVideo(activeVideo.value.access_key)
+    pub.registerVisit(listingSlug.value)
     showPaywall.value = false
-    toast[result.already_watched ? 'info' : 'success'](
-      result.already_watched ? 'Vidéo déjà vue — aucune clé consommée' : `Vidéo débloquée ! ${result.pack_remaining} clés restantes`
-    )
+    toast.success('Vidéo débloquée !')
   } catch (e: any) {
-    if (e?.response?.status === 402) { showPaywall.value = false; showNoPack.value = true }
+    if (e?.response?.status === 402) { showPaywall.value = false; showLoginPrompt.value = true }
     else toast.error(e?.response?.data?.detail || 'Erreur lors du visionnage')
   } finally { watchLoading.value = false }
 }
@@ -484,7 +492,7 @@ function shareText(): string {
   const type = pub.listing.listing_type === 'LOCATION' ? 'Location' : 'Vente'
   let loc = pub.listing.city || ''
   if (pub.listing.neighborhood) loc += `, ${pub.listing.neighborhood}`
-  return `${pub.listing.title}\n${type} — ${formatPrice(pub.listing.price)}\n${loc}\n\nVISITE GRATUITE!\n\n${ogUrl()}`
+  return `${pub.listing.title}\n${type} — ${formatPrice(pub.listing.price)}\n${loc}\n\n${ogUrl()}`
 }
 async function copyLink() {
   try { await navigator.clipboard.writeText(spaUrl()); toast.success('Lien copié !') }
@@ -552,7 +560,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
             <!-- Barre de progression teaser -->
             <div v-if="!teaserPaused" class="yw-teaser-bar yw-teaser-bar--hero">
-              <div class="yw-teaser-bar__label">Aperçu gratuit</div>
+              <div class="yw-teaser-bar__label">Aperçu</div>
               <div class="yw-teaser-bar__track">
                 <div class="yw-teaser-bar__fill" :style="{ animationDuration: teaserSeconds + 's' }"></div>
               </div>
@@ -564,39 +572,19 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
                 <div class="yw-teaser-ov__icon">
                   <svg viewBox="0 0 24 24" width="40" height="40"><path fill="#fff" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 </div>
-                <h3 class="yw-teaser-ov__title">Découvrez la visite complète</h3>
+                <h3 class="yw-teaser-ov__title">Envie de voir la suite ?</h3>
                 <p class="yw-teaser-ov__desc">
-                  Débloquez la vidéo et profitez de <strong>visites physiques gratuites</strong>.
+                  Connectez-vous pour accéder <strong>gratuitement</strong> à la vidéo complète.
                 </p>
-                <template v-if="!teaserInfo?.is_authenticated">
-                  <div class="yw-teaser-ov__btns">
-                    <button class="yw-teaser-btn yw-teaser-btn--primary" @click="teaserGoLogin">
-                      <i class="pi pi-sign-in"></i> Se connecter
-                    </button>
-                    <button class="yw-teaser-btn yw-teaser-btn--secondary" @click="teaserGoSignup">
-                      <i class="pi pi-user-plus"></i> Créer un compte gratuit
-                    </button>
-                  </div>
-                  <p class="yw-teaser-ov__sub">Inscription gratuite — accédez à toutes les visites</p>
-                </template>
-                <template v-else-if="(teaserInfo?.keys_available ?? 0) === 0">
-                  <div class="yw-teaser-ov__btns">
-                    <button class="yw-teaser-btn yw-teaser-btn--pack" @click="teaserGoBuyPack">
-                      <i class="pi pi-shopping-bag"></i> Obtenir des clés
-                    </button>
-                  </div>
-                  <p class="yw-teaser-ov__sub">Débloquez les vidéos + une visite physique offerte</p>
-                </template>
-                <template v-else>
-                  <div class="yw-teaser-ov__btns">
-                    <button class="yw-teaser-btn yw-teaser-btn--unlock" :disabled="watchLoading" @click="teaserUnlock">
-                      <i v-if="!watchLoading" class="pi pi-lock-open"></i>
-                      <i v-else class="pi pi-spin pi-spinner"></i>
-                      Débloquer la vidéo complète (1 clé)
-                    </button>
-                  </div>
-                  <p class="yw-teaser-ov__sub">{{ teaserInfo!.keys_available }} clé{{ teaserInfo!.keys_available > 1 ? 's' : '' }} disponible{{ teaserInfo!.keys_available > 1 ? 's' : '' }}</p>
-                </template>
+                <div class="yw-teaser-ov__btns">
+                  <button class="yw-teaser-btn yw-teaser-btn--primary" @click="teaserGoLogin">
+                    <i class="pi pi-sign-in"></i> Se connecter
+                  </button>
+                  <button class="yw-teaser-btn yw-teaser-btn--secondary" @click="teaserGoSignup">
+                    <i class="pi pi-user-plus"></i> Créer un compte gratuit
+                  </button>
+                </div>
+                <p class="yw-teaser-ov__sub">Inscription gratuite — accédez à toutes les vidéos</p>
               </div>
             </div>
           </div>
@@ -609,18 +597,21 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
             </div>
             <div class="yw-player__play-ov">
               <div class="yw-player__play-btn"><i class="pi pi-play-circle"></i></div>
-              <span class="yw-player__play-label">Lancer l'aperçu vidéo</span>
+              <span class="yw-player__play-label">Voir la vidéo</span>
             </div>
           </div>
 
           <!-- ═══ HERO: Images (seulement si aucune vidéo) ═══ -->
-          <div v-else-if="heroHasImages" class="yw-player__frame">
+          <div v-else-if="heroHasImages" class="yw-player__frame" :class="{ 'yw-player__frame--locked': !isLoggedIn && heroImages.length > 1 }" style="cursor:pointer" @click="openPhotoModal(heroIdx)">
             <img :src="mediaUrl(heroImages[heroIdx].image)!" :alt="pub.listing.title" class="yw-player__img" />
             <template v-if="heroImages.length > 1">
               <button class="yw-player__nav yw-player__nav--prev" @click.stop="heroPrev"><i class="pi pi-chevron-left"></i></button>
               <button class="yw-player__nav yw-player__nav--next" @click.stop="heroNext"><i class="pi pi-chevron-right"></i></button>
               <span class="yw-player__counter">{{ heroIdx + 1 }} / {{ heroImages.length }}</span>
             </template>
+            <div v-if="!isLoggedIn && heroImages.length > 1" class="yw-player__lock-hint">
+              <i class="pi pi-lock"></i> Connectez-vous pour voir les {{ heroImages.length }} photos
+            </div>
           </div>
 
           <!-- ═══ HERO: Rien ═══ -->
@@ -642,16 +633,16 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
           </div>
         </div>
 
-        <!-- === CTA BUTTONS: Visite Virtuelle + Visite Physique === -->
+        <!-- === CTA BUTTONS === -->
         <div class="yw-cta">
           <button v-if="hasVideos && !teaserPlaying && !pub.getUnlockedUrl(firstVideo?.access_key ?? '')" class="yw-cta__btn yw-cta__btn--virtual" @click="handleVirtualVisit">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
-            <span>Voir l'aperçu vidéo (Gratuit)</span>
+            <span>Voir la vidéo</span>
             <small v-if="firstVideo">{{ durationStr(firstVideo.duration_sec) }}</small>
           </button>
           <button class="yw-cta__btn yw-cta__btn--physical" @click="handlePhysicalVisit">
-            <i class="pi pi-map-marker"></i>
-            <span>Visite physique (Gratuite)</span>
+            <i class="pi pi-calendar"></i>
+            <span>Programmer une visite</span>
           </button>
         </div>
 
@@ -662,6 +653,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
         <div class="yw-meta">
           <span class="yw-meta__info">
             {{ pub.listing.views_count }} vue{{ pub.listing.views_count !== 1 ? 's' : '' }}
+            &middot; {{ pub.listing.visits_count }} visite{{ pub.listing.visits_count !== 1 ? 's' : '' }}
             &middot; {{ pub.listing.city }}<template v-if="pub.listing.neighborhood">, {{ pub.listing.neighborhood }}</template>
             <a
               v-if="pub.listing.latitude && pub.listing.longitude"
@@ -773,9 +765,8 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
         <section v-if="(pub.listing.videos?.length ?? 0) > 1" class="yw-vids">
           <div class="yw-vids__head">
             <h2 class="yw-vids__title"><i class="pi pi-video"></i> {{ pub.listing.videos?.length ?? 0 }} vidéo{{ (pub.listing.videos?.length ?? 0) > 1 ? 's' : '' }}</h2>
-            <span class="yw-ppv">Visite virtuelle</span>
           </div>
-          <p class="yw-vids__hint"><i class="pi pi-info-circle"></i> Cliquez pour voir un aperçu gratuit de chaque vidéo.</p>
+          <p v-if="!isLoggedIn" class="yw-vids__hint"><i class="pi pi-info-circle"></i> Connectez-vous pour accéder gratuitement à toutes les vidéos.</p>
           <div class="yw-vids__grid">
             <div v-for="vid in (pub.listing.videos ?? [])" :key="vid.id" :id="`video-${vid.access_key}`" class="yw-vcard" :class="{ 'yw-vcard--hl': highlightVideoKey === vid.access_key }">
 
@@ -813,7 +804,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
                     <i v-if="teaserLoading && teaserAccessKey === vid.access_key" class="pi pi-spin pi-spinner"></i>
                     <i v-else class="pi pi-play"></i>
                   </div>
-                  <span class="yw-vcard__lbl">Voir l'aperçu</span>
+                  <span class="yw-vcard__lbl">{{ isLoggedIn ? 'Voir la vidéo' : 'Aperçu' }}</span>
                 </div>
                 <span v-if="vid.duration_sec" class="yw-vcard__dur">{{ durationStr(vid.duration_sec) }}</span>
               </div>
@@ -858,7 +849,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
             <div class="yw-sg__body">
               <span class="yw-sg__title">{{ item.title }}</span>
               <span class="yw-sg__agent">{{ item.agent.agency_name || item.agent.username || item.agent.phone }}</span>
-              <span class="yw-sg__stats"><span class="yw-sg__price">{{ formatPrice(item.price) }}</span> &middot; {{ item.views_count }} vues &middot; {{ timeAgo(item.created_at) }}</span>
+              <span class="yw-sg__stats"><span class="yw-sg__price">{{ formatPrice(item.price) }}</span> &middot; {{ item.views_count }} vues<template v-if="item.visits_count"> · {{ item.visits_count }} visites</template> &middot; {{ timeAgo(item.created_at) }}</span>
             </div>
           </div>
           <div v-if="!otherListings.length && !pub.listingsLoading" class="yw-sg-empty">Aucune autre annonce</div>
@@ -877,54 +868,23 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
       </div>
     </Teleport>
 
-    <!-- Paywall — Visite virtuelle -->
-    <Dialog :visible="showPaywall" @update:visible="(v: boolean) => showPaywall = v" header="Visite virtuelle" :modal="true" :closable="!watchLoading" :style="{ width: '440px' }">
-      <div class="yw-pw-rich">
-        <!-- Grosse clé animée -->
-        <div class="yw-pw-rich__key" :class="{ 'yw-pw-rich__key--consuming': watchLoading }">
-          <img src="@/assets/icons/key_virt.png" alt="Clé virtuelle" class="yw-pw-rich__key-img" />
-          <span class="yw-pw-rich__badge">-1</span>
-        </div>
-
-        <h3 class="yw-pw-rich__title">Utiliser 1 clé virtuelle</h3>
-        <p class="yw-pw-rich__desc">Débloquez la vidéo de cette annonce pour une visite virtuelle du bien.</p>
-
-        <div class="yw-pw-rich__free-hint">
-          <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#1DA53F" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-          <span>Déjà vue = <strong>gratuit</strong>, aucune clé consommée</span>
-        </div>
-      </div>
-      <template #footer>
-        <Button label="Annuler" severity="secondary" text @click="showPaywall = false" :disabled="watchLoading" />
-        <Button label="Visionner" icon="pi pi-play" class="yw-pw__btn" :loading="watchLoading" @click="confirmWatch" />
-      </template>
-    </Dialog>
-
-    <!-- No Pack -->
-    <Dialog :visible="showNoPack" @update:visible="(v: boolean) => showNoPack = v" header="Aucun pack actif" :modal="true" :style="{ width: '440px' }">
-      <div class="yw-pw"><i class="pi pi-wallet yw-pw__icon" style="color:#f57c00"></i><p>Plus de clés. Achetez un pack pour voir les vidéos.</p>
-        <div class="yw-pw__pack"><span class="yw-pw__pack-price">500 F CFA</span><span class="yw-pw__pack-desc">33 vidéos + 1 visite gratuite</span></div>
-      </div>
-      <template #footer>
-        <Button label="Plus tard" severity="secondary" text @click="showNoPack = false" />
-        <Button label="Acheter un pack" icon="pi pi-wallet" class="yw-pw__btn" @click="goBuyPack" />
-      </template>
-    </Dialog>
+    <!-- Paywall (masqué en mode freemium) -->
+    <!-- showPaywall / showNoPack ne sont plus déclenchés dans le flux freemium -->
 
     <!-- Login required -->
     <Dialog :visible="showLoginPrompt" @update:visible="(v: boolean) => showLoginPrompt = v" header="Connexion requise" :modal="true" :style="{ width: '400px' }">
       <div class="yw-pw">
-        <i class="pi pi-user yw-pw__icon" style="color:#2563eb"></i>
-        <p>Connectez-vous ou créez un compte pour accéder aux visites virtuelles et physiques.</p>
+        <i class="pi pi-sign-in yw-pw__icon" style="color:#1DA53F"></i>
+        <p>Connectez-vous ou créez un compte gratuit pour explorer les photos et vidéos de cette annonce.</p>
       </div>
       <template #footer>
         <Button label="Plus tard" severity="secondary" text @click="showLoginPrompt = false" />
-        <Button label="Se connecter" icon="pi pi-sign-in" class="yw-pw__btn" style="background:#2563eb!important;border-color:#2563eb!important" @click="goLogin" />
+        <Button label="Se connecter" icon="pi pi-sign-in" class="yw-pw__btn" @click="goLogin" />
       </template>
     </Dialog>
 
     <!-- ══ Visite physique — sélection créneau ══ -->
-    <Dialog :visible="showVisitModal" @update:visible="(v: boolean) => showVisitModal = v" header="Demander une visite physique" :modal="true" :closable="!visitSubmitting" :style="{ width: '520px' }">
+    <Dialog :visible="showVisitModal" @update:visible="(v: boolean) => showVisitModal = v" header="Programmer une visite" :modal="true" :closable="!visitSubmitting" :style="{ width: '520px' }">
       <div class="yw-visit-modal">
         <!-- Chargement créneaux -->
         <div v-if="visitSlotsLoading" class="yw-visit-modal__loading">
@@ -948,7 +908,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
             </div>
             <div class="yw-visit-agent__info">
               <span class="yw-visit-agent__name">{{ pub.listing.agent.agency_name || pub.listing.agent.username || pub.listing.agent.phone }}</span>
-              <span v-if="pub.listing.agent.contact_phone" class="yw-visit-agent__contact">
+              <!--<span v-if="pub.listing.agent.contact_phone" class="yw-visit-agent__contact">
                 <i class="pi pi-phone"></i> {{ pub.listing.agent.contact_phone }}
               </span>
               <span v-else-if="pub.listing.agent.phone" class="yw-visit-agent__contact">
@@ -956,16 +916,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
               </span>
               <span v-if="pub.listing.agent.contact_email" class="yw-visit-agent__contact">
                 <i class="pi pi-envelope"></i> {{ pub.listing.agent.contact_email }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Badge gratuité -->
-          <div class="yw-visit-free">
-            <img src="@/assets/icons/key_phy.png" alt="" class="yw-visit-free__icon" />
-            <div class="yw-visit-free__text">
-              <strong>Visite gratuite</strong>
-              <span>Incluse dans votre pack via 1 clé physique</span>
+              </span>-->
             </div>
           </div>
 
@@ -993,7 +944,7 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 
           <div class="yw-visit-modal__info">
             <i class="pi pi-info-circle"></i>
-            <span>L'agent vous contactera dès réception de votre demande. Il a <strong>48h pour confirmer</strong>, sinon votre clé physique sera automatiquement restaurée.</span>
+            <span>L'agent vous contactera dès réception de votre demande. Il a <strong>48h pour confirmer</strong> le créneau choisi.</span>
           </div>
         </template>
       </div>
@@ -1004,7 +955,6 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
           label="Envoyer la demande"
           icon="pi pi-send"
           class="yw-pw__btn"
-          style="background:#ea580c!important;border-color:#ea580c!important"
           :loading="visitSubmitting"
           :disabled="!selectedSlotId || visitSubmitting"
           @click="submitVisitRequest"
@@ -1012,16 +962,14 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
       </template>
     </Dialog>
 
-    <!-- Pas de pack pour la visite physique -->
-    <Dialog :visible="visitNoPackModal" @update:visible="(v: boolean) => visitNoPackModal = v" header="Clé physique requise" :modal="true" :style="{ width: '440px' }">
+    <!-- Visite indisponible -->
+    <Dialog :visible="visitNoPackModal" @update:visible="(v: boolean) => visitNoPackModal = v" header="Visite indisponible" :modal="true" :style="{ width: '440px' }">
       <div class="yw-pw">
-        <i class="pi pi-key yw-pw__icon" style="color:#ea580c"></i>
-        <p>Vous n'avez pas de clé physique disponible. Achetez un pack pour demander une visite.</p>
-        <div class="yw-pw__pack"><span class="yw-pw__pack-price">500 F CFA</span><span class="yw-pw__pack-desc">33 vidéos + 1 visite physique</span></div>
+        <i class="pi pi-calendar-times yw-pw__icon" style="color:#1DA53F"></i>
+        <p>La programmation de visite n'est pas disponible pour le moment. Veuillez réessayer plus tard.</p>
       </div>
       <template #footer>
-        <Button label="Plus tard" severity="secondary" text @click="visitNoPackModal = false" />
-        <Button label="Acheter un pack" icon="pi pi-wallet" class="yw-pw__btn" style="background:#ea580c!important;border-color:#ea580c!important" @click="() => { visitNoPackModal = false; router.push({ name: 'client-packs' }) }" />
+        <Button label="Fermer" severity="secondary" text @click="visitNoPackModal = false" />
       </template>
     </Dialog>
 
@@ -1131,7 +1079,18 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   opacity: 0; transition: opacity 0.2s; z-index: 2;
 }
 .yw-player__frame:hover .yw-player__nav { opacity: 1; }
+.yw-player__frame--locked .yw-player__nav { opacity: 0.8; }
+.yw-player__frame--locked:hover .yw-player__nav { opacity: 1; }
 .yw-player__nav:hover { background: rgba(0,0,0,0.75); }
+.yw-player__lock-hint {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  color: #fff; font-size: 12px; font-weight: 500;
+  padding: 20px 12px 10px; text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  pointer-events: none;
+}
+.yw-player__lock-hint .pi-lock { font-size: 11px; }
 .yw-player__nav--prev { left: 8px; }
 .yw-player__nav--next { right: 8px; }
 .yw-player__counter {
@@ -1213,21 +1172,24 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   font-size: 11px; font-weight: 400; opacity: 0.8; margin-left: 2px;
 }
 .yw-cta__btn--virtual {
-  background: linear-gradient(135deg, #2564eb92, #1d4fd8db);
-  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+  background: linear-gradient(135deg, #1DA53F, #168a34);
+  box-shadow: 0 2px 8px rgba(29,165,63,.3);
 }
 .yw-cta__btn--virtual:hover {
-  background: linear-gradient(135deg, #1d4fd8ea, #1e40af);
-  box-shadow: 0 4px 14px rgba(37,99,235,.4);
+  background: linear-gradient(135deg, #168a34, #117a2b);
+  box-shadow: 0 4px 14px rgba(29,165,63,.4);
   transform: translateY(-1px);
 }
 .yw-cta__btn--physical {
-  background: linear-gradient(135deg, #ea580c, #c2410c);
-  box-shadow: 0 2px 8px rgba(234,88,12,.3);
+  background: transparent;
+  color: #1DA53F;
+  border: 2px solid #1DA53F;
+  box-shadow: none;
 }
 .yw-cta__btn--physical:hover {
-  background: linear-gradient(135deg, #c2410c, #9a3412);
-  box-shadow: 0 4px 14px rgba(234,88,12,.4);
+  background: rgba(29,165,63,.08);
+  color: #168a34;
+  border-color: #168a34;
   transform: translateY(-1px);
 }
 
@@ -1683,8 +1645,16 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
 }
 
 /* ===== PAYWALL SIMPLE (no pack, login, etc.) ===== */
-.yw-pw { text-align: center; padding: 8px 0; }
-.yw-pw__icon { font-size: 36px; color: #1DA53F; margin-bottom: 14px; display: block; }
+.yw-pw {
+  text-align: center; padding: 16px 12px 8px;
+  display: flex; flex-direction: column; align-items: center;
+}
+.yw-pw__icon {
+  font-size: 44px; color: #1DA53F; margin-bottom: 16px;
+  width: 72px; height: 72px; border-radius: 50%;
+  background: rgba(29, 165, 63, 0.08);
+  display: flex; align-items: center; justify-content: center;
+}
 .yw-pw p { font-size: 14px; color: #272727; margin: 0 0 6px; }
 .yw-pw__sub { font-size: 12px; color: #999; }
 .yw-pw__btn { background: #1DA53F !important; border-color: #1DA53F !important; }
@@ -1737,13 +1707,13 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   padding: 10px 14px; border: 2px solid #e5e5e5; border-radius: 10px;
   cursor: pointer; transition: all 0.15s; background: #fff;
 }
-.yw-visit-slot:hover { border-color: #ea580c; background: #fff7ed; }
-.yw-visit-slot--on { border-color: #ea580c; background: #fff7ed; }
+.yw-visit-slot:hover { border-color: #1DA53F; background: #f0fdf4; }
+.yw-visit-slot--on { border-color: #1DA53F; background: #f0fdf4; }
 .yw-visit-slot__radio { display: none; }
 .yw-visit-slot__body { display: flex; flex-direction: column; flex: 1; }
 .yw-visit-slot__day { font-size: 14px; font-weight: 600; color: #0f0f0f; }
 .yw-visit-slot__time { font-size: 12px; color: #606060; }
-.yw-visit-slot__check { color: #ea580c; font-size: 18px; }
+.yw-visit-slot__check { color: #1DA53F; font-size: 18px; }
 .yw-visit-modal__note { margin-top: 14px; }
 .yw-visit-modal__note label { display: block; font-size: 13px; font-weight: 500; color: #272727; margin-bottom: 4px; }
 .yw-visit-modal__note small { color: #909090; font-weight: 400; }
@@ -1751,13 +1721,13 @@ function shareFacebook() { window.open(`https://www.facebook.com/sharer/sharer.p
   width: 100%; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 8px;
   font-size: 13px; font-family: inherit; resize: vertical; box-sizing: border-box;
 }
-.yw-visit-modal__note textarea:focus { outline: none; border-color: #ea580c; }
+.yw-visit-modal__note textarea:focus { outline: none; border-color: #1DA53F; }
 .yw-visit-modal__info {
   display: flex; align-items: flex-start; gap: 8px;
-  margin-top: 12px; padding: 10px 12px; background: #fff7ed; border: 1px solid #fed7aa;
-  border-radius: 8px; font-size: 12px; color: #92400e; line-height: 1.4;
+  margin-top: 12px; padding: 10px 12px; background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 8px; font-size: 12px; color: #166534; line-height: 1.4;
 }
-.yw-visit-modal__info .pi-info-circle { flex-shrink: 0; margin-top: 1px; color: #ea580c; }
+.yw-visit-modal__info .pi-info-circle { flex-shrink: 0; margin-top: 1px; color: #1DA53F; }
 
 /* ===== REPORT MODAL ===== */
 .yw-report__hint { font-size: 14px; color: #272727; margin: 0 0 12px; }

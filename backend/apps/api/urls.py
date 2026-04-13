@@ -17,6 +17,7 @@ from .views.auth import (
 from .views.listings import (
     PublicListingListView,
     PublicListingDetailView,
+    RegisterListingVisitView,
     AgentListingListCreateView,
     AgentListingDetailView,
     AgentListingBulkActionView,
@@ -132,6 +133,7 @@ urlpatterns = [
     # ── Listings publics (recherche / détail) ─────────────────
     path('listings/', PublicListingListView.as_view(), name='listing-list'),
     path('listings/<slug:slug>/', PublicListingDetailView.as_view(), name='listing-detail'),
+    path('listings/<slug:slug>/visit/', RegisterListingVisitView.as_view(), name='listing-visit'),
 
     # ── Agent : CRUD annonces ─────────────────────────────────
     path('agent/listings/', AgentListingListCreateView.as_view(), name='agent-listing-list'),

@@ -107,7 +107,7 @@ class ListingListSerializer(serializers.ModelSerializer):
             'city', 'neighborhood', 'price',
             'rooms', 'bedrooms', 'surface_m2', 'furnishing',
             'deposit_months', 'advance_months', 'agency_fee_months',
-            'views_count', 'favorites_count', 'reports_count',
+            'views_count', 'visits_count', 'favorites_count', 'reports_count',
             'agent', 'cover_image', 'videos_count',
             'published_at', 'expires_at', 'days_remaining',
             'agent_note', 'created_at',
@@ -172,7 +172,7 @@ class ListingDetailSerializer(serializers.ModelSerializer):
             'furnishing', 'amenities',
             'deposit_months', 'advance_months', 'agency_fee_months',
             'other_conditions',
-            'views_count', 'favorites_count',
+            'views_count', 'visits_count', 'favorites_count',
             'agent', 'images', 'videos',
             'created_at', 'updated_at',
         ]
@@ -200,14 +200,14 @@ class AgentListingDetailSerializer(serializers.ModelSerializer):
             'furnishing', 'amenities',
             'deposit_months', 'advance_months', 'agency_fee_months',
             'other_conditions', 'agent_note',
-            'views_count', 'favorites_count', 'reports_count',
+            'views_count', 'visits_count', 'favorites_count', 'reports_count',
             'published_at', 'expires_at', 'days_remaining',
             'images', 'videos',
             'reports_detail', 'favorites_detail',
             'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'views_count', 'favorites_count', 'reports_count',
+            'id', 'views_count', 'visits_count', 'favorites_count', 'reports_count',
             'published_at', 'expires_at', 'created_at', 'updated_at',
         ]
 

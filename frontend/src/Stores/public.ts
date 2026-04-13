@@ -53,6 +53,7 @@ export interface PublicListing {
   agency_fee_months: number | null
   other_conditions: string
   views_count: number
+  visits_count: number
   favorites_count: number
   agent: PublicListingAgent
   images: PublicListingImage[]
@@ -100,6 +101,7 @@ export interface ListingListItem {
   advance_months: number | null
   agency_fee_months: number | null
   views_count: number
+  visits_count: number
   favorites_count: number
   agent: PublicListingAgent
   cover_image: string | null
@@ -119,6 +121,7 @@ export const usePublicStore = defineStore('public', {
     keysLoaded: false,
     favoriteIds: new Set<number>(),
     favoritesLoaded: false,
+    visitedListings: {} as Record<number, boolean>,
   }),
 
   getters: {
@@ -213,6 +216,28 @@ export const usePublicStore = defineStore('public', {
 
     getUnlockedUrl(accessKey: string): string | null {
       return this.unlockedVideos[accessKey] || null
+    },
+
+    async registerVisit(slug: string): Promise<boolean> {
+      if (this.listing && this.visitedListings[this.listing.id]) return false
+      try {
+        const { data } = await http.post<{ already_visited: boolean; visits_count: number }>(
+          `/api/listings/${slug}/visit/`,
+        )
+        if (this.listing) {
+          this.visitedListings[this.listing.id] = true
+          if (!data.already_visited) {
+            this.listing.visits_count = data.visits_count
+          }
+        }
+        return !data.already_visited
+      } catch {
+        return false
+      }
+    },
+
+    hasVisited(listingId: number): boolean {
+      return !!this.visitedListings[listingId]
     },
 
     async fetchFavoriteIds() {

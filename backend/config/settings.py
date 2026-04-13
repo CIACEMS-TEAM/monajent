@@ -368,6 +368,12 @@ LEGAL_DOCUMENT_VERSIONS = {
 # ── Teaser ───────────────────────────────────────────────────────────────────
 TEASER_SECONDS = env.int('TEASER_SECONDS', default=15)
 
+# ── Payment standby ─────────────────────────────────────────────────────────
+# Quand True : la vidéo complète est accessible après simple connexion
+# (pas de consommation de clé virtuelle). Passer à False pour réactiver
+# le système de packs / clés.
+PAYMENT_STANDBY = env.bool('PAYMENT_STANDBY', default=True)
+
 # ── Sentry (monitoring / error tracking) ─────────────────────────────────────
 SENTRY_DSN = env('SENTRY_DSN', default='')
 

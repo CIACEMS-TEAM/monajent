@@ -170,8 +170,18 @@ onMounted(async () => {
 
 <template>
   <div class="pk">
+    <!-- ── Standby banner ────────────────────────────── -->
+    <div class="pk__standby">
+      <i class="pi pi-gift" style="font-size:2rem;color:#1DA53F"></i>
+      <h2 style="margin:0;font-size:1.2rem">Bonne nouvelle !</h2>
+      <p style="margin:4px 0 0;color:#606060;font-size:0.9rem;text-align:center">
+        Les visites virtuelles (photos &amp; vidéos) sont actuellement <strong>gratuites</strong> pour tous les utilisateurs connectés.
+        Créez un compte et explorez tous les biens sans aucun frais.
+      </p>
+    </div>
+
     <!-- ── Hero offer ────────────────────────────────── -->
-    <div class="pk__hero">
+    <div class="pk__hero" style="display:none">
       <div class="pk__hero-badge">
         <img :src="keyPhyImg" alt="" class="pk__hero-badge-icon" />
         <span class="pk__hero-free">GRATUIT</span>
@@ -184,7 +194,7 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div class="pk__offer">
+    <div class="pk__offer" style="display:none">
       <div class="pk__offer-left">
         <h2 class="pk__offer-title">Pack Visites</h2>
 
@@ -305,6 +315,12 @@ onMounted(async () => {
 
 <style scoped>
 .pk { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+.pk__standby {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 40px 24px; margin: 24px 0; border-radius: 16px;
+  background: linear-gradient(135deg, #f0faf3 0%, #fff 100%);
+  border: 1px solid #e0e0e0;
+}
 
 /* ── Hero banner ─────────────────────────── */
 .pk__hero {

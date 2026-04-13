@@ -1,6 +1,6 @@
 """
-Modèles Listing, ListingImage, Video, ListingReport
-────────────────────────────────────────────────────
+Modèles Listing, ListingImage, Video, ListingReport, ListingVisit
+─────────────────────────────────────────────────────────────────
 Biens immobiliers publiés par les agents, avec photos et vidéos.
 Vidéos protégées : le client ne voit que le thumbnail ; la lecture
 complète consomme 1 clé virtuelle (VirtualKeyUsage).
@@ -124,6 +124,7 @@ class Listing(models.Model):
 
     # ── Compteurs dénormalisés (mis à jour par signals / services) ─
     views_count = models.PositiveIntegerField('Nombre de vues', default=0, editable=False)
+    visits_count = models.PositiveIntegerField('Visites', default=0, editable=False)
     favorites_count = models.PositiveIntegerField('Favoris', default=0, editable=False)
     reports_count = models.PositiveSmallIntegerField(
         'Signalements', default=0, editable=False,
@@ -347,3 +348,40 @@ class ListingReport(models.Model):
 
     def __str__(self) -> str:
         return f"Report<{self.user.phone} → {self.listing.title}> [{self.get_reason_display()}]"
+
+
+# ═══════════════════════════════════════════════════════════════
+# Visite d'annonce (interaction média : photo lightbox / vidéo)
+# ═══════════════════════════════════════════════════════════════
+
+
+class ListingVisit(models.Model):
+    """
+    1 enregistrement = 1 visite unique (user connecté qui interagit
+    avec les photos ou la vidéo d'une annonce pour la première fois).
+    """
+    listing = models.ForeignKey(
+        Listing,
+        on_delete=models.CASCADE,
+        related_name='listing_visits',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='listing_visits',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['listing', 'user'],
+                name='unique_listing_visit_per_user',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['listing', '-created_at'], name='idx_listing_visit_date'),
+        ]
+
+    def __str__(self) -> str:
+        return f"Visit<{self.user} → {self.listing.title}>"

@@ -253,7 +253,7 @@ function apiToDisplay(item: ListingListItem): DisplayListing {
     agentColor: agentColors[item.agent.id % agentColors.length],
     agentPhoto,
     agentVerified: item.agent.verified,
-    views: `${item.views_count} vues`,
+    views: item.visits_count ? `${item.views_count} vues · ${item.visits_count} visites` : `${item.views_count} vues`,
     publishedAgo: timeAgo(item.created_at),
   }
 }

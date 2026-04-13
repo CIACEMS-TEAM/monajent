@@ -52,7 +52,8 @@
           </svg>
         </button>
         <template v-if="auth.me">
-          <!-- Keys indicators (client only) -->
+          <!-- Keys indicators (masqué — mode standby paiement) -->
+          <!--
           <div v-if="auth.me.role === 'CLIENT' && pub.keysLoaded" class="yt-keys">
             <router-link to="/home/packs" class="yt-keys__item yt-keys__item--virt" title="Clés virtuelles">
               <img :src="keyVirtImg" alt="" class="yt-keys__icon" />
@@ -63,6 +64,7 @@
               <span class="yt-keys__count">{{ pub.physicalKeys }}</span>
             </router-link>
           </div>
+          -->
 
           <button class="yt-icon-btn yt-notif-btn" aria-label="Notifications">
             <svg viewBox="0 0 24 24" width="24" height="24">
@@ -73,7 +75,7 @@
             </svg>
           </button>
           <div class="yt-usermenu-wrapper yt-header-avatar">
-            <div class="yt-user-avatar" @click="userMenuOpen = !userMenuOpen">
+            <div class="yt-user-avatar" @click="handleBottomNavProfile">
               {{ userInitial }}
             </div>
             <Transition name="menu-fade">
@@ -89,10 +91,6 @@
                 <a href="#" class="yt-usermenu__item" @click.prevent="navigateMenu('/home/profile')">
                   <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
                   <span>Mon profil</span>
-                </a>
-                <a href="#" class="yt-usermenu__item" @click.prevent="navigateMenu('/home/packs')">
-                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/></svg>
-                  <span>Mes packs</span>
                 </a>
                 <div class="yt-usermenu__divider"></div>
                 <a href="#" class="yt-usermenu__item yt-usermenu__item--danger" @click.prevent="handleLogout">
@@ -197,15 +195,7 @@
           <span class="yt-sidebar__label">Favoris</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" data-tour="sidebar-packs" @click.prevent="navigateAuth('/home/packs')">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path
-              fill="currentColor"
-              d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"
-            />
-          </svg>
-          <span class="yt-sidebar__label">Mes packs</span>
-        </a>
+        <!-- Packs / Paiements masqués (mode freemium) -->
 
         <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/visits')">
           <svg viewBox="0 0 24 24" width="24" height="24">
@@ -215,13 +205,6 @@
             />
           </svg>
           <span class="yt-sidebar__label">Visites</span>
-        </a>
-
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/payments')">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-          </svg>
-          <span class="yt-sidebar__label">Paiements</span>
         </a>
 
         <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/reports')">
@@ -335,13 +318,6 @@
         <span>Accueil</span>
       </router-link>
 
-      <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'packs' }" data-tour="packs" @click.prevent="navigateAuth('/home/packs')">
-        <svg viewBox="0 0 24 24" width="22" height="22">
-          <path fill="currentColor" d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z" />
-        </svg>
-        <span>Packs</span>
-      </a>
-
       <button class="yt-bottomnav__mona" @click="openMonaSearch" aria-label="Mona — Recherche vocale IA">
         <div class="yt-bottomnav__mona-btn">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
@@ -358,25 +334,6 @@
         </svg>
         <span>Favoris</span>
       </a>
-
-      <a
-        href="#"
-        class="yt-bottomnav__item"
-        :class="{ active: activeBottomTab === 'you' }"
-        @click.prevent="handleBottomNavProfile"
-      >
-        <template v-if="auth.me">
-          <div class="yt-bottomnav__avatar" :class="{ 'yt-bottomnav__avatar--active': activeBottomTab === 'you' }" :style="{ backgroundColor: 'var(--green)' }">
-            {{ userInitial }}
-          </div>
-        </template>
-        <template v-else>
-          <svg viewBox="0 0 24 24" width="22" height="22">
-            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM7.07 18.28c.43-.9 3.05-1.78 4.93-1.78s4.51.88 4.93 1.78C15.57 19.36 13.86 20 12 20s-3.57-.64-4.93-1.72zm11.29-1.45c-1.43-1.74-4.9-2.33-6.36-2.33s-4.93.59-6.36 2.33A7.95 7.95 0 014 12c0-4.41 3.59-8 8-8s8 3.59 8 8c0 1.82-.62 3.49-1.64 4.83zM12 6c-1.94 0-3.5 1.56-3.5 3.5S10.06 13 12 13s3.5-1.56 3.5-3.5S13.94 6 12 6zm0 5c-.83 0-1.5-.67-1.5-1.5S11.17 8 12 8s1.5.67 1.5 1.5S12.83 11 12 11z" />
-          </svg>
-        </template>
-        <span>Vous</span>
-      </a>
     </nav>
   </div>
 </template>
@@ -390,8 +347,9 @@ import WelcomeOverlay from '@/components/WelcomeOverlay.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
 import MonaSearch from '@/components/MonaSearch.vue'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
-import keyVirtImg from '@/assets/icons/key_virt.png'
-import keyPhyImg from '@/assets/icons/key_phy.png'
+// Clés masquées (mode freemium)
+// import keyVirtImg from '@/assets/icons/key_virt.png'
+// import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const auth = useAuthStore()
 const pub = usePublicStore()
@@ -452,12 +410,10 @@ const userInitial = computed(() => {
 
 const activeBottomTab = computed(() => {
   const path = route.path
-  if (path === '/home/packs') return 'packs'
   if (path === '/home/favorites') return 'favorites'
   if (path.startsWith('/home/dashboard') || path.startsWith('/home/profile') ||
       path.startsWith('/home/history') || path.startsWith('/home/visits') ||
-      path.startsWith('/home/payments') || path.startsWith('/home/reports') ||
-      path.startsWith('/home/support')) return 'you'
+      path.startsWith('/home/reports') || path.startsWith('/home/support')) return 'you'
   return 'home'
 })
 
@@ -1346,11 +1302,6 @@ function handleBottomNavProfile() {
 
   .yt-mobile-search-overlay {
     display: flex;
-  }
-
-  /* Hide header avatar on mobile (it's in bottom nav) */
-  .yt-header-avatar {
-    display: none;
   }
 
   .yt-signin-btn span {

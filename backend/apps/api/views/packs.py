@@ -93,14 +93,14 @@ class WatchVideoView(APIView):
     """
     POST /api/videos/{access_key}/watch/
 
-    Consomme 1 clé virtuelle et retourne l'URL de la vidéo.
-    Si la vidéo a déjà été vue, retourne l'URL sans consommer de clé.
+    En mode PAYMENT_STANDBY : retourne l'URL de stream pour tout
+    utilisateur authentifié, sans consommer de clé.
+    Sinon : consomme 1 clé virtuelle (pay-per-view classique).
     """
-    permission_classes = [IsAuthenticated, IsClient]
+    permission_classes = [IsAuthenticated]
     throttle_classes = [VideoViewThrottle]
 
     def post(self, request, access_key):
-        # Récupérer la vidéo par access_key
         try:
             video = (
                 Video.objects
@@ -113,28 +113,30 @@ class WatchVideoView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Empêcher un agent de "se regarder" lui-même
         if video.listing.agent_id == request.user.id:
             return Response(
                 {'detail': "Vous ne pouvez pas visionner vos propres vidéos."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            result = consume_virtual_key(user=request.user, video=video)
-            pack = result['pack']
-            already_watched = False
+        payment_standby = getattr(django_settings, 'PAYMENT_STANDBY', False)
 
-        except AlreadyWatchedError as e:
-            # Déjà vu → retour gratuit de l'URL
-            pack = e.usage.pack
+        if payment_standby:
             already_watched = True
-
-        except NoActivePackError:
-            return Response(
-                {'detail': "Aucun pack actif avec des clés restantes. Achetez un nouveau pack."},
-                status=status.HTTP_402_PAYMENT_REQUIRED,
-            )
+            pack_remaining = 0
+        else:
+            try:
+                result = consume_virtual_key(user=request.user, video=video)
+                pack_remaining = result['pack'].virtual_remaining
+                already_watched = False
+            except AlreadyWatchedError as e:
+                pack_remaining = e.usage.pack.virtual_remaining
+                already_watched = True
+            except NoActivePackError:
+                return Response(
+                    {'detail': "Aucun pack actif avec des clés restantes. Achetez un nouveau pack."},
+                    status=status.HTTP_402_PAYMENT_REQUIRED,
+                )
 
         token = signing.dumps({
             'v': video.pk,
@@ -150,7 +152,7 @@ class WatchVideoView(APIView):
             'video_id': video.pk,
             'listing_id': video.listing_id,
             'listing_title': video.listing.title,
-            'pack_remaining': pack.virtual_remaining,
+            'pack_remaining': pack_remaining,
             'already_watched': already_watched,
         }
         response_serializer = WatchVideoResponseSerializer(data)
@@ -198,10 +200,13 @@ class VideoTeaserView(APIView):
             and user.role == 'AGENT'
             and video.listing.agent_id == user.id
         )
+        payment_standby = getattr(django_settings, 'PAYMENT_STANDBY', False)
         is_unlocked = False
         keys_available = 0
 
-        if is_authenticated and not is_agent_owner:
+        if payment_standby and is_authenticated and not is_agent_owner:
+            keys_available = 1
+        elif is_authenticated and not is_agent_owner:
             is_unlocked = VirtualKeyUsage.objects.filter(
                 user=user, video=video,
             ).exists()

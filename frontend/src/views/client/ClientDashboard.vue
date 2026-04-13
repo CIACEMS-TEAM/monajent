@@ -3,8 +3,9 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useClientStore } from '@/Stores/client'
 import { useAuthStore } from '@/Stores/auth'
-import keyVirtImg from '@/assets/icons/key_virt.png'
-import keyPhyImg from '@/assets/icons/key_phy.png'
+// Clés masquées (mode freemium)
+// import keyVirtImg from '@/assets/icons/key_virt.png'
+// import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const client = useClientStore()
 const auth = useAuthStore()
@@ -50,26 +51,6 @@ async function handleLogout() {
 
       <!-- KPI Cards -->
       <div class="cd__kpis">
-        <router-link to="/home/packs" class="cd__kpi cd__kpi--keys">
-          <div class="cd__kpi-icon">
-            <img :src="keyVirtImg" alt="" />
-          </div>
-          <div class="cd__kpi-data">
-            <span class="cd__kpi-val">{{ client.dashboard.total_virtual_remaining }}</span>
-            <span class="cd__kpi-label">Clés virtuelles</span>
-          </div>
-        </router-link>
-
-        <router-link to="/home/packs" class="cd__kpi cd__kpi--phy">
-          <div class="cd__kpi-icon">
-            <img :src="keyPhyImg" alt="" />
-          </div>
-          <div class="cd__kpi-data">
-            <span class="cd__kpi-val">{{ client.dashboard.total_physical_available }}</span>
-            <span class="cd__kpi-label">Clés physiques</span>
-          </div>
-        </router-link>
-
         <router-link to="/home/visits" class="cd__kpi cd__kpi--visits">
           <div class="cd__kpi-icon cd__kpi-icon--svg">
             <svg viewBox="0 0 24 24" width="28" height="28"><path fill="#ea580c" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
@@ -100,25 +81,12 @@ async function handleLogout() {
           </div>
         </router-link>
 
-        <div class="cd__kpi cd__kpi--packs">
-          <div class="cd__kpi-icon cd__kpi-icon--svg">
-            <svg viewBox="0 0 24 24" width="28" height="28"><path fill="#1DA53F" d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h2v2c0 .55.45 1 1 1s1-.45 1-1V8h4v2c0 .55.45 1 1 1s1-.45 1-1V8h2v12z"/></svg>
-          </div>
-          <div class="cd__kpi-data">
-            <span class="cd__kpi-val">{{ client.dashboard.active_packs_count }}</span>
-            <span class="cd__kpi-label">Packs actifs</span>
-          </div>
-        </div>
       </div>
 
       <!-- Quick links -->
       <div class="cd__quick">
         <h2 class="cd__section-title">Accès rapide</h2>
         <div class="cd__quick-grid">
-          <router-link to="/home/packs" class="cd__quick-link">
-            <i class="pi pi-shopping-bag"></i>
-            <span>Mes packs</span>
-          </router-link>
           <router-link to="/home/visits" class="cd__quick-link">
             <i class="pi pi-map-marker"></i>
             <span>Mes visites</span>
@@ -130,10 +98,6 @@ async function handleLogout() {
           <router-link to="/home/history" class="cd__quick-link">
             <i class="pi pi-history"></i>
             <span>Historique vidéos</span>
-          </router-link>
-          <router-link to="/home/payments" class="cd__quick-link">
-            <i class="pi pi-credit-card"></i>
-            <span>Paiements</span>
           </router-link>
           <router-link to="/home/reports" class="cd__quick-link">
             <i class="pi pi-flag"></i>

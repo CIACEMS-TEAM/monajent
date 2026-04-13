@@ -22,6 +22,9 @@ Agent (CRUD) :
 """
 
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
+from django.db.models import F
+
 from rest_framework import generics, permissions, status, filters
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -29,7 +32,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.listings.models import Listing, ListingImage, Video
+from apps.listings.models import Listing, ListingImage, ListingVisit, Video
 from apps.core.permissions import (
     IsAgent, IsVerifiedAgent, IsListingOwner, IsOwnerOrReadOnly,
 )
@@ -47,6 +50,11 @@ from ..serializers.listings import (
     VideoUploadSerializer,
     VideoAgentSerializer,
 )
+
+
+def _get_client_ip(request) -> str:
+    xff = request.META.get('HTTP_X_FORWARDED_FOR')
+    return xff.split(',')[0].strip() if xff else request.META.get('REMOTE_ADDR', '')
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -100,6 +108,7 @@ class PublicListingDetailView(generics.RetrieveAPIView):
     GET /api/listings/{slug}/
     Détail d'une annonce active (lookup par slug).
     Accessible à tous (public).
+    Incrémente views_count (dédupliqué par IP, TTL 30 min).
     """
     serializer_class = ListingDetailSerializer
     permission_classes = [permissions.AllowAny]
@@ -112,6 +121,45 @@ class PublicListingDetailView(generics.RetrieveAPIView):
             .select_related('agent__agent_profile')
             .prefetch_related('images', 'videos')
         )
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        cache_key = f"lv_{instance.pk}_{_get_client_ip(request)}"
+        if not cache.get(cache_key):
+            Listing.objects.filter(pk=instance.pk).update(views_count=F('views_count') + 1)
+            cache.set(cache_key, True, 1800)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+class RegisterListingVisitView(APIView):
+    """
+    POST /api/listings/{slug}/visit/
+    Enregistre une visite (première interaction média) pour l'utilisateur
+    connecté. Idempotent : renvoie already_visited=true si déjà enregistré.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, slug):
+        listing = Listing.objects.filter(
+            slug=slug, status=Listing.Status.ACTIF,
+        ).first()
+        if not listing:
+            return Response(
+                {'detail': 'Annonce introuvable.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        _, created = ListingVisit.objects.get_or_create(
+            listing=listing, user=request.user,
+        )
+        if created:
+            Listing.objects.filter(pk=listing.pk).update(
+                visits_count=F('visits_count') + 1,
+            )
+        return Response({
+            'already_visited': not created,
+            'visits_count': listing.visits_count + (1 if created else 0),
+        })
 
 
 # ═══════════════════════════════════════════════════════════════
