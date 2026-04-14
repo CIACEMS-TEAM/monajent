@@ -23,10 +23,12 @@ const searchResult = ref<{
   ordering?: string | null
 } | null>(null)
 const resultCount = ref(0)
+const locationTotal = ref(-1)
 const errorMsg = ref('')
 const muted = ref(false)
 const speaking = ref(false)
 const inviteBubble = ref(false)
+const chatInput = ref('')
 let inviteShowTimer: ReturnType<typeof setTimeout> | null = null
 let inviteHideTimer: ReturnType<typeof setTimeout> | null = null
 let inviteLoopTimer: ReturnType<typeof setInterval> | null = null
@@ -172,8 +174,10 @@ function reset() {
   interimText.value = ''
   searchResult.value = null
   resultCount.value = 0
+  locationTotal.value = -1
   errorMsg.value = ''
   baseTranscript = ''
+  pub.clearMonaSearch()
   clearSilenceTimer()
   stopRecording()
   monaStop()
@@ -305,7 +309,37 @@ const emptyLocationName = computed(() => {
   return ''
 })
 
-function buildDoneSpeech(count: number, filters: { label: string; value: string }[]): string {
+const narrowingHintText = computed(() => _narrowingHint(appliedFilters.value))
+
+function hasFilterType(kind: 'price' | 'rooms' | 'type' | 'furnishing'): boolean {
+  const map: Record<string, string[]> = {
+    price: ['Prix min', 'Prix max'],
+    rooms: ['Pièces min', 'Pièces max', 'Chambres min', 'Chambres max'],
+    type: ['Type'],
+    furnishing: ['Ameublement'],
+  }
+  return appliedFilters.value.some(f => map[kind]?.includes(f.label))
+}
+
+function _narrowingHint(filters: { label: string; value: string }[]): string {
+  const hasPrice = filters.some(f => f.label === 'Prix min' || f.label === 'Prix max')
+  const hasRooms = filters.some(f => f.label === 'Pièces min' || f.label === 'Pièces max')
+  const hasBedrooms = filters.some(f => f.label === 'Chambres min' || f.label === 'Chambres max')
+  const hasType = filters.some(f => f.label === 'Type')
+  const hasFurnishing = filters.some(f => f.label === 'Ameublement')
+
+  const hints: string[] = []
+  if (hasPrice) hints.push('le budget')
+  if (hasRooms || hasBedrooms) hints.push('le nombre de pièces')
+  if (hasType) hints.push('le type de bien')
+  if (hasFurnishing) hints.push('l\'ameublement')
+
+  if (hints.length === 0) return 'vos critères'
+  if (hints.length === 1) return hints[0]
+  return hints.slice(0, -1).join(', ') + ' et ' + hints[hints.length - 1]
+}
+
+function buildDoneSpeech(count: number, filters: { label: string; value: string }[], locTotal: number): string {
   const parts: string[] = []
   const city = filters.find(f => f.label === 'Ville')
   const quartier = filters.find(f => f.label === 'Quartier')
@@ -314,8 +348,13 @@ function buildDoneSpeech(count: number, filters: { label: string; value: string 
   const locationName = quartier?.value || city?.value || keywords?.value || ''
 
   if (count === 0) {
-    if (locationName) {
-      parts.push(`Malheureusement, il n'y a pas encore de biens immobiliers enregistrés dans la zone « ${locationName} » sur notre plateforme.`)
+    if (locTotal > 0 && locationName) {
+      const s = locTotal > 1 ? 's' : ''
+      parts.push(`Il y a ${locTotal} bien${s} disponible${s} dans la zone « ${locationName} »,`)
+      parts.push(`mais aucun ne correspond à ${_narrowingHint(filters)}.`)
+      parts.push('Essayez d\'ajuster vos critères pour voir les biens disponibles dans cette zone.')
+    } else if (locationName) {
+      parts.push(`Il n'y a pas encore de biens enregistrés dans la zone « ${locationName} » sur notre plateforme.`)
       parts.push('Nos agents y ajoutent de nouvelles annonces régulièrement.')
       parts.push('Vous pouvez essayer une zone proche ou élargir votre recherche.')
     } else {
@@ -340,12 +379,21 @@ function buildDoneSpeech(count: number, filters: { label: string; value: string 
   return parts.join(' ')
 }
 
+const RESTRICTING_KEYS = new Set([
+  'price__gte', 'price__lte',
+  'rooms__gte', 'rooms__lte',
+  'bedrooms__gte', 'bedrooms__lte',
+  'surface_m2__gte', 'surface_m2__lte',
+  'furnishing', 'listing_type',
+])
+
 async function analyze() {
   const text = transcript.value.trim()
   if (!text) return
 
   phase.value = 'analyzing'
   errorMsg.value = ''
+  locationTotal.value = -1
 
   try {
     const intent = await pub.fetchSearchIntent(text)
@@ -358,8 +406,21 @@ async function analyze() {
 
     const listings = await pub.fetchListings(params)
     resultCount.value = Array.isArray(listings) ? listings.length : pub.listings.length
+
+    if (resultCount.value === 0) {
+      const hasLocation = !!params.search
+      const hasRestricting = Object.keys(params).some(k => RESTRICTING_KEYS.has(k))
+
+      if (hasLocation && hasRestricting) {
+        try {
+          locationTotal.value = await pub.countListings({ search: params.search })
+        } catch { locationTotal.value = -1 }
+      }
+    }
+
+    pub.setMonaSearch(text)
     phase.value = 'done'
-    monaSay(buildDoneSpeech(resultCount.value, appliedFilters.value))
+    monaSay(buildDoneSpeech(resultCount.value, appliedFilters.value, locationTotal.value))
   } catch (e: any) {
     const msg = e?.response?.data?.detail
     errorMsg.value = typeof msg === 'string' ? msg : 'Mona rencontre un problème temporaire. Veuillez réessayer.'
@@ -374,6 +435,32 @@ function closeAndViewResults() {
 
 function editTranscript(e: Event) {
   transcript.value = (e.target as HTMLTextAreaElement).value
+}
+
+function handleChatSubmit() {
+  const text = chatInput.value.trim()
+  if (!text) return
+  transcript.value = text
+  chatInput.value = ''
+  analyze()
+}
+
+function handleFabSubmit() {
+  const text = chatInput.value.trim()
+  if (!text) { toggle(); return }
+  dismissed.value = false
+  transcript.value = text
+  chatInput.value = ''
+  analyze()
+  open.value = true
+}
+
+function handleFabVoice() {
+  inviteBubble.value = false
+  clearInviteLoop()
+  dismissed.value = false
+  startRecording()
+  open.value = true
 }
 
 function formatFilterValue(label: string, value: string): string {
@@ -420,7 +507,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <!-- FAB -->
+  <!-- FAB (mobile only — hidden on desktop) -->
   <button
     v-if="!open"
     class="ms-fab"
@@ -436,6 +523,24 @@ onBeforeUnmount(() => {
       </svg>
     </span>
   </button>
+
+  <!-- Desktop: barre de saisie centrée (style ChatGPT/Gemini) -->
+  <Transition name="ms-bar">
+    <div v-if="!open" class="ms-fab-bar" data-tour="mona">
+      <div class="ms-fab-bar__inner">
+        <span class="ms-fab-bar__avatar">M</span>
+        <input
+          v-model="chatInput"
+          class="ms-fab-bar__input"
+          placeholder="Demandez à Mona..."
+          @keyup.enter="handleFabSubmit"
+        />
+        <button class="ms-fab-bar__voice" @click="handleFabVoice" title="Recherche vocale">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path fill="currentColor" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </Transition>
 
   <!-- Invite bubble -->
   <Transition name="ms-invite">
@@ -494,18 +599,20 @@ onBeforeUnmount(() => {
             </p>
           </div>
 
-          <div class="ms-actions">
-            <button class="ms-mic-btn" @click="startRecording">
-              <svg viewBox="0 0 24 24" width="32" height="32"><path fill="#fff" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path fill="#fff" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-            </button>
-            <span class="ms-actions__label">Parler</span>
-          </div>
+          <div class="ms-welcome-actions">
+            <div class="ms-actions">
+              <button class="ms-mic-btn" @click="startRecording">
+                <svg viewBox="0 0 24 24" width="32" height="32"><path fill="#fff" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path fill="#fff" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+              </button>
+              <span class="ms-actions__label">Parler</span>
+            </div>
 
-          <div class="ms-alt-actions">
-            <button class="ms-alt-btn" @click="phase = 'review'">
-              <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
-              Saisir un texte
-            </button>
+            <div class="ms-alt-actions">
+              <button class="ms-alt-btn" @click="phase = 'review'">
+                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1.003 1.003 0 000-1.42l-2.34-2.34a1.003 1.003 0 00-1.42 0l-1.83 1.83 3.75 3.75 1.84-1.82z"/></svg>
+                Saisir un texte
+              </button>
+            </div>
           </div>
         </template>
 
@@ -605,9 +712,36 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div v-if="resultCount === 0" class="ms-done__empty">
+            <!-- Zone couverte, mais critères trop restrictifs -->
+            <div v-if="resultCount === 0 && locationTotal > 0 && emptyLocationName" class="ms-done__empty">
+              <p class="ms-done__empty-main">
+                Il y a <strong>{{ locationTotal }} bien{{ locationTotal > 1 ? 's' : '' }}</strong> dans la zone
+                <strong>« {{ emptyLocationName }} »</strong> mais aucun ne correspond à {{ narrowingHintText }}.
+              </p>
+              <div class="ms-done__empty-tips">
+                <p v-if="hasFilterType('price')" class="ms-done__empty-tip">
+                  <i class="pi pi-wallet"></i>
+                  <span>Ajustez votre budget pour voir plus de résultats</span>
+                </p>
+                <p v-if="hasFilterType('rooms')" class="ms-done__empty-tip">
+                  <i class="pi pi-th-large"></i>
+                  <span>Essayez avec un autre nombre de pièces</span>
+                </p>
+                <p v-if="hasFilterType('type')" class="ms-done__empty-tip">
+                  <i class="pi pi-home"></i>
+                  <span>Cherchez aussi en location ou en vente</span>
+                </p>
+                <p class="ms-done__empty-tip">
+                  <i class="pi pi-search"></i>
+                  <span>Relancez sans filtre restrictif pour voir les {{ locationTotal }} bien{{ locationTotal > 1 ? 's' : '' }} disponibles</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- Zone NON couverte ou aucun critère de localisation -->
+            <div v-else-if="resultCount === 0" class="ms-done__empty">
               <p v-if="emptyLocationName" class="ms-done__empty-main">
-                Il n'y a pas encore de biens immobiliers enregistrés dans la zone <strong>« {{ emptyLocationName }} »</strong> sur notre plateforme.
+                Il n'y a pas encore de biens enregistrés dans la zone <strong>« {{ emptyLocationName }} »</strong> sur notre plateforme.
               </p>
               <p v-else class="ms-done__empty-main">
                 Aucune annonce ne correspond à vos critères pour le moment.
@@ -638,6 +772,22 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </template>
+      </div>
+
+      <!-- Desktop chat input bar -->
+      <div v-if="phase === 'welcome'" class="ms-chat-bar">
+        <div class="ms-chat-bar__wrap">
+          <input
+            v-model="chatInput"
+            type="text"
+            class="ms-chat-bar__input"
+            placeholder="Décrivez ce que vous cherchez..."
+            @keyup.enter="handleChatSubmit"
+          />
+          <button class="ms-chat-bar__voice" @click="startRecording" title="Recherche vocale">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path fill="#fff" d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+          </button>
+        </div>
       </div>
     </div>
   </Transition>
@@ -1184,6 +1334,205 @@ onBeforeUnmount(() => {
 .ms-invite-enter-active { animation: ms-invite-bounce 0.5s ease-out; }
 .ms-invite-leave-active { transition: opacity 0.3s, transform 0.3s; }
 .ms-invite-leave-to { opacity: 0; transform: translateY(10px) scale(0.95); }
+
+/* ─── DESKTOP: FAB BAR + CENTERED PANEL ──────────────────── */
+.ms-fab-bar { display: none; }
+.ms-chat-bar { display: none; }
+
+@media (min-width: 769px) {
+  .ms-fab { display: none !important; }
+
+  /* ── Barre centrée style ChatGPT/Gemini ── */
+  .ms-fab-bar {
+    display: block;
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    pointer-events: none;
+    padding: 0 24px;
+  }
+  .ms-fab-bar__inner {
+    pointer-events: all;
+    max-width: 580px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 28px;
+    padding: 6px 8px 6px 8px;
+    box-shadow: 0 2px 20px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02);
+    transition: border-color .2s, box-shadow .2s;
+    animation: ms-bar-glow 2.5s ease-in-out infinite;
+  }
+  .ms-fab-bar__inner:focus-within {
+    border-color: #1DA53F;
+    box-shadow: 0 4px 28px rgba(0,0,0,.1), 0 0 0 3px rgba(29,165,63,.08);
+    animation: none;
+  }
+  @keyframes ms-bar-glow {
+    0%, 100% {
+      box-shadow: 0 2px 20px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.02);
+      border-color: #e0e0e0;
+    }
+    50% {
+      box-shadow: 0 2px 24px rgba(29,165,63,.18), 0 0 0 3px rgba(29,165,63,.10);
+      border-color: rgba(29,165,63,.4);
+    }
+  }
+  .ms-fab-bar__avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #1DA53F;
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .ms-fab-bar__avatar::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 2px solid rgba(29,165,63,.4);
+    animation: ms-avatar-sonar 2.5s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes ms-avatar-sonar {
+    0% { transform: scale(1); opacity: .6; }
+    70% { transform: scale(1.5); opacity: 0; }
+    100% { transform: scale(1.5); opacity: 0; }
+  }
+  .ms-fab-bar__input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 15px;
+    color: #333;
+    font-family: inherit;
+    min-width: 0;
+    padding: 10px 0;
+  }
+  .ms-fab-bar__input::placeholder { color: #aaa; }
+  .ms-fab-bar__voice {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #f5f5f5;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .15s, color .15s, transform .15s;
+  }
+  .ms-fab-bar__voice:hover {
+    background: #1DA53F;
+    color: #fff;
+    transform: scale(1.06);
+  }
+
+  /* Transition enter/leave */
+  .ms-bar-enter-active { transition: all .3s cubic-bezier(.4,0,.2,1); }
+  .ms-bar-leave-active { transition: all .2s ease; }
+  .ms-bar-enter-from,
+  .ms-bar-leave-to {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  /* ── Panel centré ── */
+  .ms-panel {
+    width: 480px;
+    right: auto;
+    left: calc(50% - 240px);
+    bottom: 84px;
+  }
+
+  .ms-welcome-actions { display: none; }
+
+  .ms-welcome__msg {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .ms-welcome__hint {
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  /* Barre de chat dans le panel (fallback) */
+  .ms-chat-bar {
+    display: block;
+    padding: 14px 16px 16px;
+    border-top: 1px solid #f0f0f0;
+    background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);
+    border-radius: 0 0 16px 16px;
+  }
+  .ms-chat-bar__wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 26px;
+    padding: 4px 5px 4px 18px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .ms-chat-bar__wrap:focus-within {
+    border-color: #1DA53F;
+    box-shadow: 0 0 0 3px rgba(29,165,63,.08);
+  }
+  .ms-chat-bar__input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font-size: 14px;
+    color: #333;
+    font-family: inherit;
+    min-width: 0;
+    padding: 8px 0;
+  }
+  .ms-chat-bar__input::placeholder { color: #aaa; }
+  .ms-chat-bar__voice {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: #1DA53F;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .15s, transform .15s;
+  }
+  .ms-chat-bar__voice:hover {
+    background: #178A33;
+    transform: scale(1.08);
+  }
+
+  /* Invite bubble : centrée au-dessus de la barre */
+  .ms-invite {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 90px;
+  }
+}
 
 /* ─── MOBILE ───────────────────────────────────────────────── */
 @media (max-width: 768px) {

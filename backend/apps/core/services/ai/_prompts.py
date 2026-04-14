@@ -104,12 +104,61 @@ Mets TOUS les termes de localisation (ville, commune, quartier, sous-quartier, r
 N'utilise JAMAIS city, city__icontains, neighborhood, neighborhood__icontains — ces filtres sont trop stricts et ratent des résultats.
 Le champ "search" cherche dans le titre, la description, la ville, le quartier ET l'adresse de chaque annonce (recherche large).
 
+TRÈS IMPORTANT — CONSERVE LA PHRASE DE LOCALISATION COMPLÈTE :
+Les agents en Côte d'Ivoire mettent souvent la localisation complète dans le TITRE de l'annonce
+(ex: "Studio meublé Yopougon Maroc", "Villa duplex Cocody Angré"). Tu DOIS garder la phrase
+de localisation EXACTEMENT comme l'utilisateur la dit pour que le moteur de recherche la retrouve dans les titres.
+Ne supprime JAMAIS une partie de la localisation, même si elle semble redondante.
+
+ATTENTION — Noms de quartiers ivoiriens qui ressemblent à des noms de pays/villes étrangers :
+Ces noms sont des QUARTIERS en Côte d'Ivoire, PAS des pays. Ne les interprète JAMAIS autrement :
+- "Maroc" → quartier de Yopougon (PAS le pays Maroc)
+- "Canada" → quartier de Yopougon
+- "Washington" → quartier de Cocody
+- "Dallas" → quartier d'Abobo
+- "New York" → quartier de Treichville
+- "Sicogi" → quartier de Yopougon
+Quand l'utilisateur dit "Yopougon Maroc", c'est 100% un quartier ivoirien.
+
+CORRECTION SAISIE VOCALE — TRÈS IMPORTANT :
+Les utilisateurs dictent souvent leur recherche. Le moteur de reconnaissance vocale (speech-to-text)
+déforme les noms de quartiers ivoiriens en mots français/anglais qui « sonnent » pareil.
+Tu DOIS reconnaître ces déformations et les CORRIGER vers le vrai nom du quartier dans "search".
+
+Déformations fréquentes (saisie vocale → nom réel) :
+- "Angry", "angry", "André", "en gré", "angré" → Angré
+- "Coco dit", "cocodie", "Kokodi", "coco di" → Cocody
+- "You pou gon", "yopoungon", "yopu gon" → Yopougon
+- "Marc Ori", "ma corie", "Marcori" → Marcory
+- "Djoro go biter", "joro go bité", "jorogobité" → Djorogobité
+- "A jamais", "adja mais", "Adjamais" → Adjamé
+- "Coumassie", "Coumassi", "cou massi" → Koumassi
+- "de plateaux", "deux plats tôt", "de plato" → Deux Plateaux
+- "Riviera faillat", "riviera faillah", "riviera faya" → Riviera Faya
+- "Treich ville", "très ville" → Treichville
+- "Niangone", "nianon" → Niangon
+- "Port bouais", "port bouet" → Port-Bouët
+- "grand bas ça m", "grand bas ça me" → Grand-Bassam
+- "bou à ké", "bouaquer" → Bouaké
+- "Yamoussoukro" est généralement bien reconnu
+
+Si tu détectes un mot qui ressemble phonétiquement à un quartier/commune ivoirien,
+REMPLACE-LE par l'orthographe correcte dans "search". L'utilisateur ne tape pas, il parle.
+
 Exemples :
 - "appartement à Cocody" → search: "Cocody"
 - "maison Angré 9ème tranche" → search: "Angré 9ème tranche"
 - "studio Riviera Faya" → search: "Riviera Faya"
+- "bien à Yopougon Maroc" → search: "Yopougon Maroc"
 - "location Yopougon Maroc" → search: "Yopougon Maroc"
+- "studio meublé Yopougon" → search: "Yopougon"
 - "3 pièces Abidjan Plateau" → search: "Plateau"  (pas "Abidjan" car trop large si un quartier est précisé)
+- "villa Cocody Angré" → search: "Cocody Angré"
+- "appartement Abobo Dallas" → search: "Abobo Dallas"
+- "maison angry" → search: "Angré"  (correction vocale : angry → Angré)
+- "studio coco dit" → search: "Cocody"  (correction vocale : coco dit → Cocody)
+- "location à jorogobité" → search: "Djorogobité"  (correction vocale)
+- "3 pièces a jamais" → search: "Adjamé"  (correction vocale : a jamais → Adjamé)
 
 Si l'utilisateur mentionne une commodité ou caractéristique (piscine, gardien, parking, vue, etc.), ajoute-la aussi dans search.
 Exemple : "appartement avec piscine Cocody" → search: "Cocody piscine"
@@ -133,7 +182,7 @@ Comprends la hiérarchie pour mieux interpréter la requête :
 - Abidjan → Communes : Cocody, Plateau, Marcory, Yopougon, Koumassi, Treichville, Abobo, Adjamé, Port-Bouët
 - Cocody → Quartiers : Angré, Riviera, Riviera Faya, Deux Plateaux, Djorogobité, Riviera 2, Riviera 3, Riviera Palmeraie
 - Angré → Sous-quartiers : 7ème/8ème/9ème Tranche, Nouveau CHU, Star, Château, Djibi
-- Yopougon → Quartiers : Maroc, Niangon, Selmer, Millionnaire, Toits Rouges, Sideci
+- Yopougon → Quartiers : Maroc (quartier, PAS le pays !), Niangon, Selmer, Millionnaire, Toits Rouges, Sideci, Canada, Sicogi, Banco
 - Marcory → Quartiers : Zone 4, Anoumabo, Résidentiel
 
 Si l'utilisateur dit un sous-quartier (ex: "Angré"), mets "Angré" dans search (pas "Cocody" seul).

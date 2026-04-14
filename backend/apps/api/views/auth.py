@@ -451,6 +451,8 @@ class OTPVerifyView(APIView):
             ClientProfile.objects.create(user=user)
         elif role == 'AGENT':
             AgentProfile.objects.create(user=user, agency_name=pending.get('agency_name') or '')
+            from apps.core.tasks import send_agent_welcome_email
+            send_agent_welcome_email.delay(user.pk)
 
         if pending.get('accepted_cgu') and pending.get('accepted_privacy'):
             client_ip = _client_ip(request)

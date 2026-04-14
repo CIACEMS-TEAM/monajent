@@ -85,35 +85,7 @@ function statusClass(s: string) {
           <router-link to="/agent/analytics" class="db-link">Accéder aux statistiques</router-link>
         </section>
 
-        <!-- Revenus -->
-        <section class="db-card">
-          <div class="db-card__head">
-            <h2 class="db-card__title">Revenus</h2>
-            <router-link to="/agent/wallet" class="db-link">Détails</router-link>
-          </div>
-          <div class="db-wallet">
-            <div class="db-wallet__stat">
-              <span class="db-wallet__lbl">Solde disponible</span>
-              <span class="db-wallet__amount">{{ formatPrice(dash.wallet.balance) }}</span>
-            </div>
-            <div class="db-wallet__stat">
-              <span class="db-wallet__lbl">Total gagné</span>
-              <span class="db-wallet__amount db-wallet__amount--total">{{ formatPrice(dash.wallet.total_earned) }}</span>
-            </div>
-            <div class="db-wallet__stat">
-              <span class="db-wallet__lbl">Total retiré</span>
-              <span class="db-wallet__amount db-wallet__amount--withdrawn">{{ formatPrice(dash.wallet.total_withdrawn) }}</span>
-            </div>
-          </div>
-          <div v-if="dash.recent_entries.length" class="db-entries">
-            <div v-for="e in dash.recent_entries" :key="e.id" class="db-entry">
-              <span class="db-entry__lbl">{{ e.label || e.source_label }}</span>
-              <span class="db-entry__amt" :class="e.entry_type === 'CREDIT' ? 'db-entry__amt--cr' : 'db-entry__amt--db'">
-                {{ e.entry_type === 'CREDIT' ? '+' : '-' }}{{ formatPrice(e.amount) }}
-              </span>
-            </div>
-          </div>
-        </section>
+        <!-- Revenus — masqué (freemium) -->
       </div>
 
       <!-- ===== VISITES EN ATTENTE (prominent) ===== -->
@@ -200,7 +172,7 @@ function statusClass(s: string) {
 /* ===== TOP 3 CARDS ===== */
 .db-top {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -256,20 +228,7 @@ function statusClass(s: string) {
 .db-popular__name { font-size: 12px; color: #0f0f0f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .db-popular__views { font-size: 11px; color: #606060; }
 
-/* Wallet */
-.db-wallet { display: flex; gap: 28px; margin-bottom: 14px; }
-.db-wallet__stat { display: flex; flex-direction: column; }
-.db-wallet__lbl { font-size: 12px; color: #606060; }
-.db-wallet__amount { font-size: 24px; font-weight: 700; color: #1DA53F; }
-.db-wallet__amount--total { font-size: 18px; color: #0f0f0f; }
-.db-wallet__amount--withdrawn { font-size: 18px; color: #d97706; }
-
-.db-entries { border-top: 1px solid #f2f2f2; padding-top: 10px; }
-.db-entry { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
-.db-entry__lbl { color: #606060; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; }
-.db-entry__amt { font-weight: 600; flex-shrink: 0; }
-.db-entry__amt--cr { color: #1DA53F; }
-.db-entry__amt--db { color: #dc2626; }
+/* Wallet — masqué (freemium) */
 
 /* ===== VISITES EN ATTENTE ===== */
 .db-visits {
@@ -392,7 +351,6 @@ function statusClass(s: string) {
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
   .db-top { grid-template-columns: 1fr 1fr; }
-  .db-top > :last-child { grid-column: 1 / -1; }
 }
 @media (max-width: 768px) {
   .db-top { grid-template-columns: 1fr; gap: 12px; }
@@ -419,15 +377,6 @@ function statusClass(s: string) {
   .db-analytics__val { font-size: 18px; }
   .db-analytics__lbl { font-size: 10px; }
 
-  .db-wallet {
-    flex-direction: column;
-    gap: 12px;
-  }
-  .db-wallet__lbl { font-size: 11px; }
-  .db-wallet__amount { font-size: 20px; }
-  .db-wallet__amount--total { font-size: 16px; }
-  .db-wallet__amount--withdrawn { font-size: 16px; }
-
   .db-table--desktop { display: none; }
   .db-mcards { display: flex; flex-direction: column; }
 
@@ -438,7 +387,6 @@ function statusClass(s: string) {
 @media (max-width: 400px) {
   .db-card { padding: 12px; }
   .db-perf__thumb { height: 120px; }
-  .db-wallet__amount { font-size: 18px; }
   .db-perf__stats { flex-wrap: wrap; gap: 8px; }
 }
 </style>

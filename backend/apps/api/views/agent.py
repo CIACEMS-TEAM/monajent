@@ -222,6 +222,9 @@ class AgentKycSubmitView(APIView):
         profile.kyc_rejection_reason = ''
         profile.save(update_fields=['kyc_status', 'kyc_rejection_reason', 'updated_at'])
 
+        from apps.core.tasks import send_kyc_submitted_email
+        send_kyc_submitted_email.delay(profile.pk)
+
         return Response({'detail': 'Documents soumis pour vérification.', 'kyc_status': 'PENDING'})
 
 
@@ -259,6 +262,10 @@ class AdminKycReviewView(APIView):
                 message='Votre identité a été vérifiée avec succès. Vous pouvez maintenant publier vos annonces.',
                 link='/agent/settings#kyc',
             )
+
+            from apps.core.tasks import send_kyc_approved_email
+            send_kyc_approved_email.delay(profile.pk)
+
             return Response({'detail': 'KYC approuvé.', 'kyc_status': 'APPROVED'})
 
         else:
@@ -276,4 +283,8 @@ class AdminKycReviewView(APIView):
                 message=f'Votre vérification d\'identité a été rejetée. Motif : {reason}',
                 link='/agent/settings#kyc',
             )
+
+            from apps.core.tasks import send_kyc_rejected_email
+            send_kyc_rejected_email.delay(profile.pk)
+
             return Response({'detail': 'KYC rejeté.', 'kyc_status': 'REJECTED'})

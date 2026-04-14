@@ -58,6 +58,7 @@ from apps.core.services.visits import (
 )
 from apps.core.services.listing_lifecycle import process_report
 from apps.users.models import Notification
+from apps.core.tasks import send_visit_request_email
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -232,6 +233,8 @@ class ClientVisitListCreateView(APIView):
             link='/agent/visits',
         )
 
+        send_visit_request_email.delay(visit.pk)
+
         response_data = VisitRequestClientSerializer(visit).data
         response_data['virtual_key_consumed'] = result['virtual_key_consumed']
         response_data['already_interacted'] = result['already_interacted']
@@ -337,7 +340,7 @@ class AgentVisitConfirmView(APIView):
             category=Notification.Category.VISIT,
             title='Visite confirmée',
             message=f'Votre visite pour « {visit.listing.title} » a été confirmée{scheduled_info}.',
-            link='/client/visits',
+            link='/home/visits',
         )
 
         return Response({
@@ -381,7 +384,7 @@ class AgentVisitValidateCodeView(APIView):
             category=Notification.Category.VISIT,
             title='Visite effectuée',
             message=f'Votre visite pour « {visit.listing.title} » a bien été réalisée. Merci !',
-            link='/client/visits',
+            link='/home/visits',
         )
 
         return Response({'detail': "Code validé. Visite effectuée. Merci !"})
@@ -408,7 +411,7 @@ class AgentVisitNoShowView(APIView):
             category=Notification.Category.VISIT,
             title='Absence signalée',
             message=f'Vous avez été marqué(e) absent(e) pour la visite de « {visit.listing.title} ».',
-            link='/client/visits',
+            link='/home/visits',
         )
 
         return Response({'detail': "Client marqué comme absent (NO_SHOW)."})

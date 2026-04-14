@@ -46,11 +46,12 @@ function handleNeverShow() {
           <!-- Hero -->
           <section class="wo-hero">
             <h1 class="wo-hero__title">
-              Trouvez votre bien,<br /><span class="wo-green">visitez gratuitement</span>
+              Trouvez votre bien,<br /><span class="wo-green">parlez, c'est trouvé</span>
             </h1>
             <p class="wo-hero__subtitle">
-              MonaJent vous donne accès aux biens immobiliers en vidéo
-              et vous offre des visites physiques gratuites, sans frais d'agence.
+              MonaJent simplifie votre recherche immobilière grâce à Mona,
+              votre assistante IA. Décrivez ce que vous cherchez par la voix,
+              explorez les biens en vidéo et trouvez le logement idéal en quelques secondes.
             </p>
           </section>
 
@@ -78,30 +79,32 @@ function handleNeverShow() {
               <div class="wo-step">
                 <div class="wo-step__icon wo-step__icon--2">
                   <svg viewBox="0 0 48 48" width="40" height="40">
-                    <rect x="4" y="10" width="40" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="2.5" />
-                    <polygon points="20,18 20,30 32,24" fill="#1DA53F" />
+                    <!-- Microphone icon -->
+                    <rect x="18" y="6" width="12" height="22" rx="6" fill="none" stroke="currentColor" stroke-width="2.5" />
+                    <path d="M12 24c0 6.63 5.37 12 12 12s12-5.37 12-12" fill="none" stroke="#1DA53F" stroke-width="2.5" stroke-linecap="round" />
+                    <path d="M24 36v6" stroke="#1DA53F" stroke-width="2.5" stroke-linecap="round" />
                   </svg>
                 </div>
                 <div class="wo-step__num">2</div>
-                <h3 class="wo-step__title">Découvrez en vidéo</h3>
+                <h3 class="wo-step__title">Parlez à Mona</h3>
                 <p class="wo-step__desc">
-                  Parcourez les biens immobiliers en <strong>vidéo complète</strong>,
-                  comme si vous y étiez, depuis votre téléphone.
+                  Décrivez ce que vous cherchez <strong>par la voix</strong> :
+                  quartier, budget, nombre de pièces… Mona comprend tout.
                 </p>
               </div>
 
               <div class="wo-step">
                 <div class="wo-step__icon wo-step__icon--3">
                   <svg viewBox="0 0 48 48" width="40" height="40">
-                    <path d="M24 4C16.27 4 10 10.27 10 18c0 10.5 14 26 14 26s14-15.5 14-26C38 10.27 31.73 4 24 4z" fill="none" stroke="currentColor" stroke-width="2.5" />
-                    <circle cx="24" cy="18" r="6" fill="#1DA53F" />
+                    <rect x="4" y="10" width="40" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="2.5" />
+                    <polygon points="20,18 20,30 32,24" fill="#1DA53F" />
                   </svg>
                 </div>
                 <div class="wo-step__num">3</div>
-                <h3 class="wo-step__title">Visitez gratuitement</h3>
+                <h3 class="wo-step__title">Explorez en vidéo</h3>
                 <p class="wo-step__desc">
-                  Réservez une <strong>visite physique gratuite</strong>
-                  directement depuis l'application, sans frais d'agence.
+                  Visitez les biens en <strong>vidéo immersive</strong>,
+                  comme si vous y étiez, directement depuis votre téléphone.
                 </p>
               </div>
             </div>
@@ -127,7 +130,7 @@ function handleNeverShow() {
         <!-- Footer actions -->
         <div class="wo-footer">
           <button class="wo-btn wo-btn--primary" @click="handleUnderstood">
-            J'ai compris, explorer
+            J'ai compris, c'est parti !
           </button>
           <button class="wo-btn wo-btn--ghost" @click="handleNeverShow">
             Ne plus afficher
@@ -177,7 +180,7 @@ function handleNeverShow() {
 
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 1100;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);

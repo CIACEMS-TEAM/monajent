@@ -119,6 +119,7 @@ def parse_search_intent(text: str) -> dict[str, Any]:
     if qp is None:
         data['query_params'] = {}
     _broaden_location_filters(data)
+    _ensure_search_from_text(data, text)
     return data
 
 
@@ -149,3 +150,84 @@ def _broaden_location_filters(data: dict[str, Any]) -> None:
     merged = ' '.join(filter(None, [existing] + location_terms))
     if merged:
         data['search'] = merged
+
+
+_KNOWN_LOCATIONS: set[str] = {
+    # Communes d'Abidjan
+    'cocody', 'plateau', 'marcory', 'yopougon', 'koumassi',
+    'treichville', 'abobo', 'adjamé', 'adjame', 'port-bouët', 'port bouet',
+    'attécoubé', 'attecoube', 'songon', 'bingerville', 'anyama',
+    # Quartiers fréquents
+    'angré', 'angre', 'riviera', 'riviera faya', 'deux plateaux',
+    'djorogobité', 'djorogobite', 'palmeraie', 'vallon',
+    'zone 4', 'anoumabo', 'résidentiel',
+    'maroc', 'niangon', 'selmer', 'millionnaire', 'toits rouges',
+    'sideci', 'sicogi', 'banco', 'canada', 'washington', 'dallas',
+    # Villes hors Abidjan
+    'bouaké', 'bouake', 'yamoussoukro', 'san pedro', 'grand-bassam',
+    'grand bassam', 'bassam', 'assinie', 'dabou', 'aboisso',
+}
+
+_VOICE_CORRECTIONS: dict[str, str] = {
+    # Angré
+    'angry': 'angré', 'andré': 'angré', 'en gré': 'angré',
+    # Cocody
+    'coco dit': 'cocody', 'cocodie': 'cocody', 'kokodi': 'cocody',
+    'coco di': 'cocody',
+    # Yopougon
+    'you pou gon': 'yopougon', 'yopoungon': 'yopougon',
+    'yopu gon': 'yopougon',
+    # Marcory
+    'marc ori': 'marcory', 'ma corie': 'marcory', 'marcori': 'marcory',
+    # Djorogobité
+    'jorogobité': 'djorogobité', 'jorogobite': 'djorogobité',
+    'djoro go biter': 'djorogobité', 'joro go bité': 'djorogobité',
+    # Adjamé
+    'a jamais': 'adjamé', 'adja mais': 'adjamé', 'adjamais': 'adjamé',
+    # Koumassi
+    'coumassie': 'koumassi', 'cou massi': 'koumassi',
+    # Deux Plateaux
+    'de plateaux': 'deux plateaux', 'deux plats tôt': 'deux plateaux',
+    'de plato': 'deux plateaux',
+    # Riviera Faya
+    'riviera faillat': 'riviera faya', 'riviera faillah': 'riviera faya',
+    # Treichville
+    'treich ville': 'treichville', 'très ville': 'treichville',
+    # Niangon
+    'niangone': 'niangon', 'nianon': 'niangon',
+    # Port-Bouët
+    'port bouais': 'port-bouët',
+    # Grand-Bassam
+    'grand bas ça m': 'grand-bassam',
+    # Bouaké
+    'bou à ké': 'bouaké', 'bouaquer': 'bouaké',
+}
+
+
+def _apply_voice_corrections(text: str) -> str:
+    """Corrige les déformations de saisie vocale dans le texte utilisateur."""
+    text_lower = text.lower()
+    for wrong, correct in sorted(_VOICE_CORRECTIONS.items(), key=lambda x: len(x[0]), reverse=True):
+        if wrong in text_lower:
+            text_lower = text_lower.replace(wrong, correct)
+    return text_lower
+
+
+def _ensure_search_from_text(data: dict[str, Any], original_text: str) -> None:
+    """Filet de sécurité : si l'IA n'a pas rempli 'search' mais que le texte
+    utilisateur contient des noms de lieux connus (y compris déformés par la
+    saisie vocale), on les injecte dans 'search'.
+    """
+    if data.get('search'):
+        return
+
+    corrected = _apply_voice_corrections(original_text)
+    found: list[str] = []
+    for loc in sorted(_KNOWN_LOCATIONS, key=len, reverse=True):
+        if loc in corrected:
+            found.append(loc)
+            corrected = corrected.replace(loc, '')
+
+    if found:
+        data['search'] = ' '.join(found)
+        logger.info('search_intent: injected fallback search=%r from user text', data['search'])

@@ -1,6 +1,5 @@
 <template>
   <div class="yt-app" :class="{ 'sidebar-open': sidebarOpen }">
-
     <!-- ===== WELCOME OVERLAY (first visit) ===== -->
     <WelcomeOverlay @closed="onWelcomeClosed" />
 
@@ -10,7 +9,11 @@
     <!-- ===== HEADER ===== -->
     <header class="yt-header">
       <div class="yt-header__start">
-        <button class="yt-icon-btn yt-hamburger-desktop" @click="sidebarOpen = !sidebarOpen" aria-label="Menu">
+        <button
+          class="yt-icon-btn yt-hamburger-desktop"
+          @click="sidebarOpen = !sidebarOpen"
+          aria-label="Menu"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
           </svg>
@@ -43,7 +46,11 @@
 
       <div class="yt-header__end">
         <!-- Mobile search icon -->
-        <button class="yt-icon-btn yt-mobile-search-toggle" @click="mobileSearchOpen = true" aria-label="Rechercher">
+        <button
+          class="yt-icon-btn yt-mobile-search-toggle"
+          @click="mobileSearchOpen = true"
+          aria-label="Rechercher"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -66,14 +73,86 @@
           </div>
           -->
 
-          <button class="yt-icon-btn yt-notif-btn" aria-label="Notifications">
-            <svg viewBox="0 0 24 24" width="24" height="24">
-              <path
-                fill="currentColor"
-                d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"
-              />
-            </svg>
-          </button>
+          <div class="yt-notif-wrapper">
+            <button
+              class="yt-icon-btn yt-notif-btn"
+              @click.stop="toggleNotif"
+              aria-label="Notifications"
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24">
+                <path
+                  fill="currentColor"
+                  d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"
+                />
+              </svg>
+              <span v-if="notifStore.unreadCount > 0" class="yt-notif-badge">{{
+                notifStore.unreadCount > 9 ? '9+' : notifStore.unreadCount
+              }}</span>
+            </button>
+
+            <Transition name="notif-fade">
+              <div v-if="notifOpen" class="yt-notif-panel">
+                <div class="yt-notif-panel__header">
+                  <span class="yt-notif-panel__title">Notifications</span>
+                  <button
+                    v-if="notifStore.unreadCount > 0"
+                    class="yt-notif-panel__mark-all"
+                    @click="markAllRead"
+                  >
+                    Tout lire
+                  </button>
+                </div>
+                <div v-if="notifStore.loading" class="yt-notif-panel__empty">Chargement...</div>
+                <div
+                  v-else-if="notifStore.notifications.length === 0"
+                  class="yt-notif-panel__empty"
+                >
+                  Aucune notification
+                </div>
+                <div v-else class="yt-notif-panel__list">
+                  <div
+                    v-for="n in notifStore.notifications"
+                    :key="n.id"
+                    class="yt-notif-item"
+                    :class="{ unread: !n.is_read, clickable: !!n.link }"
+                    @click="handleNotifClick(n)"
+                  >
+                    <div class="yt-notif-item__icon" :class="'cat-' + n.category.toLowerCase()">
+                      <svg v-if="n.category === 'VISIT'" viewBox="0 0 24 24" width="18" height="18">
+                        <path
+                          fill="currentColor"
+                          d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm0 16H5V8h14v11z"
+                        />
+                      </svg>
+                      <svg v-else viewBox="0 0 24 24" width="18" height="18">
+                        <path
+                          fill="currentColor"
+                          d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 002 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+                        />
+                      </svg>
+                    </div>
+                    <div class="yt-notif-item__body">
+                      <div class="yt-notif-item__title">{{ n.title }}</div>
+                      <div class="yt-notif-item__msg">{{ n.message }}</div>
+                      <div class="yt-notif-item__time">{{ formatNotifTime(n.created_at) }}</div>
+                    </div>
+                    <svg
+                      v-if="n.link"
+                      class="yt-notif-item__arrow"
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        fill="currentColor"
+                        d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
           <div class="yt-usermenu-wrapper yt-header-avatar">
             <div class="yt-user-avatar" @click="handleBottomNavProfile">
               {{ userInitial }}
@@ -88,13 +167,31 @@
                   </div>
                 </div>
                 <div class="yt-usermenu__divider"></div>
-                <a href="#" class="yt-usermenu__item" @click.prevent="navigateMenu('/home/profile')">
-                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <a
+                  href="#"
+                  class="yt-usermenu__item"
+                  @click.prevent="navigateMenu('/home/profile')"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path
+                      fill="currentColor"
+                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
+                    />
+                  </svg>
                   <span>Mon profil</span>
                 </a>
                 <div class="yt-usermenu__divider"></div>
-                <a href="#" class="yt-usermenu__item yt-usermenu__item--danger" @click.prevent="handleLogout">
-                  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                <a
+                  href="#"
+                  class="yt-usermenu__item yt-usermenu__item--danger"
+                  @click.prevent="handleLogout"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20">
+                    <path
+                      fill="currentColor"
+                      d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
+                    />
+                  </svg>
                   <span>Déconnexion</span>
                 </a>
               </div>
@@ -118,7 +215,10 @@
     <div v-if="mobileSearchOpen" class="yt-mobile-search-overlay">
       <button class="yt-icon-btn" @click="mobileSearchOpen = false" aria-label="Retour">
         <svg viewBox="0 0 24 24" width="24" height="24">
-          <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+          <path
+            fill="currentColor"
+            d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+          />
         </svg>
       </button>
       <input
@@ -168,14 +268,27 @@
 
         <div class="yt-sidebar__heading">Vous</div>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/dashboard')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/dashboard')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+            <path
+              fill="currentColor"
+              d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"
+            />
           </svg>
           <span class="yt-sidebar__label">Mon espace</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/history')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/history')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -185,7 +298,12 @@
           <span class="yt-sidebar__label">Historique</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/favorites')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/favorites')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -197,7 +315,12 @@
 
         <!-- Packs / Paiements masqués (mode freemium) -->
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/visits')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/visits')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
             <path
               fill="currentColor"
@@ -207,16 +330,29 @@
           <span class="yt-sidebar__label">Visites</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/reports')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/reports')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/>
+            <path fill="currentColor" d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
           </svg>
           <span class="yt-sidebar__label">Signalements</span>
         </a>
 
-        <a href="#" class="yt-sidebar__item" :class="{ disabled: !auth.me }" @click.prevent="navigateAuth('/home/support')">
+        <a
+          href="#"
+          class="yt-sidebar__item"
+          :class="{ disabled: !auth.me }"
+          @click.prevent="navigateAuth('/home/support')"
+        >
           <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+            <path
+              fill="currentColor"
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"
+            />
           </svg>
           <span class="yt-sidebar__label">Aide & Support</span>
         </a>
@@ -262,18 +398,17 @@
       <div class="yt-sidebar__footer yt-sidebar__footer--collapsed">
         <router-link to="/legal/cgu" class="yt-sidebar__legal-icon" title="Mentions légales">
           <svg viewBox="0 0 24 24" width="20" height="20">
-            <path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 15h2v2h-2v-2zm0-8h2v6h-2V8z"/>
+            <path
+              fill="currentColor"
+              d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 15h2v2h-2v-2zm0-8h2v6h-2V8z"
+            />
           </svg>
         </router-link>
       </div>
     </aside>
 
     <!-- Sidebar Overlay (mobile) -->
-    <div
-      v-if="sidebarOpen"
-      class="yt-sidebar-overlay"
-      @click="sidebarOpen = false"
-    ></div>
+    <div v-if="sidebarOpen" class="yt-sidebar-overlay" @click="sidebarOpen = false"></div>
 
     <!-- ===== MAIN CONTENT ===== -->
     <main class="yt-main">
@@ -285,20 +420,42 @@
       <div class="yt-modal">
         <button class="yt-modal__close" @click="showLoginModal = false" aria-label="Fermer">
           <svg viewBox="0 0 24 24" width="24" height="24">
-            <path fill="#272727" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+            <path
+              fill="#272727"
+              d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+            />
           </svg>
         </button>
         <div class="yt-modal__icon">
           <svg viewBox="0 0 48 48" width="56" height="56">
-            <circle cx="24" cy="24" r="22" fill="rgba(29,165,63,0.1)" stroke="#1DA53F" stroke-width="2" />
+            <circle
+              cx="24"
+              cy="24"
+              r="22"
+              fill="rgba(29,165,63,0.1)"
+              stroke="#1DA53F"
+              stroke-width="2"
+            />
             <path fill="#1DA53F" d="M19 15l14 9-14 9V15z" />
           </svg>
         </div>
         <h2 class="yt-modal__title">Connectez-vous pour visionner</h2>
-        <p class="yt-modal__subtitle">Regardez les vidéos des biens et trouvez votre logement idéal.</p>
+        <p class="yt-modal__subtitle">
+          Regardez les vidéos des biens et trouvez votre logement idéal.
+        </p>
         <div class="yt-modal__actions">
-          <router-link to="/auth/login" class="yt-modal__btn yt-modal__btn--primary" @click="showLoginModal = false">Se connecter</router-link>
-          <router-link to="/auth/join" class="yt-modal__btn yt-modal__btn--secondary" @click="showLoginModal = false">Créer un compte</router-link>
+          <router-link
+            to="/auth/login"
+            class="yt-modal__btn yt-modal__btn--primary"
+            @click="showLoginModal = false"
+            >Se connecter</router-link
+          >
+          <router-link
+            to="/auth/join"
+            class="yt-modal__btn yt-modal__btn--secondary"
+            @click="showLoginModal = false"
+            >Créer un compte</router-link
+          >
         </div>
       </div>
     </div>
@@ -311,26 +468,48 @@
 
     <!-- ===== MOBILE BOTTOM NAV ===== -->
     <nav class="yt-bottomnav" data-tour="nav">
-      <router-link to="/home" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'home' }">
+      <router-link
+        to="/home"
+        class="yt-bottomnav__item"
+        :class="{ active: activeBottomTab === 'home' }"
+      >
         <svg viewBox="0 0 24 24" width="22" height="22">
           <path fill="currentColor" d="M4 21V10.08l8-6.96 8 6.96V21h-6v-6h-4v6H4z" />
         </svg>
         <span>Accueil</span>
       </router-link>
 
-      <button class="yt-bottomnav__mona" @click="openMonaSearch" aria-label="Mona — Recherche vocale IA">
+      <button
+        class="yt-bottomnav__mona"
+        @click="openMonaSearch"
+        aria-label="Mona — Recherche vocale IA"
+      >
         <div class="yt-bottomnav__mona-btn">
           <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="#fff"/>
-            <path d="M13.5 7.5l.9-1.9 1.9-.9-1.9-.9-.9-1.9-.9 1.9-1.9.9 1.9.9zm4.3 2.1l-.6 1.3-1.3.6 1.3.6.6 1.3.6-1.3 1.3-.6-1.3-.6zM9.2 7.6L8 10l-2.4 1.2L8 12.4 9.2 14.8l1.2-2.4 2.4-1.2-2.4-1.2z" fill="#1DA53F"/>
+            <path
+              d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"
+              fill="#fff"
+            />
+            <path
+              d="M13.5 7.5l.9-1.9 1.9-.9-1.9-.9-.9-1.9-.9 1.9-1.9.9 1.9.9zm4.3 2.1l-.6 1.3-1.3.6 1.3.6.6 1.3.6-1.3 1.3-.6-1.3-.6zM9.2 7.6L8 10l-2.4 1.2L8 12.4 9.2 14.8l1.2-2.4 2.4-1.2-2.4-1.2z"
+              fill="#1DA53F"
+            />
           </svg>
         </div>
         <span>Mona</span>
       </button>
 
-      <a href="#" class="yt-bottomnav__item" :class="{ active: activeBottomTab === 'favorites' }" @click.prevent="navigateAuth('/home/favorites')">
+      <a
+        href="#"
+        class="yt-bottomnav__item"
+        :class="{ active: activeBottomTab === 'favorites' }"
+        @click.prevent="navigateAuth('/home/favorites')"
+      >
         <svg viewBox="0 0 24 24" width="22" height="22">
-          <path fill="currentColor" d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" />
+          <path
+            fill="currentColor"
+            d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z"
+          />
         </svg>
         <span>Favoris</span>
       </a>
@@ -343,16 +522,20 @@ import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/Stores/auth'
 import { usePublicStore } from '@/Stores/public'
+import { useNotificationStore } from '@/Stores/notifications'
+import type { NotificationItem } from '@/Stores/notifications'
 import WelcomeOverlay from '@/components/WelcomeOverlay.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
 import MonaSearch from '@/components/MonaSearch.vue'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
+import posthog from 'posthog-js'
 // Clés masquées (mode freemium)
 // import keyVirtImg from '@/assets/icons/key_virt.png'
 // import keyPhyImg from '@/assets/icons/key_phy.png'
 
 const auth = useAuthStore()
 const pub = usePublicStore()
+const notifStore = useNotificationStore()
 const router = useRouter()
 const route = useRoute()
 const sidebarOpen = ref(false)
@@ -362,6 +545,7 @@ const searchQuery = ref((route.query.q as string) || '')
 const monaSearchRef = ref<InstanceType<typeof MonaSearch> | null>(null)
 const showLoginModal = ref(false)
 const userMenuOpen = ref(false)
+const notifOpen = ref(false)
 const showOnboarding = ref(false)
 
 function fetchClientData() {
@@ -375,33 +559,61 @@ watch(mobileSearchOpen, (open) => {
   if (open) nextTick(() => mobileSearchInput.value?.focus())
 })
 
-watch(() => route.query.q, (q) => {
-  searchQuery.value = (q as string) || ''
-})
+watch(
+  () => route.query.q,
+  (q) => {
+    searchQuery.value = (q as string) || ''
+  },
+)
 
-function closeUserMenu(e: MouseEvent) {
-  const wrapper = (e.target as HTMLElement).closest('.yt-usermenu-wrapper')
-  if (!wrapper) userMenuOpen.value = false
+function closePopups(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (!target.closest('.yt-usermenu-wrapper')) userMenuOpen.value = false
+  if (notifOpen.value && !target.closest('.yt-notif-wrapper')) notifOpen.value = false
 }
 
 function onWelcomeClosed() {
   if (!localStorage.getItem('monajent_onboarding_done')) {
-    setTimeout(() => { showOnboarding.value = true }, 400)
+    setTimeout(() => {
+      showOnboarding.value = true
+    }, 400)
   }
 }
 
 onMounted(() => {
-  document.addEventListener('click', closeUserMenu)
+  document.addEventListener('click', closePopups)
   fetchClientData()
-  const welcomeSeen = localStorage.getItem('monajent_welcome_dismissed') || sessionStorage.getItem('monajent_welcome_seen')
+  if (auth.me) {
+    notifStore.fetchUnreadCount()
+    notifStore.startPolling()
+  }
+  const welcomeSeen =
+    localStorage.getItem('monajent_welcome_dismissed') ||
+    sessionStorage.getItem('monajent_welcome_seen')
   const onboardingDone = localStorage.getItem('monajent_onboarding_done')
   if (welcomeSeen && !onboardingDone) {
-    setTimeout(() => { showOnboarding.value = true }, 800)
+    setTimeout(() => {
+      showOnboarding.value = true
+    }, 800)
   }
 })
-onUnmounted(() => document.removeEventListener('click', closeUserMenu))
+onUnmounted(() => {
+  document.removeEventListener('click', closePopups)
+  notifStore.stopPolling()
+})
 
-watch(() => auth.me, () => fetchClientData())
+watch(
+  () => auth.me,
+  (me) => {
+    fetchClientData()
+    if (me) {
+      notifStore.fetchUnreadCount()
+      notifStore.startPolling()
+    } else {
+      notifStore.stopPolling()
+    }
+  },
+)
 
 const userInitial = computed(() => {
   if (!auth.me) return ''
@@ -411,9 +623,15 @@ const userInitial = computed(() => {
 const activeBottomTab = computed(() => {
   const path = route.path
   if (path === '/home/favorites') return 'favorites'
-  if (path.startsWith('/home/dashboard') || path.startsWith('/home/profile') ||
-      path.startsWith('/home/history') || path.startsWith('/home/visits') ||
-      path.startsWith('/home/reports') || path.startsWith('/home/support')) return 'you'
+  if (
+    path.startsWith('/home/dashboard') ||
+    path.startsWith('/home/profile') ||
+    path.startsWith('/home/history') ||
+    path.startsWith('/home/visits') ||
+    path.startsWith('/home/reports') ||
+    path.startsWith('/home/support')
+  )
+    return 'you'
   return 'home'
 })
 
@@ -448,7 +666,39 @@ function navigateMenu(path: string) {
 async function handleLogout() {
   userMenuOpen.value = false
   await auth.logout()
+  posthog.reset()
   router.push({ name: 'home' })
+}
+
+function toggleNotif() {
+  notifOpen.value = !notifOpen.value
+  if (notifOpen.value) {
+    userMenuOpen.value = false
+    notifStore.fetchNotifications()
+  }
+}
+
+async function markAllRead() {
+  await notifStore.markAllRead()
+}
+
+function handleNotifClick(n: NotificationItem) {
+  notifStore.markRead([n.id])
+  notifOpen.value = false
+  if (n.link) router.push(n.link)
+}
+
+function formatNotifTime(iso: string): string {
+  const d = new Date(iso)
+  const diff = Date.now() - d.getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "À l'instant"
+  if (mins < 60) return `il y a ${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `il y a ${hours}h`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `il y a ${days}j`
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
 function handleBottomNavProfile() {
@@ -479,20 +729,26 @@ function handleBottomNavProfile() {
   --sidebar-w: 240px;
   --sidebar-collapsed-w: 72px;
   --bottomnav-h: 0px;
-  --green: #1DA53F;
-  --green-dark: #178A33;
+  --green: #1da53f;
+  --green-dark: #178a33;
   --green-light: rgba(29, 165, 63, 0.08);
   --green-ring: rgba(29, 165, 63, 0.15);
-  --bg: #FFFFFF;
-  --text-primary: #0F0F0F;
+  --bg: #ffffff;
+  --text-primary: #0f0f0f;
   --text-secondary: #272727;
   --chip-bg: #f2f2f2;
-  --chip-bg-active: #0F0F0F;
-  --chip-text-active: #FFFFFF;
-  --border: #E0E0E0;
+  --chip-bg-active: #0f0f0f;
+  --chip-text-active: #ffffff;
+  --border: #e0e0e0;
   --card-hover: #f2f2f2;
 
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-family:
+    'Roboto',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Arial,
+    sans-serif;
   background: var(--bg);
   color: var(--text-primary);
   min-height: 100vh;
@@ -575,7 +831,9 @@ function handleBottomNavProfile() {
   color: var(--text-primary);
   background: #fff;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .yt-search__input:focus {
@@ -632,10 +890,18 @@ function handleBottomNavProfile() {
   transition: all 0.15s;
   cursor: pointer;
 }
-.yt-keys__item--virt { background: rgba(37,99,235,.08); }
-.yt-keys__item--virt:hover { background: rgba(37,99,235,.15); }
-.yt-keys__item--phy { background: rgba(234,160,12,.08); }
-.yt-keys__item--phy:hover { background: rgba(234,160,12,.15); }
+.yt-keys__item--virt {
+  background: rgba(37, 99, 235, 0.08);
+}
+.yt-keys__item--virt:hover {
+  background: rgba(37, 99, 235, 0.15);
+}
+.yt-keys__item--phy {
+  background: rgba(234, 160, 12, 0.08);
+}
+.yt-keys__item--phy:hover {
+  background: rgba(234, 160, 12, 0.15);
+}
 .yt-keys__icon {
   width: 20px;
   height: 20px;
@@ -646,11 +912,169 @@ function handleBottomNavProfile() {
   font-weight: 700;
   line-height: 1;
 }
-.yt-keys__item--virt .yt-keys__count { color: #2563eb; }
-.yt-keys__item--phy .yt-keys__count { color: #d97706; }
+.yt-keys__item--virt .yt-keys__count {
+  color: #2563eb;
+}
+.yt-keys__item--phy .yt-keys__count {
+  color: #d97706;
+}
 
+.yt-notif-wrapper {
+  position: relative;
+}
 .yt-notif-btn {
   position: relative;
+}
+.yt-notif-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* ── Notification panel ── */
+.yt-notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 200;
+  width: 380px;
+  max-height: 460px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.yt-notif-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee;
+}
+.yt-notif-panel__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.yt-notif-panel__mark-all {
+  background: none;
+  border: none;
+  color: var(--green);
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.yt-notif-panel__empty {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+}
+.yt-notif-panel__list {
+  overflow-y: auto;
+  flex: 1;
+}
+.yt-notif-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid #f5f5f5;
+}
+.yt-notif-item:hover {
+  background: #f9f9f9;
+}
+.yt-notif-item.unread {
+  background: #f0fdf4;
+}
+.yt-notif-item.clickable:hover {
+  background: #eef6ff;
+}
+.yt-notif-item__icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.yt-notif-item__icon.cat-visit {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.yt-notif-item__icon.cat-system {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.yt-notif-item__icon.cat-kyc {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.yt-notif-item__icon.cat-wallet {
+  background: #fef3c7;
+  color: #d97706;
+}
+.yt-notif-item__body {
+  flex: 1;
+  min-width: 0;
+}
+.yt-notif-item__title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+.yt-notif-item__msg {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.yt-notif-item__time {
+  font-size: 0.72rem;
+  color: #999;
+  margin-top: 4px;
+}
+.yt-notif-item__arrow {
+  flex-shrink: 0;
+  color: #aaa;
+  transition: color 0.15s;
+}
+.yt-notif-item.clickable:hover .yt-notif-item__arrow {
+  color: #2563eb;
+}
+
+.notif-fade-enter-active {
+  transition: all 0.2s ease;
+}
+.notif-fade-leave-active {
+  transition: all 0.15s ease;
+}
+.notif-fade-enter-from,
+.notif-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 .yt-user-avatar {
@@ -680,7 +1104,9 @@ function handleBottomNavProfile() {
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .yt-signin-btn svg {
@@ -705,7 +1131,9 @@ function handleBottomNavProfile() {
   width: 260px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 4px 32px rgba(0, 0, 0, 0.14),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
   z-index: 200;
   padding: 8px 0;
   overflow: hidden;
@@ -794,7 +1222,9 @@ function handleBottomNavProfile() {
 /* Transition */
 .menu-fade-enter-active,
 .menu-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .menu-fade-enter-from,
@@ -996,7 +1426,9 @@ function handleBottomNavProfile() {
   height: 36px;
   border-radius: 50%;
   color: var(--text-secondary);
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .yt-sidebar__legal-icon:hover {
@@ -1123,7 +1555,7 @@ function handleBottomNavProfile() {
 .yt-modal__title {
   font-size: 20px;
   font-weight: 700;
-  color: #0F0F0F;
+  color: #0f0f0f;
   margin-bottom: 8px;
 }
 
@@ -1149,24 +1581,26 @@ function handleBottomNavProfile() {
   text-decoration: none;
   text-align: center;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .yt-modal__btn--primary {
-  background: #1DA53F;
+  background: #1da53f;
   color: #fff;
   border: none;
 }
 
 .yt-modal__btn--primary:hover {
-  background: #178A33;
+  background: #178a33;
   box-shadow: 0 4px 12px rgba(29, 165, 63, 0.3);
 }
 
 .yt-modal__btn--secondary {
   background: #fff;
-  color: #1DA53F;
-  border: 1.5px solid #1DA53F;
+  color: #1da53f;
+  border: 1.5px solid #1da53f;
 }
 
 .yt-modal__btn--secondary:hover {
@@ -1229,15 +1663,30 @@ function handleBottomNavProfile() {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1DA53F 0%, #16913A 100%);
+  background: linear-gradient(135deg, #1da53f 0%, #16913a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 16px rgba(29,165,63,.35);
-  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 4px 16px rgba(29, 165, 63, 0.35);
+  transition: transform 0.15s;
+  animation: yt-mona-sonar 3s ease-in-out infinite;
+}
+@keyframes yt-mona-sonar {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 16px rgba(29, 165, 63, 0.35),
+      0 0 0 0 rgba(29, 165, 63, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 4px 16px rgba(29, 165, 63, 0.35),
+      0 0 0 12px rgba(29, 165, 63, 0);
+  }
 }
 .yt-bottomnav__mona-btn:active {
   transform: scale(0.92);
+  animation: none;
 }
 .yt-bottomnav__mona span {
   font-size: 10px;
@@ -1350,6 +1799,11 @@ function handleBottomNavProfile() {
     height: 28px;
   }
 
+  .yt-notif-panel {
+    width: calc(100vw - 16px);
+    right: -60px;
+  }
+
   /* Show bottom nav */
   .yt-bottomnav {
     display: flex;
@@ -1361,7 +1815,13 @@ function handleBottomNavProfile() {
   .yt-main {
     padding: 0 0 calc(var(--bottomnav-h) + 12px);
   }
-  .yt-bottomnav__item { min-width: 48px; font-size: 9px; }
-  .yt-bottomnav__mona-btn { width: 48px; height: 48px; }
+  .yt-bottomnav__item {
+    min-width: 48px;
+    font-size: 9px;
+  }
+  .yt-bottomnav__mona-btn {
+    width: 48px;
+    height: 48px;
+  }
 }
 </style>

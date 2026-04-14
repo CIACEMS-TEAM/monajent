@@ -35,6 +35,8 @@ cd backend && source venv/bin/activate && python manage.py runserver
 ```bash
 export VITE_API_BASE_URL=https://api.monajent.com
 export VITE_PAYSTACK_PUBLIC_KEY=pk_live_26c2d6a1d9a134672175eec45142fca68e7052f9   # clé publique Paystack (dashboard)
+export VITE_POSTHOG_PROJECT_TOKEN=phc_mNWy6S4UE7EszTjASNhbqpiYNJFLx4ZRf4foFW4uKmyS
+export VITE_POSTHOG_HOST=https://us.i.posthog.com
 
 docker buildx bake -f docker-compose.build.yml \
   --builder cloud-ciacems-ciacems-builder \

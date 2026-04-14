@@ -297,6 +297,7 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='MonaJent <info@monajent.com>')
 SERVER_EMAIL = env('SERVER_EMAIL', default='info@monajent.com')
+PLATFORM_NOTIFY_EMAIL = env('PLATFORM_NOTIFY_EMAIL', default='info@monajent.com')
 
 # ── Orange SMS A2P ───────────────────────────────────────────────────────────
 ORANGE_API_BASE_URL = env('ORANGE_API_BASE_URL', default='https://api.orange.com')

@@ -13,24 +13,19 @@ interface Step {
 
 const steps: Step[] = [
   {
+    selectors: ['[data-tour="mona"]'],
+    title: 'Mona — Votre assistante IA',
+    desc: 'Appuyez sur le micro et décrivez ce que vous cherchez : « un 3 pièces à Cocody, budget 300 000 ». Mona comprend votre voix et trouve les biens en quelques secondes.',
+  },
+  {
     selectors: [],
-    title: 'Les annonces en vidéo',
-    desc: 'Parcourez les biens immobiliers en vidéo. Cliquez sur une annonce pour voir les détails, les photos, la vidéo et contacter l\'agent.',
+    title: 'Des annonces en vidéo',
+    desc: 'Chaque annonce peut contenir une vidéo immersive. Explorez les biens comme si vous y étiez, directement depuis votre téléphone.',
   },
   {
     selectors: ['[data-tour="sidebar"]', '[data-tour="nav"]'],
     title: 'Votre navigation',
-    desc: 'Accédez à l\'accueil, vos packs de clés, vos favoris et votre espace personnel.',
-  },
-  {
-    selectors: ['[data-tour="sidebar-packs"]', '[data-tour="packs"]'],
-    title: 'Les Packs de clés',
-    desc: 'Achetez des clés virtuelles ou physiques pour débloquer des visites physiques gratuites, sans frais d\'agence.',
-  },
-  {
-    selectors: ['[data-tour="mona"]'],
-    title: 'Mona — Assistante IA',
-    desc: 'Cliquez ici et décrivez ce que vous cherchez par la voix. Mona trouve le bien idéal pour vous en quelques secondes !',
+    desc: 'Retrouvez l\'accueil, vos favoris, votre espace personnel et toutes les fonctionnalités depuis ce menu.',
   },
 ]
 
@@ -164,19 +159,20 @@ onBeforeUnmount(() => {
 
           <!-- Step icon -->
           <div class="ot__icon">
+            <!-- Mona / Microphone -->
             <svg v-if="idx === 0" viewBox="0 0 24 24" width="32" height="32">
+              <rect x="9" y="2" width="6" height="12" rx="3" fill="#1DA53F"/>
+              <path d="M5 11c0 3.87 3.13 7 7 7s7-3.13 7-7" fill="none" stroke="#1DA53F" stroke-width="1.8" stroke-linecap="round"/>
+              <path d="M12 18v4" stroke="#1DA53F" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+            <!-- Vidéo -->
+            <svg v-else-if="idx === 1" viewBox="0 0 24 24" width="32" height="32">
               <rect x="2" y="4" width="20" height="16" rx="3" fill="none" stroke="#1DA53F" stroke-width="1.8"/>
               <polygon points="10,8 10,16 16,12" fill="#1DA53F"/>
             </svg>
-            <svg v-else-if="idx === 1" viewBox="0 0 24 24" width="32" height="32">
-              <path fill="#1DA53F" d="M4 21V10.08l8-6.96 8 6.96V21h-6v-6h-4v6H4z"/>
-            </svg>
-            <svg v-else-if="idx === 2" viewBox="0 0 24 24" width="32" height="32">
-              <path fill="#1DA53F" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM12 17c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
-            </svg>
+            <!-- Navigation -->
             <svg v-else viewBox="0 0 24 24" width="32" height="32">
-              <path fill="#1DA53F" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-              <path fill="#fff" d="M13.5 7.5l.9-1.9 1.9-.9-1.9-.9-.9-1.9-.9 1.9-1.9.9 1.9.9z"/>
+              <path fill="#1DA53F" d="M4 21V10.08l8-6.96 8 6.96V21h-6v-6h-4v6H4z"/>
             </svg>
           </div>
 

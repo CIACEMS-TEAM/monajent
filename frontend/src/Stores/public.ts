@@ -116,6 +116,8 @@ export const usePublicStore = defineStore('public', {
     unlockedVideos: {} as Record<string, string>,
     listings: [] as ListingListItem[],
     listingsLoading: false,
+    monaSearchActive: false,
+    monaSearchLabel: '',
     virtualKeys: 0,
     physicalKeys: 0,
     keysLoaded: false,
@@ -165,6 +167,23 @@ export const usePublicStore = defineStore('public', {
         }
       }>('/api/ai/search-intent/', { text })
       return data.data
+    },
+
+    /** Compte le nombre total d'annonces pour des params donnés (1 seule requête, pas de pagination). */
+    async countListings(params: Record<string, string>): Promise<number> {
+      const { data } = await http.get('/api/listings/', { params: { ...params, page: '1' } })
+      if (Array.isArray(data)) return data.length
+      return data.count ?? data.results?.length ?? 0
+    },
+
+    setMonaSearch(label: string) {
+      this.monaSearchActive = true
+      this.monaSearchLabel = label
+    },
+
+    clearMonaSearch() {
+      this.monaSearchActive = false
+      this.monaSearchLabel = ''
     },
 
     async fetchPublicListing(slug: string) {

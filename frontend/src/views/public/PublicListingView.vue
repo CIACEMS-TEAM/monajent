@@ -7,6 +7,7 @@ import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import { useToast } from 'vue-toastification'
 import http, { API_BASE } from '@/services/http'
+import posthog from 'posthog-js'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,6 +224,14 @@ async function loadListing() {
   descExpanded.value = false
   try {
     await pub.fetchPublicListing(listingSlug.value)
+    if (pub.listing) {
+      posthog.capture('listing_viewed', {
+        listing_slug: listingSlug.value,
+        listing_title: pub.listing.title,
+        listing_type: pub.listing.listing_type,
+        listing_city: pub.listing.city,
+      })
+    }
   } catch (e: any) {
     if (e?.response?.status === 404) toast.error('Annonce introuvable ou expirée')
   }
@@ -278,6 +287,11 @@ async function submitVisitRequest() {
       client_note: visitNote.value.trim(),
     })
     showVisitModal.value = false
+    posthog.capture('visit_booking_requested', {
+      listing_id: pub.listing!.id,
+      listing_title: pub.listing!.title,
+      slot_id: selectedSlotId.value,
+    })
     toast.success('Demande de visite envoyée ! Vous recevrez une confirmation de l\'agent.')
     router.push({ name: 'client-visits' })
   } catch (e: any) {
@@ -349,6 +363,7 @@ async function launchTeaser(vid: PublicListingVideo) {
   teaserLoading.value = true
   teaserAccessKey.value = vid.access_key
   activeVideo.value = vid
+  posthog.capture('video_watch_started', { listing_slug: listingSlug.value, video_key: vid.access_key })
   try {
     const data = await pub.fetchTeaser(vid.access_key)
     teaserInfo.value = data
